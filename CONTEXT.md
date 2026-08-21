@@ -4,7 +4,7 @@
 
 **Estado del proyecto:** pre-desarrollo. No existe código de producción. Todo lo que hay hoy son documentos de especificación (versionados, con historial de decisiones) y un prototipo HTML clickeable de referencia. Este documento explica el *por qué* detrás de cada decisión registrada en esos documentos — el código todavía no existe, así que no hay un "qué" que leer.
 
-## 1. Qué es Outsider Jota / VeGroup
+## 1. Qué es OG Circle
 
 Una plataforma cerrada y paga para personas en Argentina de 20 a 40 años que quieren importar mercadería de China y venderla online. No es un curso: el diferenciador declarado en `landing.md` es "todos venden el mapa, nosotros te damos las llaves del auto" — el valor no es la información (eso ya está en YouTube gratis), es el acceso directo a la infraestructura operativa que ya usa Jota Vera para operar su propio negocio: agentes de compra en China, depósitos, flete, SWIFT y una calculadora de costos ya construida.
 
@@ -43,35 +43,6 @@ Un usuario puede subir de Principiante a Avanzado pagando solo la diferencia ($6
 | Early adopter | Quien se anota en la lista de espera durante la Fase 1 (landing). Recibe 10% de descuento de por vida sobre el precio del nivel elegido. |
 | Traxcargo | Sistema externo de tracking de envíos al que la plataforma planea enlazar (no reconstruir) para el módulo de tracking. |
 
-## 5. Flujos clave
-
-### 5.1 Flujo de venta (planeado, Fase 2+)
-
-Usuario ve la landing → elige nivel → registro (email+password o Google/Apple) → checkout → si paga con Mercado Pago: webhook confirma y activa el acceso automáticamente → si paga por transferencia o USDT: sube comprobante, queda en estado *pending*, un administrador lo confirma manualmente antes de activar el acceso (no hay automatización posible acá, es el punto de fricción operativa más grande del sistema).
-
-### 5.2 Flujo de validación (Fase 1, lo que se construye ahora)
-
-Usuario ve la landing (que presenta la plataforma como si ya existiera) → clic en "comprar" → en vez de checkout real, entra a una lista de espera con 10% off garantizado → se mide intención por nivel elegido. No hay pago real en esta fase. El objetivo explícito es no invertir en desarrollo de la plataforma completa hasta confirmar demanda (`resumen-ejecutivo.md` §7, Fase 1).
-
-## 6. Decisiones estructurales y su justificación
-
-| Decisión | Por qué |
-|---|---|
-| No hay panel de administración en el lanzamiento | Decisión explícita para no atrasar el timeline ajustado (lanzamiento agosto 2026). El programador actualiza contenido directo en código/config en vez de construir UI de admin. |
-| Pagos por transferencia/USDT recomendados para posponer a una segunda etapa | Solo Mercado Pago es 100% automatizable vía webhook. Transferencia y USDT requieren confirmación manual, lo cual sin panel de admin implica un script sin interfaz — el brief técnico recomienda lanzar solo con MP para no bloquear el lanzamiento por esto. |
-| La calculadora y el tracking se enlazan externos, no se reconstruyen | La calculadora ya existe y funciona en `vegroup.vercel.app/calculadora`. Traxcargo es un sistema de terceros. Reconstruir cualquiera de los dos no aporta valor y sí atrasa el lanzamiento. |
-| Control de acceso por nivel vía Row-Level Security en la base, no en el frontend | Un check solo en frontend es evitable. RLS en Supabase garantiza que ni una consulta directa a la API devuelva contenido de un nivel no pagado. |
-| Precios y niveles viven en variables de configuración, no hardcodeados | Se espera que cambien (ver conflicto 2 vs 3 niveles) y sin panel de admin, un cambio de precio no puede depender de un redeploy con código tocado a mano en el momento de cobrar. |
-| Video en YouTube no listado para el lanzamiento, no Vimeo/Mux | Gratis y rápido de integrar. Migración a un host con más control anti-descarga queda para Fase 4 (post-tracción), cuando ya hay ingresos que lo justifiquen. |
-
-## 7. Estado actual del proyecto
-
-- Código de producción: no existe. El repositorio (`01-VeGroup-Emi`) tiene un único commit con 6 archivos, todos documentos/spec, ningún código de aplicación.
-- Lo único en producción es la calculadora de costos, ya construida y viva en `vegroup.vercel.app/calculadora` (fuera de este repo).
-- Fase activa: **Fase 1 — Validación**. Se va a construir la landing page descripta en detalle en `landing.md`. Nada de Fase 2 en adelante (registro, checkout, dashboard, comunidad, tracking) se construye todavía.
-- Hay un prototipo HTML clickeable (`inicio-proyecto/app-preview_7.html`) de la plataforma completa (post-Fase 1) — sirve para ver estructura y flujo de pantallas, explícitamente no es código de producción para copiar.
-- Hay bloqueantes de contenido (legal, números de prueba social, bio de Jota) y una decisión de producto sin cerrar (2 vs 3 niveles) que impiden avanzar de forma segura a Fase 2.
-
 ---
 
 # Roadmap de 4 fases
@@ -101,8 +72,6 @@ La versión más simple del producto que ya permite generar ingresos reales.
 - Páginas legales: Términos y Condiciones, Política de Privacidad, Política de Reembolsos (contenido lo entrega Jota)
 - Emails transaccionales: bienvenida, confirmación de pago, reset de contraseña
 
-**Nota de conflicto:** `brief-tecnico-programador.md` §8 (documento previo, con foco en el timeline ajustado) recorta esta lista aún más para un "Fase 1 — Lanzamiento imprescindible": deja OAuth social y comunidad con likes/comentarios para después. Si el timeline vuelve a apretar en el momento de construir esto, esa versión recortada es la referencia.
-
 ## Fase 3 — Primeros usuarios pagando
 
 Con ingresos reales y primeros usuarios activos, se incorporan métodos de pago alternativos, herramientas operativas clave, y se completa el panel de administración.
@@ -121,7 +90,3 @@ Tracción = modelo de negocio probado (usuarios activos, pagos y demanda sosteni
 - Likes y comentarios en comunidad
 - Video hosting definitivo (Vimeo o Mux) cuando los videos estén grabados
 - Mejoras al panel de administración según necesidades operativas
-
-## Regla de avance entre fases
-
-El paso de Fase 1 a Fase 2 no es automático ni por fecha — depende de que se cumplan los umbrales de conversión definidos en `landing.md` §18 (Reglas de Negocio §5). Ninguna fase posterior a la 1 tiene fecha ni está garantizada todavía.
