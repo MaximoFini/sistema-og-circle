@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Bash(git commit *)",
+            "prompt": "El usuario está por hacer 'git commit'. Corré una revisión de código equivalente a la skill /code-review sobre el diff STAGEADO (git diff --cached) antes de este commit: buscá bugs de correctness y problemas claros de reuse/simplicidad/eficiencia. No hace falta ser exhaustivo, priorizá señal alta. Si encontrás hallazgos, respondé con hookSpecificOutput.permissionDecision='ask' y en permissionDecisionReason listá los hallazgos de forma breve para que el usuario decida si sigue o corrige antes de commitear. Si no hay staged changes o no encontrás nada relevante, respondé permissionDecision='allow'. $ARGUMENTS",
+            "timeout": 120,
+            "statusMessage": "Code review automático antes del commit..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Bash(git push *)",
+            "prompt": "El usuario está por hacer 'git push'. Corré una revisión de seguridad equivalente a la skill /security-review sobre los commits que se van a subir (compará contra el remote tracking branch, ej. git diff <upstream>...HEAD o git log). Buscá específicamente: secrets/credenciales hardcodeadas, vulnerabilidades tipo OWASP top 10 (inyección, XSS, auth rota, etc.), y cualquier cosa claramente insegura introducida en estos commits. Si encontrás algo crítico (secrets expuestos, vulnerabilidad clara), respondé hookSpecificOutput.permissionDecision='deny' con el motivo explicado en permissionDecisionReason. Si encontrás algo dudoso pero no crítico, respondé permissionDecision='ask' explicando qué revisar. Si no hay upstream configurado todavía (primer push) revisá igual los commits locales pendientes. Si no hay hallazgos, respondé permissionDecision='allow'. $ARGUMENTS",
+            "timeout": 180,
+            "statusMessage": "Security review automático antes del push..."
+          }
+        ]
+      }
+    ]
+  }
+}
