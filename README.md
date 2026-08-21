@@ -6,7 +6,7 @@ Plataforma cerrada (paga) para personas en Argentina de 20 a 40 años que quiere
 
 No es un curso: combina formación en video (8 videos de importación + 3 de ecommerce) con acceso directo a la infraestructura operativa que ya usa Jota Vera, quien opera la red: una calculadora de costos de importación ya construida y en producción (`vegroup.vercel.app/calculadora`), un directorio de 6 agentes de compra verificados en China, depósitos en Miami/China/España, gestión de flete y despacho, tracking de envíos vía Traxcargo, pagos SWIFT a China, y una red de profesionales (contable, automatizaciones, agencia de marketing, UGC creator).
 
-El acceso se vende en 2 niveles con pago único y acceso de por vida (Principiante $75.000 ARS / Avanzado $125.000 ARS, 10% off para early adopters), sin suscripción.
+El acceso se vende en 2 niveles con pago único y acceso de por vida (Principiante $75.000 ARS / Avanzado $125.000 ARS), sin suscripción.
 
 ## Estado actual (agosto 2026)
 
