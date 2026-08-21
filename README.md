@@ -1,4 +1,4 @@
-# Sistema OG Circle — Outsider Jota / VeGroup
+# Sistema OG Circle
 
 > Fuente: descripción del proyecto "Sistema OG Circle (Jero-Rami)" en Plane (VGRP). Última sincronización: 2026-08-21.
 
