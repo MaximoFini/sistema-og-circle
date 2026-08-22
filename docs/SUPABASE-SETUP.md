@@ -1,12 +1,38 @@
-# Setup de Supabase — pasos manuales pendientes
+# Setup de Supabase
 
-Este repo tiene las migraciones de VGRP-15 escritas a mano en
-`supabase/migrations/`, pero nunca se corrieron de verdad: esta máquina no
-tiene el Supabase CLI instalado ni el proyecto vinculado. Alguien con el CLI
-y acceso al dashboard tiene que hacer esto antes de que el esquema exista de
-verdad en algún entorno.
+## Estado actual (2026-08-22)
 
-## 1. Instalar el Supabase CLI
+El proyecto **existe y las migraciones ya están aplicadas** contra él, vía
+Supabase MCP (no se instaló el CLI en esta máquina — se usó el MCP conectado
+a la cuenta de Supabase del usuario):
+
+- **Proyecto**: `og-circle`, ref `hsmodrhbwkromoixrxrt`, región **`sa-east-1`**
+  (São Paulo) — confirmado, es la región correcta, ya no es un gate abierto.
+- **URL**: `https://hsmodrhbwkromoixrxrt.supabase.co`
+- Las 4 tablas (`profiles`, `pagos`, `admin_audit_log`, `leads`) están creadas,
+  con RLS activo y las policies de VGRP-15/16 aplicadas.
+- El advisor de seguridad corrió limpio (0 warnings) después de revocar
+  `execute` público sobre `handle_new_user()` y `profiles_guard_nivel_rol()`
+  — el advisor había marcado que quedaban ejecutables vía RPC por
+  `anon`/`authenticated` por el default de Postgres.
+- `lib/database.types.ts` ya es el archivo **generado de verdad** contra este
+  proyecto (`generate_typescript_types`), no el escrito a mano.
+- `.env.local` (gitignored) tiene `NEXT_PUBLIC_SUPABASE_URL` y
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY` reales. `.env.example` documenta las claves
+  sin valores sensibles.
+
+**Lo que sigue sin poder hacerse desde acá** (el MCP de Supabase no expone
+configuración de Auth Hooks ni de JWT Keys — son pasteo de dashboard, no
+SQL ni Management API cubierta por este MCP): ver sección 8 más abajo.
+
+**Sigue sin confirmar**: si `leads` de Fase 1 (landing) vive en este mismo
+proyecto/organización o en uno distinto, y si vive en Supabase o en
+`@vercel/kv`. La migración de `leads` aplicada acá es best-effort (ver el
+comentario en `supabase/migrations/20260822035924_leads.sql`) — si la landing
+tiene su propio proyecto Supabase separado, hay una decisión pendiente de si
+unificar o mantener dos proyectos.
+
+## 1. Instalar el Supabase CLI (opcional — las migraciones ya se aplicaron por MCP)
 
 ```bash
 # alguna de estas, según el sistema — ver docs oficiales de Supabase para la
