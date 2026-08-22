@@ -24,12 +24,17 @@ a la cuenta de Supabase del usuario):
   el MCP no expone esa configuración) — ver sección 8. El gate de VGRP-16
   queda completo.
 
-**Sigue sin confirmar**: si `leads` de Fase 1 (landing) vive en este mismo
-proyecto/organización o en uno distinto, y si vive en Supabase o en
-`@vercel/kv`. La migración de `leads` aplicada acá es best-effort (ver el
-comentario en `supabase/migrations/20260822035924_leads.sql`) — si la landing
-tiene su propio proyecto Supabase separado, hay una decisión pendiente de si
-unificar o mantener dos proyectos.
+**`leads` — resuelto (2026-08-22): la landing no está capturando leads
+todavía.** No hay dato real en ningún lado (ni Supabase ni `@vercel/kv`) con
+el que la tabla `leads` aplicada acá pueda entrar en conflicto — la migración
+best-effort de `supabase/migrations/20260822035924_leads.sql` queda como la
+única fuente de verdad de acá en adelante, sin necesidad de migrar ni
+reconciliar nada. Sigue sin confirmar formalmente si la landing (Fase 1) y la
+plataforma (Fase 2) comparten el mismo proyecto Supabase o no — pero al no
+haber datos que cruzar todavía, no es bloqueante para seguir con el Bloque 2.
+Si en algún momento se activa la captura de leads en la landing, hay que
+apuntarla a este proyecto (`og-circle`, `hsmodrhbwkromoixrxrt`) para que
+termine en esta misma tabla.
 
 ## 1. Instalar el Supabase CLI (opcional — las migraciones ya se aplicaron por MCP)
 

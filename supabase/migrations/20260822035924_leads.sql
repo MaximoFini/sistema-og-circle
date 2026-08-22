@@ -1,23 +1,12 @@
 -- =============================================================================
--- VGRP-15 — leads (migración defensiva, separada por incertidumbre real)
+-- VGRP-15 — leads
 -- =============================================================================
--- ADVERTENCIA — LEER ANTES DE APLICAR:
--- `leads` ya existe desde la Fase 1, pero en un proyecto de Supabase real que
--- no es este repo (este repo no tenía carpeta de migraciones hasta ahora). No
--- hay forma, desde esta máquina, de confirmar si `leads` hoy vive en ese
--- Supabase o en @vercel/kv — es una decisión abierta y NO se resuelve acá.
---
--- Esta migración es best-effort: `create table if not exists` con una forma
--- razonable inferida del modelo de datos del ticket. Antes de correr esto
--- contra el proyecto real:
---   1. Confirmar en el dashboard de Supabase (o con
---      `supabase db dump --schema public` una vez linkeado) si `leads` ya
---      existe y qué columnas tiene.
---   2. Si existe y la forma difiere de la de acá abajo, esta migración NO se
---      aplica ciegamente — se ajusta esta migración (o se reemplaza por un
---      `alter table` incremental) para que coincida con el schema real.
---   3. Si la fuente de verdad de leads termina siendo @vercel/kv en vez de
---      Supabase, esta migración se descarta directamente.
+-- RESUELTO (2026-08-22): la landing no está capturando leads todavía — no
+-- hay dato real en ningún lado (ni Supabase ni @vercel/kv) con el que esta
+-- migración pueda entrar en conflicto. La incertidumbre original (¿leads ya
+-- existía en otro proyecto, con otra forma?) queda cerrada: esta tabla es la
+-- fuente de verdad de acá en adelante. Ver docs/SUPABASE-SETUP.md.
+-- Ya aplicada contra el proyecto real (og-circle, hsmodrhbwkromoixrxrt).
 -- =============================================================================
 
 create table if not exists public.leads (
