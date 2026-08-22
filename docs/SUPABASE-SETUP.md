@@ -138,3 +138,16 @@ fácil aislar cuál de los dos cambios lo causó.
 
 Ver `docs/AUTH.md` para el resto del diseño (qué claims exactos, cómo se
 resuelve el refresco post-pago, qué expone `lib/auth/`).
+
+## 9. `middleware.ts` (VGRP-17) — pendiente de prueba end-to-end
+
+`middleware.ts` (raíz del repo) protege las rutas de `(app)` (hoy,
+`/dashboard/:path*`) verificando la sesión con `supabase.auth.getClaims()`
+y redirigiendo a `/login` si no hay sesión válida. El código sigue el
+patrón oficial de `@supabase/ssr` para Middleware de Next.js y se verificó
+sólo por lectura — esta máquina no tiene un proyecto Supabase real
+vinculado (ver arriba), así que no se pudo probar el flujo completo
+(cookies de sesión reales, refresh de token, redirect efectivo) contra un
+proyecto vivo. Falta correrlo end-to-end una vez que el proyecto exista y
+tenga `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+configuradas (sección 7).
