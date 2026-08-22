@@ -1,0 +1,98 @@
+/*
+ * app/tokens.css — Design tokens de OG Circle
+ *
+ * Portados desde DESIGN.md (Guía de Diseño y Estilos — VeGroup, sistema
+ * "NEXOVA — dark cinematic"). Fuente de la verdad: DESIGN.md en la raíz
+ * del repo. No inventar valores acá — cualquier cambio de paleta o
+ * tipografía se hace primero en DESIGN.md y se porta después.
+ *
+ * Dark mode es el único modo (DESIGN.md §0): no hay tokens de tema claro.
+ */
+
+:root {
+  /* --- Acento (único color del sistema, fuera de blanco/negro) --- */
+  --accent-from: #d99e00;
+  --accent-to: #f5b813;
+  --accent-05: rgba(217, 158, 0, 0.05);
+  --accent-40: rgba(217, 158, 0, 0.4);
+
+  /* --- Fondo y superficies (jerarquía por oscuridad, no por borde) --- */
+  --bg: #050505;
+  --surface-1: #0a0a0a;
+  --surface-1-hover: #111111;
+  --surface-2: #080808;
+  --surface-3: #060606;
+
+  /* --- Champán: único color de texto que no es blanco ni ámbar --- */
+  --champagne: rgba(232, 210, 170, 0.88);
+
+  /* --- Estado --- */
+  --danger: #ef4444;
+
+  /* --- Vidrio (glassmorphism) --- */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-active: rgba(255, 255, 255, 0.18);
+
+  /* --- Texto: jerarquía por opacidad de blanco --- */
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --text-muted: rgba(255, 255, 255, 0.46);
+
+  /*
+   * --- Tipografía ---
+   * DESIGN.md §2: Helvetica Now Var (body, CDN de terceros db.onlinewebfonts.com,
+   * no migrable a next/font), Montserrat (headings/números/labels, Google Fonts
+   * 300-900 + itálica 400), Inter (body copy dentro de .elegant-section, 300-600),
+   * Cormorant Garamond (serif de números de hero, solo peso 300).
+   *
+   * Este bootstrap no carga los <link> de fuentes todavía (eso depende de las
+   * pantallas que las usen). Los tokens de familia quedan declarados con
+   * fallback de sistema para que layouts futuros los consuman ya mismo.
+   */
+  --font-body:
+    "Helvetica Now Var", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-heading:
+    "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-body-alt:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-serif-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+
+  /* --- Escala tipográfica (DESIGN.md §2) --- */
+  --text-h1-size: clamp(48px, 7vw, 100px);
+  --text-h1-weight: 900;
+  --text-h1-line-height: 0.95;
+  --text-h1-letter-spacing: -0.03em;
+
+  --text-h2-size: clamp(36px, 5vw, 64px);
+  --text-h2-weight: 800;
+
+  --text-h3-size: clamp(18px, 2vw, 22px);
+  --text-h3-weight: 700;
+
+  --text-lede-size: clamp(15px, 1.6vw, 18px);
+  --text-lede-max-width: 52ch;
+
+  --text-tag-label-size: 10px;
+  --text-tag-label-letter-spacing: 0.28em;
+
+  /* --- Layout (DESIGN.md §5) --- */
+  --layout-wrap-max-width: 1240px;
+  --layout-wrap-padding-inline: clamp(20px, 5vw, 72px);
+  --layout-section-padding-block: clamp(72px, 10vw, 140px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+body {
+  font-family: var(--font-body);
+  margin: 0;
+}

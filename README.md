@@ -8,6 +8,14 @@ No es un curso: combina formación en video (8 videos de importación + 3 de eco
 
 El acceso se vende en 2 niveles con pago único y acceso de por vida (Principiante $75.000 ARS / Avanzado $125.000 ARS), sin suscripción.
 
+## Estado del código
+
+**22/08/2026** — Ya existe el bootstrap del proyecto Next.js donde se va a construir la Fase 2 ("MVP para cobrar"): Next.js 15 (App Router, React 19, TypeScript strict), sin Tailwind, CSS Modules + tokens propios (`app/tokens.css`, portados de [DESIGN.md](DESIGN.md)), Biome para lint/format, pnpm, `vercel.json` con región `gru1`, CI en GitHub Actions (typecheck + Biome + build) y carpeta `supabase/` lista para la migración inicial.
+
+El CLI de Supabase no estaba instalado al momento de este bootstrap: `supabase/migrations/` se creó a mano (con `.gitkeep`) en vez de con `supabase init`. Falta correr `supabase init` de verdad — o al menos generar `supabase/config.toml` — cuando alguien tenga el CLI disponible.
+
+Sin auth, sin middleware, sin contenido real todavía: eso corresponde a tickets posteriores del Epic VGRP-14.
+
 ## Estado actual (agosto 2026)
 
 El desarrollo de la plataforma todavía **no comenzó**. Lo único construido y en producción es la calculadora de costos. El proyecto está en **Fase 1 - Validación**: se va a construir únicamente una landing page (con spec de copy y diseño ya definido en detalle en [LANDING.md](LANDING.md)) que presenta la plataforma completa y deriva cualquier clic de compra a una lista de espera con 10% de descuento, para confirmar demanda real antes de invertir en el desarrollo del producto completo.
