@@ -20,10 +20,9 @@ a la cuenta de Supabase del usuario):
 - `.env.local` (gitignored) tiene `NEXT_PUBLIC_SUPABASE_URL` y
   `NEXT_PUBLIC_SUPABASE_ANON_KEY` reales. `.env.example` documenta las claves
   sin valores sensibles.
-
-**Lo que sigue sin poder hacerse desde acá** (el MCP de Supabase no expone
-configuración de Auth Hooks ni de JWT Keys — son pasteo de dashboard, no
-SQL ni Management API cubierta por este MCP): ver sección 8 más abajo.
+- **Auth Hook registrado y claves ES256 confirmadas** (a mano en el dashboard,
+  el MCP no expone esa configuración) — ver sección 8. El gate de VGRP-16
+  queda completo.
 
 **Sigue sin confirmar**: si `leads` de Fase 1 (landing) vive en este mismo
 proyecto/organización o en uno distinto, y si vive en Supabase o en
@@ -137,30 +136,29 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-## 8. Auth Hook y claves asimétricas — VGRP-16, dos pasos que NO son SQL
+## 8. Auth Hook y claves asimétricas — VGRP-16 — ✅ HECHO (2026-08-22)
 
 `supabase/migrations/20260822035925_auth_hook.sql` deja escrita la función
 `public.custom_access_token_hook` (con sus grants) que inyecta
-`app_metadata.nivel` y `app_metadata.rol` en el JWT. Aplicar esa migración
-**no alcanza** — hacen falta dos pasos manuales en el dashboard, ninguno de
-los dos expresable como migración SQL:
+`app_metadata.nivel` y `app_metadata.rol` en el JWT. Los dos pasos manuales
+que la migración por sí sola no cubre ya se hicieron a mano en el dashboard:
 
-1. **Registrar el hook**: Authentication → Hooks → "Customize Access Token
-   (Custom Claims)" → activar → seleccionar la función
-   `public.custom_access_token_hook`. Sin este paso la función existe en la
-   base pero Auth nunca la llama, y ningún JWT lleva los claims nuevos.
+1. **Hook registrado**: Authentication → Hooks → "Customize Access Token
+   (JWT) Claims" → activado, tipo Postgres, función
+   `public.custom_access_token_hook`. Confirmado con captura del dashboard.
 
-2. **Migrar a claves de firma asimétricas (ES256)**: Project Settings →
-   JWT Keys. Los proyectos de Supabase arrancan con una clave simétrica
-   (HS256, un secreto compartido). `lib/auth/server.ts` (VGRP-16) verifica
-   el JWT **localmente**, contra las claves públicas del proyecto — eso sólo
-   funciona con firma asimétrica. Con HS256 la verificación local requeriría
-   distribuir el secreto compartido a cada runtime que verifica, que es
-   exactamente lo que se quiere evitar (STACK.md §4).
+2. **Claves de firma asimétricas**: Project Settings → JWT Keys →
+   `CURRENT KEY` es `ECC (P-256)`, es decir ES256 — los proyectos nuevos de
+   Supabase ya arrancan con clave asimétrica por defecto, así que este paso
+   no requirió acción. La única entrada `Legacy HS256` que aparece está como
+   `PREVIOUS KEY`, conservada solo para verificar tokens ya emitidos con esa
+   clave hasta que expiren — no firma nada nuevo. **No revocarla todavía**:
+   hacerlo invalidaría de golpe cualquier sesión activa firmada con HS256.
 
-Orden recomendado: migrar a ES256 primero, confirmar que el login sigue
-funcionando, y recién ahí activar el hook — así, si algo sale mal, es más
-fácil aislar cuál de los dos cambios lo causó.
+Con esto, `lib/auth/server.ts` (`getClaims()`) puede verificar el JWT
+localmente contra la clave pública del proyecto, sin roundtrip a Auth
+(STACK.md §4) — queda pendiente probarlo end-to-end con un usuario real
+(ver sección 9).
 
 Ver `docs/AUTH.md` para el resto del diseño (qué claims exactos, cómo se
 resuelve el refresco post-pago, qué expone `lib/auth/`).
