@@ -29,12 +29,16 @@ todavía.** No hay dato real en ningún lado (ni Supabase ni `@vercel/kv`) con
 el que la tabla `leads` aplicada acá pueda entrar en conflicto — la migración
 best-effort de `supabase/migrations/20260822035924_leads.sql` queda como la
 única fuente de verdad de acá en adelante, sin necesidad de migrar ni
-reconciliar nada. Sigue sin confirmar formalmente si la landing (Fase 1) y la
-plataforma (Fase 2) comparten el mismo proyecto Supabase o no — pero al no
-haber datos que cruzar todavía, no es bloqueante para seguir con el Bloque 2.
-Si en algún momento se activa la captura de leads en la landing, hay que
-apuntarla a este proyecto (`og-circle`, `hsmodrhbwkromoixrxrt`) para que
-termine en esta misma tabla.
+reconciliar nada.
+
+**Decisión confirmada (2026-08-22): landing y plataforma comparten el mismo
+proyecto Supabase** (`og-circle`, `hsmodrhbwkromoixrxrt`, `sa-east-1`) — no
+son dos proyectos separados. Cuando se active la captura de leads en la
+landing (hoy vive en otro repo/deploy), tiene que apuntar a este mismo
+proyecto para terminar en esta tabla. Esto también resuelve de fondo la
+contradicción con `STACK.md §3` ("un repo, un deploy") que quedó registrada
+en el plan del Bloque 1: los deploys siguen siendo dos (landing y
+plataforma, en repos distintos), pero la base de datos es una sola.
 
 ## 1. Instalar el Supabase CLI (opcional — las migraciones ya se aplicaron por MCP)
 
