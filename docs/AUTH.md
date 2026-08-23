@@ -152,8 +152,19 @@ dado el trade-off de arriba):
 
 **Señal para verificar en el dashboard:** si `signUp()` deja de devolver
 `data.session` para un registro nuevo, es la señal de que "Confirm email"
-volvió a estar prendido — revisar Authentication → Providers → Email en el
-dashboard de Supabase.
+volvió a estar prendido — revisar Authentication → Sign In / Up →
+**User Signups** (no está en el modal de configuración del proveedor
+Email, es una sección aparte) en el dashboard de Supabase.
+
+**✅ Verificado (2026-08-23):** "Confirm email" estaba prendido por
+default (todo proyecto nuevo de Supabase arranca así) y se detectó
+probando `signUp()` directo contra la API de Auth — devolvía usuario sin
+`access_token` ni `session`. Se apagó a mano en el dashboard. Repetido el
+mismo `signUp()` después: devuelve sesión completa, y el JWT ya trae
+`app_metadata: {"nivel":"ninguno","rol":"user"}` — confirma de paso que el
+Auth Hook de VGRP-16 (Bloque 1) también sigue andando en producción, no
+sólo en el código. Verificado también que el trigger de `profiles` sigue
+creando la fila correspondiente. Gate 1.3 del Bloque 2 cerrado.
 
 ### Rate limit
 
