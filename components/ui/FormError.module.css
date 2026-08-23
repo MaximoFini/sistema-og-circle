@@ -1,0 +1,13 @@
+.formError {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  background: var(--glass-bg);
+  /* El rojo va en el borde, no como fondo pleno: el sistema separa planos por
+     oscuridad, no por color (DESIGN.md §0). */
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-control);
+}
