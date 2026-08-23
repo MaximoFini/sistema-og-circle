@@ -13,28 +13,13 @@ import { flattenError } from "zod";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { createSupabaseServerClient } from "@/lib/auth/server";
 import { getFlags } from "@/lib/config";
+import type { ActionState } from "./_schemas";
 import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
 
-export interface ActionState {
-  /** Error a nivel formulario (credenciales inválidas, cuenta no creada, etc.). */
-  error?: string;
-  /**
-   * Errores por campo, keyeados por nombre de input. Forma de
-   * `flattenError().fieldErrors` de Zod: un array por campo (puede haber más
-   * de un mensaje por campo), el form sólo muestra el primero.
-   */
-  fieldErrors?: Partial<Record<string, string[]>>;
-  /**
-   * Mensaje de éxito a nivel formulario. Hoy sólo lo usa `solicitarReset`:
-   * el form de "olvidaste tu contraseña" no redirige a otra pantalla al
-   * terminar (no hay a dónde ir todavía — el usuario sigue esperando el
-   * mail), así que necesita mostrar la confirmación en el lugar. Ningún otro
-   * action de este archivo lo usa: todos redirigen en el camino feliz.
-   */
-  mensaje?: string;
-}
-
-export const INITIAL_ACTION_STATE: ActionState = {};
+// `ActionState` y `INITIAL_ACTION_STATE` viven en `_schemas.ts`, no acá:
+// este archivo es `"use server"` y Next exige que TODO export suyo sea una
+// función async — ver el comentario grande en `_schemas.ts`. Sólo se
+// reimporta el *tipo* (se borra en build, no cuenta como export de runtime).
 
 /**
  * `createSupabaseServerClient()` sirve tal cual acá: estamos en una Server

@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { Button, FormError, TextField } from "@/components/ui";
-import { definirNuevaPassword, INITIAL_ACTION_STATE } from "../../_actions";
+import { definirNuevaPassword } from "../../_actions";
+import { INITIAL_ACTION_STATE } from "../../_schemas";
 import styles from "../../auth.module.css";
 
 /**
