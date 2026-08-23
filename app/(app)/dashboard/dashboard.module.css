@@ -1,0 +1,49 @@
+/* Mobile primero: layout de una sola columna, centrado, sin variantes de
+   escritorio — no hace falta todavía para el estado bloqueado ni para el
+   estado "tenés acceso" (contenido real: bloques posteriores). */
+
+.wrap {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-4);
+}
+
+.card {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-5);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-surface);
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--accent-to);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-h3-size);
+  font-weight: var(--text-h3-weight);
+  color: var(--text-primary);
+}
+
+.copy {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}

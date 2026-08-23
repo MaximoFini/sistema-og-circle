@@ -1,0 +1,68 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.label {
+  font-family: var(--font-heading);
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.input {
+  /* 16px como mínimo: por debajo de eso iOS Safari hace zoom al enfocar. */
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--text-primary);
+  /* Alto cómodo de toque en mobile, que es el grueso de la audiencia. */
+  min-height: 48px;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+  transition:
+    border-color var(--duration-base) var(--ease-out-expo),
+    background-color var(--duration-base) var(--ease-out-expo);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--glass-border-active);
+}
+
+.input:focus-visible {
+  /* DESIGN.md §1: `--accent-40` es, textualmente, el borde de input en foco. */
+  outline: 2px solid var(--accent-40);
+  outline-offset: 2px;
+  border-color: var(--accent-from);
+}
+
+.input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.inputError,
+.inputError:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}

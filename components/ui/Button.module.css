@@ -1,0 +1,99 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  /* 48px de alto mínimo: objetivo de toque cómodo en mobile. */
+  min-height: 48px;
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) linear,
+    border-color var(--duration-base) var(--ease-out-expo),
+    background-color var(--duration-base) var(--ease-out-expo),
+    opacity var(--duration-base) var(--ease-out-expo);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent-40);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* DESIGN.md §1, regla dura: el ámbar como fondo pleno nunca lleva texto
+   blanco encima; el texto pasa a `--bg`. */
+.primary {
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  color: var(--bg);
+}
+
+.primary:hover:not(:disabled) {
+  /* DESIGN.md §3: `.btn-gradient` se levanta 1px en hover. */
+  transform: translateY(-1px);
+}
+
+.ghost {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  color: var(--text-primary);
+}
+
+.ghost:hover:not(:disabled) {
+  border-color: var(--glass-border-active);
+}
+
+.label {
+  display: inline-block;
+}
+
+/* El botón en carga ya está `disabled` (y por lo tanto atenuado); esto sólo
+   cambia el cursor: "esperá", no "no se puede". */
+/* `.button.loading` y no `.loading` a secas: hace falta empatar la
+   especificidad de `.button:disabled` (que fija `not-allowed`) y ganar por
+   orden, porque el botón en carga también está deshabilitado. */
+.button.loading {
+  cursor: progress;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--radius-pill);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* DESIGN.md §4: nada se mueve bajo `prefers-reduced-motion`. El spinner se
+   queda quieto pero visible — sigue comunicando "en curso" junto a
+   `aria-busy`. */
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .spinner {
+    transition: none;
+    animation: none;
+  }
+
+  .primary:hover:not(:disabled) {
+    transform: none;
+  }
+}
