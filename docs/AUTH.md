@@ -113,3 +113,74 @@ export default async function DashboardPage() {
   ver sección 1).
 - Bloque 3: pantalla de espera post-pago que llama a `refreshSession()`
   (sección 2).
+
+## 5. VGRP-18 — Registro y login con email y contraseña
+
+Implementa `app/(auth)/login/`, `app/(auth)/registro/` y las Server Actions
+de `app/(auth)/_actions.ts` (`iniciarSesion`, `registrarse`), validadas con
+los esquemas Zod de `app/(auth)/_schemas.ts` (frontera de confianza real:
+el form del cliente valida con el mismo esquema para dar feedback
+inmediato, pero la Server Action vuelve a correr `.safeParse()` sobre el
+`FormData` crudo).
+
+### Enumeración de emails
+
+Con "Confirm email" **apagado** en el dashboard de Supabase (decisión de
+producto ya tomada — sin eso, un usuario sin pagar nunca llegaría a probar
+la plataforma), `signUp()` con un email que ya existe se comporta distinto
+de `signUp()` con un email nuevo (falla en vez de crear cuenta y devolver
+sesión). Esa fuga de "este email ya existe" es **inevitable** en el
+registro dado ese trade-off: no hay forma de que el registro sea
+indistinguible de un duplicado sin, a la vez, hacer que un usuario nuevo no
+quede logueado tras registrarse.
+
+Mitigación aplicada (no es un cierre completo del canal, es la mejor opción
+dado el trade-off de arriba):
+
+- **Login**: el mensaje es SIEMPRE genérico —
+  *"Email o contraseña incorrectos."* — sin distinguir "el email no existe"
+  de "la contraseña está mal". Acá la enumeración sí importa de verdad: no
+  hay ningún trade-off de UX que la justifique, así que no se filtra nada.
+- **Registro**: *"No pudimos crear la cuenta con ese email. Si ya tenés
+  cuenta, iniciá sesión."* — mismo mensaje para cualquier error de
+  `signUp()` (email duplicado, password rechazada por Supabase, etc.). No
+  confirma nada de más en el texto, pero como se explica arriba, el canal de
+  timing/side-effects (¿hubo sesión nueva o no?) sigue siendo, en teoría,
+  observable. Cerrarlo del todo requeriría prender "Confirm email" (y
+  entonces ningún registro deja sesión activa, duplicado o no) — decisión
+  de producto que está fuera del alcance de este ticket.
+
+**Señal para verificar en el dashboard:** si `signUp()` deja de devolver
+`data.session` para un registro nuevo, es la señal de que "Confirm email"
+volvió a estar prendido — revisar Authentication → Providers → Email en el
+dashboard de Supabase.
+
+### Rate limit
+
+Se usa el rate limiting nativo de Supabase Auth — **no** se agregó
+`@upstash/ratelimit` ni ninguna librería de rate limiting en este repo; es
+configuración del dashboard, no código. Verificar en
+**Authentication → Rate Limits**:
+
+- **Sign-in requests** (por IP): protege `iniciarSesion` contra fuerza
+  bruta de contraseña.
+- **Sign-up requests** (por IP): protege `registrarse` contra creación
+  masiva de cuentas / abuso del mail de bienvenida.
+- **Token refresh requests**: cubre el refresh que hace `middleware.ts`
+  (VGRP-17) en cada request con sesión — límites default de Supabase suelen
+  alcanzar, pero vale confirmarlos si el tráfico crece.
+
+Los límites concretos (cuántos intentos por ventana) no están documentados
+acá a propósito: son un valor operativo que se ajusta desde el dashboard
+según el tráfico real, no una constante del código.
+
+### El dashboard bloqueado (`app/(app)/dashboard/page.tsx`)
+
+Lee `getVerifiedClaims()` + `getNivel()`. Si `nivel === 'ninguno'` (el
+estado más común de este bloque: usuario registrado sin pagar) muestra un
+card con el mensaje de "todavía no tenés acceso" y un botón "Comprar
+acceso" que **no lleva a ningún lado todavía** — el checkout es Bloque 3.
+Para cualquier otro nivel, muestra "Tenés acceso {nivel}" — el contenido
+real del dashboard por nivel es de bloques posteriores. `app/(app)/layout.tsx`
+sigue sin tocarse: sigue sin leer cookies/claims, tal como pide su propio
+comentario (VGRP-17).

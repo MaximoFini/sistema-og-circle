@@ -1,0 +1,20 @@
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Mobile primero: la audiencia del producto es mayoritariamente mobile
+     (ver CLAUDE.md/contexto de negocio). El card no tiene un layout de
+     escritorio especial — a 400px de ancho máximo ya se ve bien en
+     cualquier viewport, así que no hace falta una media query acá. */
+  padding: var(--space-5) var(--space-4);
+  background: var(--bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
