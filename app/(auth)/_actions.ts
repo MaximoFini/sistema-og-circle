@@ -7,12 +7,13 @@
 // se vuelve a correr `.safeParse()` sobre el `FormData` crudo — nunca se
 // confía en que el cliente mandó algo válido.
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { flattenError } from "zod";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { createSupabaseServerClient } from "@/lib/auth/server";
 import { getFlags } from "@/lib/config";
-import { loginSchema, registroSchema } from "./_schemas";
+import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
 
 export interface ActionState {
   /** Error a nivel formulario (credenciales inválidas, cuenta no creada, etc.). */
@@ -23,6 +24,14 @@ export interface ActionState {
    * de un mensaje por campo), el form sólo muestra el primero.
    */
   fieldErrors?: Partial<Record<string, string[]>>;
+  /**
+   * Mensaje de éxito a nivel formulario. Hoy sólo lo usa `solicitarReset`:
+   * el form de "olvidaste tu contraseña" no redirige a otra pantalla al
+   * terminar (no hay a dónde ir todavía — el usuario sigue esperando el
+   * mail), así que necesita mostrar la confirmación en el lugar. Ningún otro
+   * action de este archivo lo usa: todos redirigen en el camino feliz.
+   */
+  mensaje?: string;
 }
 
 export const INITIAL_ACTION_STATE: ActionState = {};
@@ -127,5 +136,97 @@ export async function registrarse(
   // nombre/telefono vacíos y soporte se los pide por otro lado.
   await supabase.from("profiles").update({ nombre, telefono }).eq("id", data.user.id);
 
+  redirect("/dashboard");
+}
+
+/**
+ * Arma el origen (`https://host`) del request actual a partir de los headers
+ * estándar de proxy. No hay `NEXT_PUBLIC_SITE_URL` en este repo (ver
+ * `.env.example`): en vez de inventar una env var nueva sólo para este
+ * ticket, se lee del request — funciona igual en producción, previews de
+ * Vercel y local, sin nada que mantener sincronizado a mano.
+ *
+ * `x-forwarded-host`/`x-forwarded-proto` son los headers que pone el proxy
+ * de Vercel (y cualquier proxy estándar) delante de la app; `host` es el
+ * fallback para correr sin proxy (`pnpm dev`). Si ninguno está, se lanza —
+ * lo agarra el `catch` de `solicitarReset`, que lo trata como el mismo error
+ * de configuración que cualquier otro fallo de red.
+ */
+async function getOrigin(): Promise<string> {
+  const headersList = await headers();
+  const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
+  if (!host) {
+    throw new Error("No se pudo determinar el host del request.");
+  }
+  const proto = headersList.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
+
+export async function solicitarReset(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = solicitarResetSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: flattenError(parsed.error).fieldErrors };
+  }
+
+  // Mensaje de éxito SIEMPRE igual, exista o no la cuenta (VGRP-19, ver
+  // docs/AUTH.md sección "Enumeración de emails"): `resetPasswordForEmail()`
+  // de Supabase ya no revela nada por su cuenta, así que a propósito NO se
+  // lee su `error` de respuesta acá — inspeccionarlo y bifurcar el mensaje
+  // según lo que diga sería justamente la fuga que este punto del ticket
+  // pide evitar. Lo único que se distingue es un error real de red/config
+  // (host indetectable, Supabase inalcanzable, etc.), que no tiene nada que
+  // ver con si la cuenta existe.
+  try {
+    const supabase = await createSupabaseServerClient();
+    const origin = await getOrigin();
+    await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+      redirectTo: `${origin}/auth/callback`,
+    });
+  } catch {
+    return { error: "No pudimos procesar tu pedido. Probá de nuevo en un momento." };
+  }
+
+  return {
+    mensaje: "Si el email está registrado, te mandamos un link para recuperar tu contraseña.",
+  };
+}
+
+/**
+ * Requiere sesión activa: la establece `app/auth/callback/route.ts` al
+ * canjear el `code` del link de recuperación ANTES de redirigir acá. Si no
+ * hay sesión (por ejemplo, alguien navega directo a `/recuperar/nueva` sin
+ * pasar por el callback), `updateUser()` simplemente falla — la página ya se
+ * encarga de no mostrar el form en ese caso (ver `nueva/page.tsx`), esto es
+ * la segunda barrera, no la única.
+ */
+export async function definirNuevaPassword(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = nuevaPasswordSchema.safeParse({
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: flattenError(parsed.error).fieldErrors };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+
+  if (error) {
+    return {
+      error: "No pudimos actualizar tu contraseña. Pedí un link nuevo e intentá de nuevo.",
+    };
+  }
+
+  // El canje del código en el callback ya dejó sesión activa; `updateUser()`
+  // no la rompe. No hay que loguear de nuevo ni mandar a `/login`.
   redirect("/dashboard");
 }

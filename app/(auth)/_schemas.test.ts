@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loginSchema, registroSchema } from "./_schemas";
+import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
 
 describe("loginSchema", () => {
   it("acepta email y password válidos", () => {
@@ -53,6 +53,46 @@ describe("registroSchema", () => {
 
   it("rechaza email inválido", () => {
     const result = registroSchema.safeParse({ ...VALID, email: "no-es-un-email" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("solicitarResetSchema", () => {
+  it("acepta un email válido", () => {
+    const result = solicitarResetSchema.safeParse({ email: "a@b.com" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza un email inválido", () => {
+    const result = solicitarResetSchema.safeParse({ email: "no-es-un-email" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza email vacío", () => {
+    const result = solicitarResetSchema.safeParse({ email: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("recorta espacios del email antes de validar", () => {
+    const result = solicitarResetSchema.safeParse({ email: "  a@b.com  " });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.email).toBe("a@b.com");
+  });
+});
+
+describe("nuevaPasswordSchema", () => {
+  it("acepta una contraseña válida", () => {
+    const result = nuevaPasswordSchema.safeParse({ password: "unapass123" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza una contraseña de menos de 8 caracteres", () => {
+    const result = nuevaPasswordSchema.safeParse({ password: "1234567" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza una contraseña demasiado larga", () => {
+    const result = nuevaPasswordSchema.safeParse({ password: "a".repeat(201) });
     expect(result.success).toBe(false);
   });
 });

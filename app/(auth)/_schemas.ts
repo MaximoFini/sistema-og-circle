@@ -42,3 +42,13 @@ export const registroSchema = z.object({
 });
 
 export type RegistroInput = z.infer<typeof registroSchema>;
+
+// VGRP-19 — recuperación de contraseña.
+
+export const solicitarResetSchema = z.object({ email });
+
+export type SolicitarResetInput = z.infer<typeof solicitarResetSchema>;
+
+export const nuevaPasswordSchema = z.object({ password });
+
+export type NuevaPasswordInput = z.infer<typeof nuevaPasswordSchema>;
