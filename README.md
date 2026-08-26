@@ -34,6 +34,20 @@ Definición completa, con versiones, alternativas descartadas y orden de ejecuci
 - **Resend + React Email** para emails transaccionales
 - Apoyo: Zod, Upstash Redis, Sentry + Speed Insights, Biome, pnpm, Vitest + Playwright
 
+## Tests
+
+- `pnpm test` — Vitest (unit + integración).
+- `pnpm test:e2e` — Playwright, solo Chromium.
+- `pnpm db:seed:test` — seed idempotente de usuarios de test (uno por nivel + admin).
+- `pnpm test:cleanup` — borra a mano cualquier dato de test que haya quedado colgado.
+
+Mientras el proyecto no facture, los tests corren contra el **mismo
+proyecto Supabase que la app** (no hay budget para una base separada) — todo
+dato de test queda identificable por dominio de email y se borra
+automáticamente al final de cada corrida. Detalle completo, variables de
+entorno y qué pasa cuando exista un proyecto de producción separado en
+[docs/TESTING.md](docs/TESTING.md).
+
 ## Documentación del repo
 
 | Archivo | Contenido |
@@ -44,5 +58,6 @@ Definición completa, con versiones, alternativas descartadas y orden de ejecuci
 | [DESIGN.md](DESIGN.md) | Sistema visual real de la landing: paleta, tipografía, componentes, movimiento y accesibilidad |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | ADR-001: arquitectura propuesta para la plataforma (Fase 2+), con opciones evaluadas y trade-offs |
 | [STACK.md](STACK.md) | Stack técnico definitivo: piezas concretas, versiones, qué se descarta y por qué, orden de ejecución |
+| [docs/TESTING.md](docs/TESTING.md) | Infraestructura de testing (VGRP-43): Vitest, Playwright, seed, helpers, guarda de producción |
 
 Toda la documentación está sincronizada manualmente desde las páginas del proyecto **Sistema OG Circle** en Plane (workspace VGRP).
