@@ -28,5 +28,12 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // e2e/ son specs de Playwright (usan su propio `test`, no el de vitest);
+    // sin este exclude, el glob por defecto de vitest (*.spec.ts incluido)
+    // los agarra también y falla al no encontrar el runner de Playwright.
+    exclude: ["node_modules/**", "e2e/**"],
+    // VGRP-43: limpieza obligatoria de datos de test al terminar la suite
+    // (no hay Supabase de test separado — ver test/global-teardown.ts).
+    globalSetup: ["./test/global-teardown.ts"],
   },
 });

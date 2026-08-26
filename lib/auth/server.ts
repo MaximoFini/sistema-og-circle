@@ -14,15 +14,8 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "../database.types";
+import { getEnv } from "../env";
 import type { AppMetadataClaims } from "./claims";
-
-function getEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Falta la variable de entorno ${name} (config de Supabase).`);
-  }
-  return value;
-}
 
 /**
  * Cliente Supabase de servidor para Server Components / Route Handlers,
@@ -40,8 +33,8 @@ export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
-    getEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    getEnv("NEXT_PUBLIC_SUPABASE_URL", "(config de Supabase)"),
+    getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "(config de Supabase)"),
     {
       cookies: {
         getAll() {

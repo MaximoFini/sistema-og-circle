@@ -8,6 +8,10 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,3 +36,30 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # E2E (VGRP-43): decisión de entorno del ticket — no hay proyecto de
+      # test separado (por costo, mientras no haya ingresos), así que esto
+      # corre contra el MISMO proyecto Supabase que la app, usando
+      # SUPABASE_SERVICE_ROLE_KEY como secret del repo (ver docs/TESTING.md).
+      # Mientras ese secret no exista, estos steps se saltan explícitamente
+      # (se ve en el log de CI, no es un fallo silencioso) — apenas se
+      # configure, corren en cada push/PR y un test que falla rompe el build,
+      # igual que cualquier otro step de este pipeline.
+      - name: Playwright browsers (Chromium)
+        if: ${{ env.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Seed de usuarios de test
+        if: ${{ env.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        run: pnpm db:seed:test
+
+      - name: E2E (Playwright)
+        if: ${{ env.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        run: pnpm test:e2e
+
+      # Corre siempre (incluso si el E2E falla) como red de seguridad además
+      # del globalTeardown de Playwright: "nada queda residual" es un
+      # criterio de aceptación del ticket, no algo opcional.
+      - name: Limpieza de datos de test
+        if: ${{ always() && env.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        run: pnpm test:cleanup
