@@ -36,42 +36,29 @@ esto mismo.
 - **Limpieza** en `test/helpers/cleanup.ts`:
   - `cleanupUser(userId)` — borra un usuario de test puntual (verifica el
     dominio antes de borrar, aborta si no es de test).
-  - `cleanupAllTestArtifacts()` — barrido completo: borra `pagos` de todo
-    usuario de test (incluidos los del seed) y borra los usuarios de test
-    que NO son de los 4 fijos del seed. Corre automáticamente al final de
-    `pnpm test` (`test/global-teardown.ts`) y `pnpm test:e2e`
+  - `cleanupAllTestArtifacts()` — barrido completo: borra `pagos` y
+    `admin_audit_log` de todo usuario de test (incluidos los del seed —
+    ambas tablas referencian `profiles` sin `ON DELETE CASCADE`, así que hay
+    que vaciarlas antes de poder borrar el usuario) y borra los usuarios de
+    test que NO son de los 4 fijos del seed. Corre automáticamente al final
+    de `pnpm test` (`test/global-teardown.ts`) y `pnpm test:e2e`
     (`e2e/global-teardown.ts`), y a mano con `pnpm test:cleanup`
     (`scripts/cleanup-test-data.ts`).
 - **Helpers** en `test/helpers/`: `db-client.ts` (clientes admin/anon),
-  `auth.ts` (`createAuthenticatedUser`, `getTokenWithClaim`),
-  `production-guard.ts` (ver abajo).
+  `auth.ts` (`createAuthenticatedUser`, `getTokenWithClaim`).
 - **`NODE_ENV=test` obligatoria** para crear un cliente de test
-  (`db-client.ts::assertTestRuntime`) — chequeo positivo, no solo el negativo
-  de la guarda de producción: además de "no es producción" hace falta la
-  marca explícita de "esto es un test". Vitest la setea sola; `test:e2e`,
+  (`db-client.ts::assertTestRuntime`): sin esa marca explícita, no se crea
+  ni el cliente admin ni el anon. Vitest la setea sola; `test:e2e`,
   `db:seed:test` y `test:cleanup` la fuerzan con `cross-env` en
   `package.json`. Si alguna vez ves el error "se llamaron fuera de un
   contexto de test", falta ese `cross-env` en el script que lo disparó.
 
-## Guarda de producción — lista para cuando exista un proyecto separado
-
-`test/helpers/production-guard.ts` compara la URL de Supabase contra
-`PRODUCTION_SUPABASE_PROJECT_REF` y aborta si coinciden. **Hoy esa variable
-está vacía a propósito**: no existe todavía un proyecto de producción
-distinto del que usan los tests, así que no hay nada contra qué comparar —
-si el guard bloqueara el único proyecto que existe, bloquearía a la app
-misma. El check de "falta la URL" sí corre siempre, exista o no producción.
-
-**El día que se cree un proyecto de producción separado** (cuando el
-proyecto empiece a facturar o vaya a tener usuarios reales — revisar
-también si en ese momento conviene retomar la opción de branch/proyecto de
-test, ahora que hay presupuesto):
-
-1. Completar `PRODUCTION_SUPABASE_PROJECT_REF` con el ref de ese proyecto
-   nuevo (local y en los secrets de CI).
-2. A partir de ahí, apuntar `NEXT_PUBLIC_SUPABASE_URL` (local o en CI) a ese
-   proyecto hace que `pnpm test`/`pnpm test:e2e`/`pnpm db:seed:test` aborten
-   con un error explícito antes de tocar nada.
+No hay guarda de conexión contra un proyecto de producción separado: no
+existe tal proyecto hoy (es el mismo `og-circle` para todo), así que no hay
+nada contra qué comparar. Si en el futuro se crea uno, la protección real
+pasa a ser no compartir sus credenciales con `NEXT_PUBLIC_SUPABASE_URL` /
+`SUPABASE_SERVICE_ROLE_KEY` de test — evaluar en ese momento si conviene
+reintroducir un chequeo explícito.
 
 ## Variables de entorno
 
@@ -83,7 +70,6 @@ Además de las que ya usa la app (`NEXT_PUBLIC_SUPABASE_URL`,
   limpieza necesitan crear/borrar usuarios y escribir `nivel`/`rol` directo.
   **Nunca** debe llegar al bundle de cliente ni commitearse — solo en
   `.env.local` (gitignored) y como secret de GitHub Actions.
-- `PRODUCTION_SUPABASE_PROJECT_REF` — vacía por ahora (ver arriba).
 
 Ver `.env.example` para la plantilla completa. `vitest`/`playwright`/`tsx` NO
 cargan `.env.local` solos (eso es algo que hace Next.js solo para sí mismo) —

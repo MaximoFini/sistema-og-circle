@@ -16,21 +16,18 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database, NivelAcceso, RolUsuario } from "../../lib/database.types";
 import { getEnv } from "../../lib/env";
 import "./load-env";
-import { assertNotProductionDatabase } from "./production-guard";
 
 const TEST_HINT =
   "Los tests que tocan base de datos necesitan las mismas variables de Supabase " +
   "que la app, más SUPABASE_SERVICE_ROLE_KEY — ver docs/TESTING.md.";
 
 /**
- * Chequeo positivo, no solo negativo: además de que la URL no sea la de
- * producción (`assertNotProductionDatabase`, que hoy es un no-op mientras no
- * exista un proyecto de producción separado), exigimos una marca explícita de
- * "esto es una corrida de test". Vitest la setea solo (`NODE_ENV=test` es su
+ * Exige una marca explícita de "esto es una corrida de test" antes de crear
+ * cualquier cliente admin/anon. Vitest la setea sola (`NODE_ENV=test` es su
  * default); `pnpm test:e2e`/`pnpm db:seed:test`/`pnpm test:cleanup` la fuerzan
- * en package.json vía `cross-env`. Sin esto, un `next dev`/`next build` normal
- * que por accidente importara este módulo tendría luz verde para crear el
- * cliente admin — con el chequeo, hace falta la marca Y que no sea producción.
+ * en package.json vía `cross-env`. Sin esto, un `next dev`/`next build`
+ * normal que por accidente importara este módulo tendría luz verde para
+ * crear el cliente admin — con el chequeo, hace falta la marca explícita.
  */
 function assertTestRuntime(): void {
   if (process.env.NODE_ENV !== "test") {
@@ -54,8 +51,6 @@ export function createTestAdminClient() {
   const url = getEnv("NEXT_PUBLIC_SUPABASE_URL", TEST_HINT);
   const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY", TEST_HINT);
 
-  assertNotProductionDatabase(url);
-
   return createClient<Database>(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -67,8 +62,6 @@ export function createTestAnonClient() {
 
   const url = getEnv("NEXT_PUBLIC_SUPABASE_URL", TEST_HINT);
   const anonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", TEST_HINT);
-
-  assertNotProductionDatabase(url);
 
   return createClient<Database>(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
