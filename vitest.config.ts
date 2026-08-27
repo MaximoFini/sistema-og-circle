@@ -35,5 +35,26 @@ export default defineConfig({
     // VGRP-43: limpieza obligatoria de datos de test al terminar la suite
     // (no hay Supabase de test separado — ver test/global-teardown.ts).
     globalSetup: ["./test/global-teardown.ts"],
+    // VGRP-44/45 — descubierto corriendo `pnpm test` con todos los archivos
+    // de integración juntos por primera vez: por default, Vitest corre los
+    // ARCHIVOS de test en paralelo (varios workers), no sólo los `it()` de
+    // un mismo archivo. Como no hay Supabase de test separado (mismo
+    // proyecto real para todo, ver arriba), varios archivos de integración
+    // logueando/creando usuarios al mismo tiempo disparan el rate limit
+    // NATIVO de Supabase Auth (`429 over_request_rate_limit`) — no es un bug
+    // de ningún test puntual, es contención real contra el mismo proyecto.
+    // `playwright.config.ts` ya resolvía esto mismo con `workers: 1`; acá es
+    // el equivalente para Vitest.
+    fileParallelism: false,
+    // Complemento de lo anterior: `test/helpers/with-auth-retry.ts` reintenta
+    // con backoff exponencial (hasta ~1.5+3+6+12+24s) cuando el rate limit de
+    // arriba igual aparece con `fileParallelism: false` (es un límite de
+    // VOLUMEN total en una ventana de tiempo, no sólo de concurrencia). El
+    // timeout default de Vitest (5s por test) es más corto que esa espera
+    // acumulada, así que un test que necesita reintentar puede "fallar" por
+    // timeout en vez de por el error real. 30s de margen alcanza para el
+    // peor caso sin esconder un test genuinamente colgado (nada en esta
+    // suite hace trabajo real que tarde eso).
+    testTimeout: 30_000,
   },
 });

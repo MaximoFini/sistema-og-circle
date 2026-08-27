@@ -5,6 +5,19 @@
 // Para regenerar tras un cambio de esquema:
 //   supabase gen types typescript --project-id hsmodrhbwkromoixrxrt > lib/database.types.ts
 // (o vía el MCP de Supabase: generate_typescript_types)
+//
+// Regenerado 2026-08-27 (VGRP-44) para sumar test_get_policy_definition,
+// test_drop_policy y test_create_policy (ver
+// supabase/migrations/20260827161404_test_rls_toggle_helpers.sql). El
+// generador no infiere nulabilidad de parámetros de función escalares ni el
+// tipo de elemento de `name[]` — dos ajustes A MANO sobre el output crudo,
+// marcados donde están, que hay que volver a aplicar si se regenera nuevo:
+//   - test_create_policy.Args.p_qual / p_with_check: el generador los marca
+//     `string` (no nulables) pero la función SÍ acepta NULL (policies sin
+//     USING o sin WITH CHECK) — quedan como `string | null`.
+//   - roles en test_get_policy_definition.Returns y
+//     test_create_policy.Args: el generador no reconoce `name[]` y cae a
+//     `unknown[]`; son nombres de rol, `string[]`.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -12,7 +25,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15";
+    PostgrestVersion: "14.17";
   };
   public: {
     Tables: {
@@ -170,6 +183,37 @@ export type Database = {
       nivel_vigente: {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["nivel_acceso"];
+      };
+      test_create_policy: {
+        Args: {
+          p_cmd: string;
+          p_permissive: string;
+          p_policy: string;
+          // string | null a mano — ver el comentario de cabecera del archivo.
+          p_qual: string | null;
+          // string[] a mano (el generador no resuelve name[]) — ver cabecera.
+          p_roles: string[];
+          p_schema: string;
+          p_table: string;
+          // string | null a mano — ver el comentario de cabecera del archivo.
+          p_with_check: string | null;
+        };
+        Returns: undefined;
+      };
+      test_drop_policy: {
+        Args: { p_policy: string; p_schema: string; p_table: string };
+        Returns: undefined;
+      };
+      test_get_policy_definition: {
+        Args: { p_policy: string; p_schema: string; p_table: string };
+        Returns: {
+          cmd: string;
+          permissive: string;
+          qual: string | null;
+          // string[] a mano (el generador no resuelve name[]) — ver cabecera.
+          roles: string[];
+          with_check: string | null;
+        }[];
       };
     };
     Enums: {

@@ -16,6 +16,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database, NivelAcceso, RolUsuario } from "../../lib/database.types";
 import { getEnv } from "../../lib/env";
 import "./load-env";
+import { withAuthRetry } from "./with-auth-retry";
 
 const TEST_HINT =
   "Los tests que tocan base de datos necesitan las mismas variables de Supabase " +
@@ -88,8 +89,8 @@ export async function applyNivelRol(
     .eq("id", userId);
   if (profileError) throw profileError;
 
-  const { error: metadataError } = await admin.auth.admin.updateUserById(userId, {
-    app_metadata: { nivel, rol },
-  });
+  const { error: metadataError } = await withAuthRetry(() =>
+    admin.auth.admin.updateUserById(userId, { app_metadata: { nivel, rol } }),
+  );
   if (metadataError) throw metadataError;
 }

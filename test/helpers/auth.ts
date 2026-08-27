@@ -3,6 +3,7 @@
 import type { NivelAcceso, RolUsuario } from "../../lib/database.types";
 import { applyNivelRol, createTestAdminClient, createTestAnonClient } from "./db-client";
 import { findSeedUser, type SeedUserDefinition, TEST_EMAIL_SUFFIX } from "./seed-users";
+import { withAuthRetry } from "./with-auth-retry";
 
 /**
  * Crea un usuario autenticado nuevo (no uno de los del seed) con el nivel
@@ -22,20 +23,17 @@ export async function createAuthenticatedUser(
   const admin = createTestAdminClient();
   const email = `helper-${crypto.randomUUID()}${TEST_EMAIL_SUFFIX}`;
 
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
+  const { data: created, error: createError } = await withAuthRetry(() =>
+    admin.auth.admin.createUser({ email, password, email_confirm: true }),
+  );
   if (createError) throw createError;
 
   await applyNivelRol(admin, created.user.id, nivel, rol);
 
   const anon = createTestAnonClient();
-  const { data: session, error: signInError } = await anon.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { data: session, error: signInError } = await withAuthRetry(() =>
+    anon.auth.signInWithPassword({ email, password }),
+  );
   if (signInError) throw signInError;
 
   return {
@@ -63,10 +61,9 @@ export async function getTokenWithClaim(nivel: NivelAcceso): Promise<{
   const user = findSeedUser(nivel);
   const anon = createTestAnonClient();
 
-  const { data, error } = await anon.auth.signInWithPassword({
-    email: user.email,
-    password: user.password,
-  });
+  const { data, error } = await withAuthRetry(() =>
+    anon.auth.signInWithPassword({ email: user.email, password: user.password }),
+  );
   if (error) {
     throw new Error(
       `No se pudo loguear con el usuario seed de nivel "${nivel}" (${user.email}). ` +

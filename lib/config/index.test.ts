@@ -22,6 +22,30 @@ describe("configSchema", () => {
     const result = configSchema.safeParse(VALID_CONFIG);
     expect(result.success).toBe(true);
   });
+
+  // VGRP-44 §4 — "No existe ninguna clave de descuento ni de porcentaje
+  // promocional". No es un comportamiento en runtime, es una propiedad del
+  // schema: el comentario de schema.ts es explícito en que agregar una
+  // clave así necesita una "decisión explícita registrada del proyecto", no
+  // que se cuele en un PR de otra cosa. Este test es la red de contención —
+  // si alguien agrega `descuento`/`promo`/etc. sin esa decisión, esto lo
+  // marca en rojo en vez de dejarlo pasar en silencio.
+  it("no declara ninguna clave de descuento ni de porcentaje promocional", () => {
+    const patronSospechoso = /descuento|discount|promo|porcentaje/i;
+
+    const shapesAInspeccionar = [
+      configSchema.shape,
+      configSchema.shape.precios.shape,
+      configSchema.shape.flags.shape,
+      configSchema.shape.links.shape,
+    ];
+
+    for (const shape of shapesAInspeccionar) {
+      for (const clave of Object.keys(shape)) {
+        expect(clave).not.toMatch(patronSospechoso);
+      }
+    }
+  });
 });
 
 describe("getConfig", () => {
