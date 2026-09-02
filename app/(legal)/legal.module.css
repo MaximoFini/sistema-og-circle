@@ -1,0 +1,77 @@
+/* `.title` y `.updated` los usa `LegalDocPage.tsx` (compartido por
+   /terminos, /privacidad, /reembolsos) y también /legales — importado desde
+   ahí junto a su propio módulo `legales.module.css`, en vez de redeclarar el
+   mismo estilo de encabezado dos veces. El link "← Volver a legales" ya no
+   vive acá: es `components/ui/TextLink.tsx`, compartido con el footer de
+   `(app)`. */
+
+.title {
+  font-family: var(--font-heading);
+  font-size: var(--text-h3-size);
+  font-weight: var(--text-h3-weight);
+  color: var(--text-primary);
+  margin: var(--space-2) 0 0;
+}
+
+.updated {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: var(--space-2) 0 0;
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--accent-05);
+  border: 1px solid var(--accent-40);
+  border-radius: var(--radius-surface);
+}
+
+.placeholder p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.placeholder strong {
+  color: var(--champagne);
+}
+
+/* Prosa: ancho de lectura acotado, jerarquía simple. Todo el contenido real
+   de acá es placeholder (ver el bloque .placeholder arriba de cada página) —
+   la estructura (h2/p/ul) es la que va a recibir el texto final de Jota. */
+.prose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 65ch;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.prose h2 {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: var(--space-2) 0 0;
+}
+
+.prose p {
+  margin: 0;
+}
+
+.prose ul {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
