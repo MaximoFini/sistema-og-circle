@@ -135,6 +135,8 @@ export type Database = {
           progreso: Json;
           rol: Database["public"]["Enums"]["rol_usuario"];
           telefono: string | null;
+          terminos_aceptados_at: string | null;
+          terminos_version: string | null;
           updated_at: string;
         };
         Insert: {
@@ -146,6 +148,8 @@ export type Database = {
           progreso?: Json;
           rol?: Database["public"]["Enums"]["rol_usuario"];
           telefono?: string | null;
+          terminos_aceptados_at?: string | null;
+          terminos_version?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -157,6 +161,8 @@ export type Database = {
           progreso?: Json;
           rol?: Database["public"]["Enums"]["rol_usuario"];
           telefono?: string | null;
+          terminos_aceptados_at?: string | null;
+          terminos_version?: string | null;
           updated_at?: string;
         };
         Relationships: [];

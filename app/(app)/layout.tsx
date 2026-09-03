@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
+import { TextLink } from "@/components/ui";
 import styles from "./layout.module.css";
+
+const FOOTER_LINKS = [
+  { href: "/terminos", label: "Términos y Condiciones" },
+  { href: "/privacidad", label: "Política de Privacidad" },
+  { href: "/reembolsos", label: "Política de Reembolsos" },
+] as const;
 
 // =============================================================================
 // VGRP-17 — Shell de `(app)`: estático a propósito.
@@ -32,6 +39,23 @@ import styles from "./layout.module.css";
 // peor que este comentario. Cuando llegue ese ticket, el patrón a seguir es
 // el de arriba.
 // =============================================================================
+// VGRP-34 — el footer de acá abajo es la única adición de ese ticket: tres
+// links estáticos, sin leer cookies ni claims, así que no rompe nada de lo
+// documentado arriba. Es el footer real del bloque — la landing pública
+// (donde el ticket también pide un footer legal) vive en otro repo/deploy,
+// ver `app/page.tsx`.
 export default function AppLayout({ children }: { children: ReactNode }) {
-  return <div className={styles.shell}>{children}</div>;
+  return (
+    <div className={styles.shell}>
+      <div className={styles.content}>{children}</div>
+
+      <footer className={styles.footer}>
+        {FOOTER_LINKS.map(({ href, label }) => (
+          <TextLink key={href} href={href}>
+            {label}
+          </TextLink>
+        ))}
+      </footer>
+    </div>
+  );
 }

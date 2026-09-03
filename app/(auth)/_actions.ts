@@ -13,6 +13,7 @@ import { flattenError } from "zod";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { createSupabaseServerClient } from "@/lib/auth/server";
 import { getFlags } from "@/lib/config";
+import { terminosAceptadosFields } from "@/lib/legal/aceptacion";
 import type { ActionState } from "./_schemas";
 import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
 
@@ -69,6 +70,11 @@ export async function registrarse(
     email: formData.get("email"),
     telefono: formData.get("telefono"),
     password: formData.get("password"),
+    // La conversión de FormData ("true" | null) a boolean vive en el
+    // `z.preprocess` de `aceptaTerminos` en `_schemas.ts`, no acá — mismo
+    // criterio que el resto de los campos, que tampoco se tocan antes de
+    // llegar al schema.
+    aceptaTerminos: formData.get("aceptaTerminos"),
   });
 
   if (!parsed.success) {
@@ -115,11 +121,19 @@ export async function registrarse(
   }
 
   // Best-effort: la cuenta ya existe aunque esto falle (RLS + grants por
-  // columna en profiles permiten a `authenticated` actualizar nombre y
-  // telefono de su propia fila — ver init_plataforma.sql sección 6). No se
-  // bloquea el registro por esto; en el peor caso, el usuario queda con
-  // nombre/telefono vacíos y soporte se los pide por otro lado.
-  await supabase.from("profiles").update({ nombre, telefono }).eq("id", data.user.id);
+  // columna en profiles permiten a `authenticated` actualizar nombre,
+  // telefono y la aceptación de términos de su propia fila — ver
+  // init_plataforma.sql sección 6 y 20260902232904_terminos_aceptados.sql).
+  // No se bloquea el registro por esto; en el peor caso, el usuario queda
+  // con estos campos vacíos y soporte los resuelve por otro lado.
+  //
+  // `terminosAceptadosFields()` se mergea acá y no antes: Zod ya validó
+  // `aceptaTerminos === true` más arriba, así que llegar hasta acá implica
+  // que el usuario tildó el checkbox para la versión vigente del texto legal.
+  await supabase
+    .from("profiles")
+    .update({ nombre, telefono, ...terminosAceptadosFields() })
+    .eq("id", data.user.id);
 
   redirect("/dashboard");
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button, FormError, TextField } from "@/components/ui";
+import { Button, Checkbox, FormError, TextField } from "@/components/ui";
 import { registrarse } from "../_actions";
 import { INITIAL_ACTION_STATE } from "../_schemas";
 import styles from "../auth.module.css";
@@ -49,6 +49,26 @@ export function RegistroForm() {
         autoComplete="new-password"
         required
         error={state.fieldErrors?.password?.[0]}
+      />
+
+      <Checkbox
+        name="aceptaTerminos"
+        value="true"
+        required
+        error={state.fieldErrors?.aceptaTerminos?.[0]}
+        label={
+          <>
+            Acepto los{" "}
+            <a href="/terminos" target="_blank" rel="noopener noreferrer">
+              Términos y Condiciones
+            </a>{" "}
+            y la{" "}
+            <a href="/privacidad" target="_blank" rel="noopener noreferrer">
+              Política de Privacidad
+            </a>
+            .
+          </>
+        }
       />
 
       <FormError>{state.error}</FormError>
