@@ -29,7 +29,7 @@ describe("registroSchema", () => {
     nombre: "Jero",
     email: "a@b.com",
     telefono: "+54 9 11 1234-5678",
-    password: "unapass123",
+    password: "testpass123",
     aceptaTerminos: true,
   };
 
@@ -94,7 +94,7 @@ describe("solicitarResetSchema", () => {
 
 describe("nuevaPasswordSchema", () => {
   it("acepta una contraseña válida", () => {
-    const result = nuevaPasswordSchema.safeParse({ password: "unapass123" });
+    const result = nuevaPasswordSchema.safeParse({ password: "testpass123" });
     expect(result.success).toBe(true);
   });
 
