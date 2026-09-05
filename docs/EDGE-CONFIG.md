@@ -7,15 +7,23 @@ hardcodeados en código de UI.**
 
 ## Estado actual
 
-Todavía no existe un Edge Config store vinculado en el dashboard de Vercel (nadie con
-acceso lo creó aún). El módulo `lib/config/` funciona igual sin él: en desarrollo local,
-sin la env var `EDGE_CONFIG` seteada, se comporta como si la lectura hubiera fallado y
-aplica las reglas de la tabla de abajo. Cuando alguien con acceso al dashboard cree el
-store, hay que:
+El store **`sistema-og-circle`** (`ecfg_5zkcaib5hisdopluzptaqj81mmq4`) está creado y
+vinculado al proyecto de Vercel `sistema-og-circle`. La env var `EDGE_CONFIG` está
+seteada en production, preview y development (tipo Config, no Secret), así que
+`vercel env pull .env.local` la baja para desarrollo local.
 
-1. Vincularlo al proyecto de Vercel (esto setea `EDGE_CONFIG` automáticamente).
-2. Cargar a mano las tres claves (`precios`, `flags`, `links`) con los valores
-   recomendados de la sección siguiente.
+Las tres claves (`precios`, `flags`, `links`) están cargadas con los valores de la
+sección siguiente. El módulo `lib/config/` sigue tolerando la ausencia del store: sin
+`EDGE_CONFIG` seteada se comporta como si la lectura hubiera fallado y aplica las reglas
+de fallback de la tabla de abajo.
+
+Editar un valor no requiere deploy (se refleja en segundos):
+
+```bash
+vercel global-config items sistema-og-circle    # ver estado actual del store
+vercel global-config update sistema-og-circle --patch \
+  '{"items":[{"operation":"update","key":"flags","value":{"checkout_habilitado":true,"registro_habilitado":true,"fase":"2"}}]}'
+```
 
 ## Claves
 
@@ -34,10 +42,9 @@ store, hay que:
 descuentos en esta fase del proyecto; si esto cambia, tiene que ser una decisión
 explícita registrada antes de tocar el schema.
 
-## Valores iniciales recomendados (PRD Fase 2 §1.1)
+## Valores cargados (PRD Fase 2 §1.1)
 
-Estos valores hay que cargarlos a mano en el Edge Config store de Vercel una vez que
-exista — no se pueden crear ni cargar desde acá porque no hay acceso al dashboard.
+Estado actual del store `sistema-og-circle`:
 
 ```json
 {
@@ -47,19 +54,25 @@ exista — no se pueden crear ni cargar desde acá porque no hay acceso al dashb
   },
   "flags": {
     "checkout_habilitado": false,
-    "registro_habilitado": false,
+    "registro_habilitado": true,
     "fase": "2"
   },
   "links": {
-    "calculadora": "https://ogcircle.com/calculadora",
+    "calculadora": "https://vegroup.vercel.app/calculadora",
     "whatsapp": "https://wa.me/5491100000000",
     "traxcargo": "https://traxcargo.com"
   }
 }
 ```
 
-(Los valores de `links` de arriba son placeholders puestos por este ticket — reemplazar
-por las URLs reales antes de cargar el store.)
+Notas sobre los valores:
+
+- `flags.checkout_habilitado` queda en `false` hasta que VGRP-22/23 (checkout + webhook
+  de Mercado Pago) estén terminados y probados — es el interruptor que evita que alguien
+  pague antes de que el webhook exista.
+- `links.whatsapp` sigue siendo el placeholder `5491100000000` (mismo valor que el
+  fallback de `lib/config/index.ts`). Reemplazar por el número real de soporte cuando
+  esté definido.
 
 ## Diseño: fail closed en dinero, fail open en cosmético
 
