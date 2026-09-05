@@ -12,6 +12,7 @@
 
 import { createTestAdminClient } from "./db-client";
 import { isTestEmail, SEED_USERS } from "./seed-users";
+import { withAuthRetry } from "./with-auth-retry";
 
 const SEED_EMAILS = new Set(SEED_USERS.map((u) => u.email));
 
@@ -43,7 +44,9 @@ async function deleteFkDependents(admin: ReturnType<typeof createTestAdminClient
 export async function cleanupUser(userId: string) {
   const admin = createTestAdminClient();
 
-  const { data, error: getUserError } = await admin.auth.admin.getUserById(userId);
+  const { data, error: getUserError } = await withAuthRetry(() =>
+    admin.auth.admin.getUserById(userId),
+  );
   if (getUserError) throw getUserError;
   if (!isTestEmail(data.user?.email)) {
     throw new Error(
@@ -54,7 +57,7 @@ export async function cleanupUser(userId: string) {
 
   await deleteFkDependents(admin, userId);
 
-  const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+  const { error: deleteError } = await withAuthRetry(() => admin.auth.admin.deleteUser(userId));
   if (deleteError) throw deleteError;
 }
 
@@ -79,7 +82,7 @@ export async function cleanupUser(userId: string) {
 export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number }> {
   const admin = createTestAdminClient();
 
-  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const { data, error } = await withAuthRetry(() => admin.auth.admin.listUsers({ perPage: 1000 }));
   if (error) throw error;
 
   const testUsers = data.users.filter((u) => isTestEmail(u.email));
@@ -100,7 +103,9 @@ export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number 
   if (pagosError) throw pagosError;
 
   const toDelete = testUsers.filter((u) => !(u.email && SEED_EMAILS.has(u.email)));
-  const results = await Promise.all(toDelete.map((u) => admin.auth.admin.deleteUser(u.id)));
+  const results = await Promise.all(
+    toDelete.map((u) => withAuthRetry(() => admin.auth.admin.deleteUser(u.id))),
+  );
   const failed = results.find((r) => r.error);
   if (failed?.error) throw failed.error;
 
