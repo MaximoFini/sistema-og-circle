@@ -1,5 +1,24 @@
 .shell {
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   color: var(--text-primary);
+}
+
+.content {
+  flex: 1;
+}
+
+/* VGRP-34 — footer con los links legales. Estático, sin datos por usuario:
+   no rompe el criterio del layout de arriba (prerenderizable, sin cookies).
+   El estilo de cada link vive en components/ui/TextLink.tsx, no acá — es el
+   mismo estilo exacto que usa "← Volver a legales" en app/(legal)/. */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-5) var(--space-4);
+  border-top: 1px solid var(--glass-border);
 }
