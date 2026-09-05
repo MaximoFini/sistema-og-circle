@@ -12,7 +12,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15";
+    PostgrestVersion: "14.17";
   };
   public: {
     Tables: {
@@ -176,6 +176,33 @@ export type Database = {
       nivel_vigente: {
         Args: { p_user_id: string };
         Returns: Database["public"]["Enums"]["nivel_acceso"];
+      };
+      test_create_policy: {
+        Args: {
+          p_cmd: string;
+          p_permissive: string;
+          p_policy: string;
+          p_qual: string;
+          p_roles: unknown[];
+          p_schema: string;
+          p_table: string;
+          p_with_check: string;
+        };
+        Returns: undefined;
+      };
+      test_drop_policy: {
+        Args: { p_policy: string; p_schema: string; p_table: string };
+        Returns: undefined;
+      };
+      test_get_policy_definition: {
+        Args: { p_policy: string; p_schema: string; p_table: string };
+        Returns: {
+          cmd: string;
+          permissive: string;
+          qual: string;
+          roles: unknown[];
+          with_check: string;
+        }[];
       };
     };
     Enums: {
