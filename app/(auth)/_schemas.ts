@@ -72,6 +72,19 @@ export const registroSchema = z.object({
     .min(6, "Ingresá un teléfono de contacto.")
     .max(30, "Ese teléfono es demasiado largo."),
   password,
+  // VGRP-34 — checkbox de aceptación de Términos y Privacidad. Un checkbox
+  // HTML sin tildar ni siquiera aparece en el FormData (`.get()` da `null`);
+  // tildado, manda el string `"true"` (fijado como `value` en
+  // `RegistroForm.tsx`). El `z.preprocess` acepta ese string O un boolean
+  // directo (útil en tests, o para un caller futuro que no venga de un
+  // `<form>`) — la traducción vive acá, en el schema, y no en `_actions.ts`,
+  // para no repetirla en cada caller que arme el objeto para `.safeParse()`.
+  aceptaTerminos: z.preprocess(
+    (v) => v === "true" || v === true,
+    z.boolean().refine((v) => v === true, {
+      error: "Tenés que aceptar los Términos y la Política de Privacidad.",
+    }),
+  ),
 });
 
 export type RegistroInput = z.infer<typeof registroSchema>;

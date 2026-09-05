@@ -3,15 +3,10 @@
 -- tests de integración (criterio "Verificación de que los tests sirven":
 -- desactivar una policy y confirmar que el test correspondiente falla).
 -- =============================================================================
--- APLICADA contra el proyecto real como "test_rls_toggle_helpers"
--- (versión 20260827161404) — este archivo local usa ese mismo nombre y
--- versión a propósito, para que coincida con
--- `supabase_migrations.schema_migrations` y `supabase migration list` no
--- muestre drift entre el repo y el proyecto. El contenido acá tiene más
--- comentarios que lo que quedó guardado como `statements` en esa tabla
--- (se aplicó con una versión más resumida de este mismo SQL) — eso no
--- importa para Postgres ni para el tracking de migraciones, que sólo mira
--- la versión, no el texto exacto.
+-- Aplicada al proyecto real (og-circle, hsmodrhbwkromoixrxrt) vía Supabase
+-- MCP el 2026-08-27. Este archivo la deja trackeada en el repo para que
+-- `supabase db reset` / `db push` la reproduzcan igual en cualquier otro
+-- entorno.
 --
 -- Por qué no alcanza con `ALTER TABLE ... DISABLE ROW LEVEL SECURITY`: eso
 -- apaga TODAS las policies de la tabla a la vez. Postgres tampoco tiene un
@@ -37,10 +32,6 @@
 -- El chequeo de `p_schema = 'public'` de abajo es el límite explícito: ni con
 -- la service role key esto puede tocar el schema `auth` (las policies
 -- internas de Supabase Auth) por accidente o por un typo en un test.
---
--- Verificado contra el proyecto real (proacl de las 3 funciones): sólo
--- `postgres` y `service_role` tienen EXECUTE, nadie más — confirmado con
--- `select proacl from pg_proc where proname like 'test_%'`.
 --
 -- Repetir la decisión de VGRP-43: cuando exista un proyecto de producción
 -- separado del de test, revisar si esta migración debe excluirse de ese
@@ -143,6 +134,16 @@ begin
     'create policy %I on %I.%I as %s for %s to %s',
     p_policy, p_schema, p_table, p_permissive, p_cmd, v_roles
   );
+  -- %s (no %L) para p_qual/p_with_check, por el mismo motivo que arriba:
+  -- son expresiones SQL booleanas ("id = auth.uid()"), no strings. %L las
+  -- envolvería en comillas y produciría una sentencia rota (USING ('id =
+  -- auth.uid()') no es una expresión boolean válida, es un literal de texto).
+  -- No hay forma de "escapar" una expresión SQL arbitraria sin parsearla —
+  -- por eso el límite real de esta función no es el formateo, es el chequeo
+  -- de rol de arriba (sólo service_role, ver comentario al inicio del
+  -- archivo): quien puede llegar hasta acá ya tiene acceso completo a la
+  -- base por otras vías, así que no hay una superficie de inyección nueva
+  -- que este %s esté abriendo.
   if p_qual is not null then
     v_sql := v_sql || format(' using (%s)', p_qual);
   end if;

@@ -29,7 +29,8 @@ describe("registroSchema", () => {
     nombre: "Jero",
     email: "a@b.com",
     telefono: "+54 9 11 1234-5678",
-    password: "unapass123",
+    password: "testpass123",
+    aceptaTerminos: true,
   };
 
   it("acepta datos válidos", () => {
@@ -53,6 +54,17 @@ describe("registroSchema", () => {
 
   it("rechaza email inválido", () => {
     const result = registroSchema.safeParse({ ...VALID, email: "no-es-un-email" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza si no se aceptan los términos", () => {
+    const result = registroSchema.safeParse({ ...VALID, aceptaTerminos: false });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza si falta aceptaTerminos", () => {
+    const { aceptaTerminos: _omitido, ...sinAceptacion } = VALID;
+    const result = registroSchema.safeParse(sinAceptacion);
     expect(result.success).toBe(false);
   });
 });
@@ -82,7 +94,7 @@ describe("solicitarResetSchema", () => {
 
 describe("nuevaPasswordSchema", () => {
   it("acepta una contraseña válida", () => {
-    const result = nuevaPasswordSchema.safeParse({ password: "unapass123" });
+    const result = nuevaPasswordSchema.safeParse({ password: "testpass123" });
     expect(result.success).toBe(true);
   });
 
