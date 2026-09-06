@@ -189,6 +189,54 @@ describe("activarNivel", () => {
     expect(out.resultado.nivelNuevo).toBe("principiante");
   });
 
+  it("opción B: el override gana contra el pago de MAYOR nivel viejo, aunque haya un pago de menor nivel posterior", async () => {
+    const u = await nuevoUsuario("ninguno");
+
+    // Pago approved de 'avanzado' con created_at antiguo (una semana atrás).
+    const refAvanzado = `test-ref-${randomUUID()}`;
+    await insertarPago(admin, {
+      userId: u.userId,
+      proveedorRef: refAvanzado,
+      nivelComprado: "avanzado",
+      montoArs: 5000,
+      estado: "approved",
+      payloadRaw: {},
+    });
+    const viejo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const { error: backdateError } = await admin
+      .from("pagos")
+      .update({ created_at: viejo })
+      .eq("proveedor_ref", refAvanzado)
+      .eq("estado", "approved");
+    expect(backdateError).toBeNull();
+
+    // Override manual a 'principiante' — created_at = ahora, POSTERIOR al pago avanzado.
+    const out = await activarNivel(admin, {
+      userId: u.userId,
+      nivel: "principiante",
+      motivo: "opción B",
+      actorId,
+    });
+    expect(out.resultado.nivelNuevo).toBe("principiante");
+
+    // Segundo pago approved de 'principiante', insertado DESPUÉS del override.
+    await insertarPago(admin, {
+      userId: u.userId,
+      proveedorRef: `test-ref-${randomUUID()}`,
+      nivelComprado: "principiante",
+      montoArs: 1000,
+      estado: "approved",
+      payloadRaw: {},
+    });
+
+    // nivel_vigente() v3 (opción B): el override se compara contra el pago de
+    // MAYOR nivel (el 'avanzado' viejo), no contra max(created_at) global. El
+    // override es posterior a ese pago -> sigue ganando -> 'principiante'.
+    // Con la v3 previa este caso daba 'avanzado'.
+    const detalle = await obtenerUsuario(admin, u.userId);
+    expect(detalle?.nivelActivo).toBe("principiante");
+  });
+
   it("un pago approved de MP posterior al override lo supera", async () => {
     const u = await nuevoUsuario("ninguno");
     await activarNivel(admin, {
