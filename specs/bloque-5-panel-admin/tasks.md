@@ -481,9 +481,14 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   compartidos en `components/ui`, agregar esos componentes y correr **`/design-system`**
   (CLAUDE.md item 3) — eso suma alcance a esta PR (design.md §"Open questions / risks" #9).
 
-- [ ] **36-T16 — Abrir PR de VGRP-36**
+- [~] **36-T16 — Abrir PR de VGRP-36**
   Satisfies: US-3, US-4
   Depends on: 36-T1..36-T15
+  ESTADO: rama `bloque-5/vgrp-36-usuarios-activar-nivel` pusheada a `origin`
+  (commit `1cbc1b3`). `gh` no está instalado → **el coordinador abre la PR**
+  con el cuerpo redactado en el scratchpad de la sesión
+  (`PR-VGRP-36-body.md`). Base `main`. DoD del paquete verificada (ver el
+  cuerpo de la PR).
   Notes: Verificar la DoD del paquete, con 36-T3 (pagos.test.ts verde) incluido. PR
   describiendo el ticket (gestión de usuarios + activación manual + `nivel_overrides` +
   `nivel_vigente` v3 + cambio en `cleanup.ts`). Push por Claude Code.
