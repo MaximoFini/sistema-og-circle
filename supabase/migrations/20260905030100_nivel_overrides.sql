@@ -44,8 +44,8 @@ create index nivel_overrides_user_created_idx
 comment on table public.nivel_overrides is
   'Activaciones/cambios manuales de nivel desde el panel de admin (VGRP-36). '
   'Append-only. nivel_vigente() considera la fila más reciente por usuario y la '
-  'aplica si es posterior al último pago approved no reembolsado — así un pago '
-  'real posterior siempre supera un override viejo.';
+  'aplica si es posterior al pago approved no reembolsado de mayor nivel — así '
+  'un pago real posterior de ese nivel siempre supera un override viejo.';
 
 -- RLS default-deny: sin policies para `authenticated` -> RLS deniega TODO por
 -- defecto (igual que `pagos` para insert/update). Sólo `service_role`
@@ -63,14 +63,24 @@ grant all on public.nivel_overrides to service_role;
 -- `nivel_overrides` el resultado es IDÉNTICO al de la v2
 -- (20260905023031_nivel_vigente_precedencia.sql). El CTE `ledger` reproduce la
 -- lógica v2 (nivel más alto entre pagos approved sin refunded posterior); si no
--- hay override, el `coalesce` cae a `(select nivel from ledger)`, que es
+-- hay override, el `coalesce` cae a `(select l.nivel from ledger l)`, que es
 -- exactamente `order by nivel_comprado desc limit 1`.
 --
--- El override "gana" sólo si su `created_at` es >= al del último pago approved
--- no reembolsado (`ledger.at` = max(created_at) de esos pagos). Consecuencia
--- deseada: si un admin baja a alguien a `ninguno` y esa persona después paga
--- por MP, el pago (más nuevo) restaura el acceso automáticamente en la
--- siguiente re-proyección del webhook.
+-- SEMÁNTICA DEL `at` (opción B, decidida por el coordinador — cierra el hueco #1
+-- del CTE `ledger`): el `ledger` selecciona UNA sola fila — el pago approved
+-- (sin refunded posterior) de MAYOR nivel; ante empate de nivel, el más
+-- reciente — y `ledger.at` es el `created_at` DE ESE pago, no un `max()` global.
+-- Antes (v3 previa) `ledger.at` era `max(p.created_at)` sobre todos los pagos
+-- relevantes, así que el `at` contra el que se comparaba el override podía venir
+-- de un pago de OTRO nivel (p. ej. un pago chico posterior) y "tapar"
+-- indebidamente un override legítimo. Ahora el override se compara SIEMPRE
+-- contra el pago que aporta el nivel que habría ganado.
+--
+-- El override "gana" sólo si su `created_at` es >= al `created_at` de ese pago
+-- de mayor nivel (o si no hay ningún pago relevante — `coalesce(..., '-infinity')`).
+-- Consecuencia deseada: si un admin baja a alguien a `ninguno` y esa persona
+-- después paga por MP, el pago (más nuevo) restaura el acceso automáticamente en
+-- la siguiente re-proyección del webhook.
 --
 -- La comparación asume que `pagos.created_at` es la hora de INSERCIÓN de la
 -- fila (`default now()`, init_plataforma.sql) — el webhook `insertarPago` no
@@ -88,7 +98,9 @@ stable
 set search_path = ''
 as $$
   with ledger as (
-    select max(p.nivel_comprado) as nivel, max(p.created_at) as at
+    -- El pago approved (sin refunded posterior) de MAYOR nivel; ante empate de
+    -- nivel, el más reciente. `at` = su created_at (no un max() global).
+    select p.nivel_comprado as nivel, p.created_at as at
     from public.pagos p
     where p.user_id = p_user_id
       and p.estado = 'approved'
@@ -96,6 +108,8 @@ as $$
         select 1 from public.pagos r
         where r.proveedor_ref = p.proveedor_ref and r.estado = 'refunded'
       )
+    order by p.nivel_comprado desc, p.created_at desc
+    limit 1
   ),
   ovr as (
     select nivel, created_at as at
@@ -105,10 +119,11 @@ as $$
     limit 1
   )
   select coalesce(
-    -- el override gana sólo si es igual o posterior al último pago relevante
-    (select o.nivel from ovr o, ledger l
-     where o.at >= coalesce(l.at, '-infinity'::timestamptz)),
-    (select nivel from ledger),           -- lógica v2 intacta
+    -- El override más reciente gana si su created_at es >= al del pago de mayor
+    -- nivel (o si no hay ningún pago relevante).
+    (select o.nivel from ovr o
+     where o.at >= coalesce((select l.at from ledger l), '-infinity'::timestamptz)),
+    (select l.nivel from ledger l),   -- lógica v2: nivel más alto del ledger
     'ninguno'::public.nivel_acceso
   );
 $$;
@@ -117,10 +132,11 @@ comment on function public.nivel_vigente(uuid) is
   'Deriva el nivel de acceso vigente de un usuario. v3 (VGRP-36): considera '
   'public.nivel_overrides (activación manual del panel de admin) además del '
   'ledger de pagos. El override más reciente por usuario gana si su created_at '
-  'es >= al del último pago approved sin refunded posterior; si no hay '
-  'override, cae a la lógica v2 (nivel MÁS ALTO del ledger, nunca el más '
-  'reciente). Válido porque nivel_acceso está declarado en orden de '
-  'precedencia. Con cero overrides el resultado es idéntico a la v2.';
+  'es >= al created_at del pago approved (sin refunded posterior) de MAYOR '
+  'nivel — no de un max(created_at) global (opción B). Si no hay override, cae '
+  'a la lógica v2 (nivel MÁS ALTO del ledger, nunca el más reciente). Válido '
+  'porque nivel_acceso está declarado en orden de precedencia. Con cero '
+  'overrides el resultado es idéntico a la v2.';
 
 -- ---------------------------------------------------------------------------
 -- Índice para el listado de usuarios del panel (order by created_at desc + id

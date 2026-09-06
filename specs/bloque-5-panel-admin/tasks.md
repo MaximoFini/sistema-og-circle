@@ -323,6 +323,15 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   ESTADO: **VERDE** — `pnpm test test/integration/pagos.test.ts` → 5/5 pasan
   SIN tocar el archivo. Con cero overrides el CTE `ledger` de la v3 devuelve
   exactamente `order by nivel_comprado desc limit 1` (v2). No hizo falta v4.
+  **Actualización 2026-09-06:** el hueco #1 (design.md §"Open questions / risks"
+  #1 — la semántica del `at` del `ledger`, que usaba `max(created_at)` global)
+  quedó **resuelto con la opción B** (decidida por el coordinador): `ledger`
+  selecciona el pago approved sin refunded posterior de MAYOR nivel y `ledger.at`
+  es el `created_at` de ESE pago, así el override se compara siempre contra el
+  pago del nivel que habría ganado. Migración re-aplicada por MCP
+  (`nivel_vigente_at_del_pago_de_mayor_nivel`); test nuevo del escenario en
+  `lib/data/admin/usuarios.test.ts` ("opción B: el override gana contra el pago
+  de MAYOR nivel viejo..."). `pagos.test.ts` sigue 5/5.
   Notes: `nivel_vigente()` es función compartida con el webhook (camino caliente). Correr
   `pnpm test test/integration/pagos.test.ts` y confirmar que **todos** los casos siguen
   pasando sin tocar el archivo — con 0 overrides el comportamiento tiene que ser idéntico al
