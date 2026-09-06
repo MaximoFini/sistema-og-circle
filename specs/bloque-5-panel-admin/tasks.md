@@ -723,10 +723,12 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
 
 - [~] **37-T15 — Abrir PR de VGRP-37**
   Satisfies: US-5, US-6
-  ESTADO: rama `bloque-5/vgrp-37-pagos-ledger-reproceso` pusheada a `origin`.
-  `gh` no está instalado → **el coordinador abre la PR** con el cuerpo redactado
-  en el scratchpad de la sesión (`PR-VGRP-37-body.md`). Base `main`. DoD del
-  paquete verificada (ver el cuerpo de la PR).
+  ESTADO: rama `bloque-5/vgrp-37-pagos-ledger-reproceso` pusheada a `origin`
+  (commits `b37752b` + `80b7d1c`). `gh` no está instalado → **el coordinador abre
+  la PR** con el cuerpo redactado en el scratchpad de la sesión
+  (`PR-VGRP-37-body.md`). Base `main`. DoD del paquete verificada (ver el cuerpo
+  de la PR); pendiente: correr `pnpm test` una vez con la cuota de Supabase Auth
+  fría (los fallos de la corrida completa fueron 429 de Auth, no lógica).
   Depends on: 37-T1..37-T14
   Notes: Verificar la DoD del paquete. PR describiendo el ticket (ledger de pagos + detección
   "sin aplicar" + reproceso + vista `admin_pagos_ledger` + `sanitizarPayloadRaw`). Push por
