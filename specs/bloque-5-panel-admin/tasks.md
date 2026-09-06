@@ -535,8 +535,13 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
 
 ### Tareas
 
-- [ ] **37-T1 — Migración `20260905030200_admin_pagos_ledger.sql`**
+- [x] **37-T1 — Migración `20260905030200_admin_pagos_ledger.sql`**
   Satisfies: US-5
+  ESTADO: **APLICADA el 2026-09-06** con `apply_migration` (MCP de Supabase,
+  proyecto `og-circle` / `hsmodrhbwkromoixrxrt` / `sa-east-1`). Vista
+  `admin_pagos_ledger` (`security_invoker = true`, `revoke` anon/authenticated,
+  `grant select` a service_role) + columna calculada `sin_aplicar` (`>` sobre el
+  enum) + índice `pagos_created_at_idx`. Archivo versionado con header checklist.
   Notes: Contenido exacto en design.md §"VGRP-37 — vista `admin_pagos_ledger`":
   - `create view public.admin_pagos_ledger with (security_invoker = true) as select …` — las
     columnas del diseño (`id, user_id, proveedor, proveedor_ref, nivel_comprado, monto_ars,
@@ -553,22 +558,37 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
     nuevo.
   Aplicar por MCP y versionar (ver nota transversal de migraciones).
 
-- [ ] **37-T2 — Regenerar `lib/database.types.ts` por MCP (`generate_typescript_types`)**
+- [x] **37-T2 — Regenerar `lib/database.types.ts` por MCP (`generate_typescript_types`)**
   Satisfies: US-5
   Depends on: 37-T1
+  ESTADO: **REGENERADO** con `generate_typescript_types`. Suma
+  `admin_pagos_ledger` a `Database["public"]["Views"]`. Re-aplicados a mano los 2
+  ajustes conocidos que el generador pisa (`test_create_policy` / 
+  `test_get_policy_definition`: `p_qual`/`p_with_check`/`qual`/`with_check` →
+  `string | null`; `roles` → `string[]`) y re-agregados los exports
+  `NivelAcceso`/`RolUsuario`. Formateado con biome. Diff = sólo el bloque Views +
+  header.
   Notes: Debe sumar la vista `admin_pagos_ledger` a `Database["public"]["Views"]`. Forma
   esperada de una fila (`PagoLedgerRow`) en design.md §"Tipos TS". Commitear el diff
   generado sin ediciones a mano.
 
-- [ ] **37-T3 — `get_advisors` tras aplicar la migración**
+- [x] **37-T3 — `get_advisors` tras aplicar la migración**
   Satisfies: US-5
   Depends on: 37-T1
+  ESTADO: **CORRIDO** (security + performance) el 2026-09-06. La vista
+  `admin_pagos_ledger` **NO dispara ningún advisor** (ni `security_definer_view`
+  ni otro) — es `security_invoker = true` y no se expone a anon/authenticated.
+  Único hallazgo nuevo: `unused_index` INFO sobre `pagos_created_at_idx`
+  (esperado, sin tráfico). Pre-existentes y ajenos:
+  `auth_leaked_password_protection` WARN, `rls_enabled_no_policy` /
+  `unindexed_foreign_keys` sobre `nivel_overrides` (VGRP-36), `unused_index` de
+  los índices de VGRP-35/36. Nada bloqueante. Documentado en la migración y la PR.
   Notes: Correr `get_advisors` (security + performance). Verificar específicamente si marca
   la vista `security_invoker` como advisor; como se consulta por service role no hay fuga,
   pero hay que confirmar que **no dispara un advisor bloqueante** y documentarlo en la PR
   (design.md §"Open questions / risks" #3).
 
-- [ ] **37-T4 — `sanitizarPayloadRaw(raw)` + test unit puro**
+- [x] **37-T4 — `sanitizarPayloadRaw(raw)` + test unit puro**
   Satisfies: US-5
   Notes: Implementar según design.md §"`sanitizarPayloadRaw`": **allowlist**, no denylist.
   `CAMPOS_VISIBLES` = los 14 campos de diagnóstico del diseño; `payer` filtrado a
@@ -580,7 +600,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   de la allowlist; descarta claves desconocidas; descarta `card`/`token`; redacta claves
   tipo `*_secret`/`authorization`; filtra `payer` al subconjunto.
 
-- [ ] **37-T5 — `lib/data/admin/pagos.ts`: `listarPagos`, `obtenerPago`, `reprocesarPago`**
+- [x] **37-T5 — `lib/data/admin/pagos.ts`: `listarPagos`, `obtenerPago`, `reprocesarPago`**
   Satisfies: US-5, US-6
   Depends on: 37-T2
   Notes: `import "server-only"`. Cliente inyectado como parámetro (patrón `lib/data/pagos.ts`).
@@ -606,7 +626,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
     exportadas por este módulo. Idempotente: `proyectarNivel` es derivación pura del ledger
     → correrla dos veces sin pagos nuevos = mismo resultado, cero filas nuevas en `pagos`.
 
-- [ ] **37-T6 — `lib/data/admin/pagos.test.ts` (integración)**
+- [x] **37-T6 — `lib/data/admin/pagos.test.ts` (integración)**
   Satisfies: US-5, US-6
   Depends on: 37-T5
   Notes: Casos de design.md §"Plan de tests → VGRP-37 → `pagos.test.ts`": `listarPagos` —
@@ -620,7 +640,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   lanza `PagoNoEncontrado`. Para sembrar el caso "sin aplicar": `insert` directo por service
   role en `pagos` **sin** llamar a `proyectarNivel`.
 
-- [ ] **37-T7 — `app/api/admin/pagos/[id]/reprocesar/route.ts`**
+- [x] **37-T7 — `app/api/admin/pagos/[id]/reprocesar/route.ts`**
   Satisfies: US-6
   Depends on: 37-T5
   Notes: `export const runtime = "nodejs"`, `export const dynamic = "force-dynamic"`. Path
@@ -633,7 +653,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   `Sentry.captureException` + `500`. Salida OK: `200 { nivelAnterior, nivelNuevo }` + fila
   en `admin_audit_log`. Tabla de errores completa en design.md §"`POST /api/admin/pagos/[id]/reprocesar`".
 
-- [ ] **37-T8 — `app/api/admin/pagos/[id]/reprocesar/route.test.ts` (unit)**
+- [x] **37-T8 — `app/api/admin/pagos/[id]/reprocesar/route.test.ts` (unit)**
   Satisfies: US-1, US-6
   Depends on: 37-T7
   Notes: Estilo `route.test.ts` del webhook (`vi.mock` + import dinámico). Casos de design.md
@@ -642,7 +662,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   audit; `estado != 'approved'` → `409` sin audit y sin cambios; happy path → `200` +
   `conAuditoria` invocado con `accion='reprocesar_pago'`, `entidad='pagos'`, `entidad_id=<id>`.
 
-- [ ] **37-T9 — `app/admin/pagos/page.tsx` + `PagosFiltros.tsx`**
+- [x] **37-T9 — `app/admin/pagos/page.tsx` + `PagosFiltros.tsx`**
   Satisfies: US-5
   Depends on: 37-T5, Paquete VGRP-35 mergeado
   Notes: Server Component que consulta `listarPagos` con `createServiceRoleClient()`.
@@ -652,7 +672,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   es inválido, no consultar y mostrar el error. **Sólo lectura** — sin editar ni borrar.
   Primitivas: `TextField`, `Button`; badges locales en `admin.module.css`.
 
-- [ ] **37-T10 — `app/admin/pagos/[id]/page.tsx` + `ReprocesarButton.tsx`**
+- [x] **37-T10 — `app/admin/pagos/[id]/page.tsx` + `ReprocesarButton.tsx`**
   Satisfies: US-5, US-6
   Depends on: 37-T5, 37-T7
   Notes: Server Component: detalle del pago + `payload_raw` **filtrado** (`sanitizarPayloadRaw`)
@@ -662,7 +682,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   refrescar; mostrar el `409` con `FormError` si el pago no es reprocesable. Primitivas:
   `Button`, `FormError`.
 
-- [ ] **37-T11 — Agregar el callout `totalSinAplicar` a `app/admin/page.tsx`**
+- [x] **37-T11 — Agregar el callout `totalSinAplicar` a `app/admin/page.tsx`**
   Satisfies: US-5
   Depends on: 37-T5
   Notes: Diferido de VGRP-35 (el índice se entregó sin el callout porque la vista
@@ -672,7 +692,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   ve el caso a reparar sin buscarlo" a nivel índice (design.md §"Detección de pago aprobado
   sin nivel aplicado" + §UI).
 
-- [ ] **37-T12 — `e2e/admin-reprocesar-pago.spec.ts` (Playwright)**
+- [x] **37-T12 — `e2e/admin-reprocesar-pago.spec.ts` (Playwright)**
   Satisfies: US-5, US-6
   Depends on: 37-T9, 37-T10
   Notes: Sembrar un pago `approved` con el nivel **sin aplicar** (insert directo por service
@@ -680,18 +700,35 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   detalle, reprocesa, y el badge desaparece / el nivel del usuario sube. Puede ir último del
   paquete.
 
-- [ ] **37-T13 — `/simplify` sobre el código nuevo del paquete**
+- [x] **37-T13 — `/simplify` sobre el código nuevo del paquete**
   Satisfies: US-5, US-6
   Depends on: 37-T4, 37-T5, 37-T7, 37-T9, 37-T10
+  ESTADO: corrido. Fix aplicado: `listarPagos` reutiliza `contarPagosSinAplicar`
+  (que también usa el callout del índice) en vez de duplicar el `count` query de
+  `sin_aplicar`; los dos siguen corriendo en paralelo con el listado. Resto del
+  diff ya estaba limpio (keyset/escaparLike reutilizados de `lib/data/admin/keyset.ts`,
+  `proyectarNivel` reutilizado sin reimplementar).
 
-- [ ] **37-T14 — `/design-critique` sobre el ledger y el detalle de pago**
+- [x] **37-T14 — `/design-critique` sobre el ledger y el detalle de pago**
   Satisfies: US-5, US-6
   Depends on: 37-T9, 37-T10, 37-T11
-  Notes: Obligatorio (CLAUDE.md item 2). Cubrir `pagos/page.tsx`, `pagos/[id]/page.tsx` y el
-  callout del índice.
+  ESTADO: corrido sobre `pagos/page.tsx`, `pagos/[id]/page.tsx` y el callout del
+  índice. NO se toca `components/ui` → `/design-system` no aplica. Fixes
+  aplicados: (1) badge de estado y badge "sin aplicar" separados (antes el badge
+  mostraba "sin aplicar" EN LUGAR del estado, se perdía el dato real); (2)
+  `TextLink` en vez de `<a className={navLink}>` crudo en el detalle; (3) sin
+  `style={{}}` inline — contenedor `.badgeFila`; (4) dato "Estado" no duplicado
+  entre la cabecera y el `<dl>`. El badge "sin aplicar" usa acento ámbar +
+  borde + el texto lo dice (no depende sólo del color).
 
-- [ ] **37-T15 — Abrir PR de VGRP-37**
+- [~] **37-T15 — Abrir PR de VGRP-37**
   Satisfies: US-5, US-6
+  ESTADO: rama `bloque-5/vgrp-37-pagos-ledger-reproceso` pusheada a `origin`
+  (commits `b37752b` + `80b7d1c`). `gh` no está instalado → **el coordinador abre
+  la PR** con el cuerpo redactado en el scratchpad de la sesión
+  (`PR-VGRP-37-body.md`). Base `main`. DoD del paquete verificada (ver el cuerpo
+  de la PR); pendiente: correr `pnpm test` una vez con la cuota de Supabase Auth
+  fría (los fallos de la corrida completa fueron 429 de Auth, no lógica).
   Depends on: 37-T1..37-T14
   Notes: Verificar la DoD del paquete. PR describiendo el ticket (ledger de pagos + detección
   "sin aplicar" + reproceso + vista `admin_pagos_ledger` + `sanitizarPayloadRaw`). Push por
