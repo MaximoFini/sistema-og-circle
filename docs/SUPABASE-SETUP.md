@@ -172,6 +172,55 @@ localmente contra la clave pública del proyecto, sin roundtrip a Auth
 Ver `docs/AUTH.md` para el resto del diseño (qué claims exactos, cómo se
 resuelve el refresco post-pago, qué expone `lib/auth/`).
 
+## 9bis. Alta de un admin — VGRP-35 (procedimiento manual, sin pantalla ni endpoint)
+
+Decisión cerrada (requirements.md §Non-goals): **no hay pantalla, endpoint ni
+seed para crear/promover/invitar admins**. El rol se asigna con SQL directo
+sobre `profiles.rol`.
+
+**Prerequisito:** la persona ya tiene que estar **registrada** (existe su fila
+en `profiles`). Esto sólo cambia el `rol`.
+
+**Sentencia (opción A — `set_config` en la misma transacción):**
+
+```sql
+-- El trigger profiles_guard_nivel_rol_trigger (init_plataforma.sql §5) aborta
+-- cualquier UPDATE de nivel/rol salvo auth.role() = 'service_role'. El SQL
+-- editor del dashboard corre como `postgres`, no como `service_role`, así que
+-- hay que simular ese claim dentro de la misma transacción:
+begin;
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+update public.profiles
+   set rol = 'admin'
+ where email = 'persona@ogcircle.example';   -- email exacto de la cuenta ya registrada
+commit;
+```
+
+**Sentencia (opción B — desactivar el trigger, requiere rol `postgres`):**
+
+```sql
+alter table public.profiles disable trigger profiles_guard_nivel_rol_trigger;
+update public.profiles set rol = 'admin' where email = 'persona@ogcircle.example';
+alter table public.profiles enable trigger profiles_guard_nivel_rol_trigger;
+```
+
+> **VERIFICACIÓN PENDIENTE (35-T12) — para el coordinador.** No se pudo probar
+> desde la sesión de implementación de VGRP-35: el MCP de Supabase no estaba
+> autorizado (`list_projects` devolvió vacío) y no hay `execute_sql`. Hay que
+> confirmar contra el proyecto real **cuál de las dos opciones funciona** en el
+> SQL editor de este proyecto y dejar documentada acá SÓLO esa. Lo más
+> probable es que la opción A alcance (es la que asume `applyNivelRol` de
+> hecho, vía `service_role`); la B es el fallback si `set_config` no satisface
+> `auth.role()` en el SQL editor.
+
+**Propagación al claim:** no hace falta tocar `app_metadata` a mano — el Auth
+Hook (`custom_access_token_hook`) lee `profiles.rol` fresco en cada emisión de
+token. El nuevo admin ve el acceso tras **renovar la sesión** (relogin, o
+esperar a que expire el access token, ~1 h).
+
+**Quién puede correrla:** alguien con acceso al proyecto Supabase (SQL editor
+del dashboard o MCP autorizado con `execute_sql`). No viaja en el repo.
+
 ## 9. `middleware.ts` (VGRP-17) — pendiente de prueba end-to-end
 
 `middleware.ts` (raíz del repo) protege las rutas de `(app)` (hoy,

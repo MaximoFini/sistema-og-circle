@@ -37,6 +37,18 @@ const CON_SESION = { data: { claims: { sub: "user-123" } }, error: null };
 // undefined.
 const SIN_SESION = { data: undefined, error: { message: "no session" } };
 
+// VGRP-35 — sesión válida con el claim de rol que el middleware lee para el
+// área de admin (`data.claims.app_metadata.rol`). Con `rol='user'` el
+// middleware corta `/admin` con 404; con `rol='admin'` pasa.
+const CON_SESION_USER = {
+  data: { claims: { sub: "user-123", app_metadata: { rol: "user" } } },
+  error: null,
+};
+const CON_SESION_ADMIN = {
+  data: { claims: { sub: "admin-1", app_metadata: { rol: "admin" } } },
+  error: null,
+};
+
 function req(path: string): NextRequest {
   return new NextRequest(new URL(path, "http://localhost:3000"));
 }
@@ -151,6 +163,83 @@ describe("middleware", () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get("location")).toBeNull();
+    });
+  });
+
+  // VGRP-35 — capa de ROL sobre `/admin` y `/api/admin`. Suma al fail-closed
+  // de sesión: con sesión pero `rol != 'admin'`, el área devuelve 404 (nunca
+  // 403, nunca una pantalla parcial).
+  describe("área de admin (VGRP-35)", () => {
+    it("sin sesión: /admin redirige a /login?next=/admin (307)", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/admin"));
+
+      expect(res.status).toBe(307);
+      const location = res.headers.get("location");
+      expect(new URL(location as string).pathname).toBe("/login");
+      expect(new URL(location as string).searchParams.get("next")).toBe("/admin");
+    });
+
+    it("sin sesión: /api/admin/x devuelve 401 JSON, no un redirect", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/api/admin/usuarios/1/nivel"));
+
+      expect(res.status).toBe(401);
+      expect(res.headers.get("location")).toBeNull();
+    });
+
+    it("con sesión y rol='user': GET /admin devuelve 404 (no 307, no 200)", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION_USER);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/admin"));
+
+      expect(res.status).toBe(404);
+      expect(res.headers.get("location")).toBeNull();
+    });
+
+    it("con sesión y rol='user': GET /api/admin/x devuelve 404 JSON", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION_USER);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/api/admin/usuarios/1/nivel"));
+
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body).toEqual({ error: expect.any(String) });
+    });
+
+    it("con sesión y rol='user': una ruta /admin/inventada (no existe en el árbol) igual da 404 (fail-closed por prefijo)", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION_USER);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/admin/inventada/sub"));
+
+      expect(res.status).toBe(404);
+    });
+
+    it("con sesión y rol='admin': /admin y /api/admin/x pasan (200, sin redirect)", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION_ADMIN);
+      const { middleware } = await import("./middleware");
+
+      for (const path of ["/admin", "/admin/auditoria", "/api/admin/usuarios/1/nivel"]) {
+        const res = await middleware(req(path));
+        expect(res.status).toBe(200);
+        expect(res.headers.get("location")).toBeNull();
+      }
+    });
+
+    it("el claim de rol NO afecta rutas fuera del área admin: /dashboard con rol='user' pasa normal", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION_USER);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/dashboard"));
+
+      expect(res.status).toBe(200);
     });
   });
 });

@@ -71,6 +71,31 @@ dashboard de Sentry tiene que crear una **Alert Rule**:
 Sin esta Alert Rule, Sentry va a seguir capturando la excepción igual (aparece en el
 dashboard), pero nadie se entera por email hasta que alguien la mire manualmente.
 
+## Hueco de auditoría del panel de admin — VGRP-35 (`admin-audit-gap`)
+
+`lib/data/admin/audit-log.ts::conAuditoria()` envuelve toda mutación del panel
+(cambio de nivel, reproceso de pago). El orden es: corre la mutación de negocio
+primero, y **sólo si tuvo éxito** escribe la fila en `admin_audit_log`.
+
+Si ese `insert` de auditoría falla **después** de una mutación exitosa:
+
+- **NO se revierte la mutación.** Es imposible: `proyectarNivel` incluye una
+  llamada a la Admin API de Auth (`updateUserById`), que no entra en una
+  transacción de Postgres. El nivel/pago del usuario ya cambió.
+- **NO se le devuelve error al admin.** La operación efectivamente se aplicó;
+  responder "falló" sería mentir y llevaría a reintentos que duplican overrides.
+- Se llama a `Sentry.captureException(error, { level: "error", tags: {
+  "admin-audit-gap": "true" }, extra: { detalle, meta } })`.
+
+**Es un incidente, no un error de request.** Un hueco en la auditoría significa
+que una acción de admin ocurrió sin quedar registrada — hay que reconstruirla a
+mano desde el `extra.meta` del evento de Sentry (trae `actorId`, `accion`,
+`entidad`, `entidadId`). Fail-open igual que el resto: sin `SENTRY_DSN` la
+llamada es un no-op y no rompe el flujo.
+
+Cuando exista el DSN real, conviene una **Alert Rule** aparte para el tag
+`admin-audit-gap` (severidad alta), separada de la del webhook de Mercado Pago.
+
 ## Pendiente — panel de admin (fuera de este batch)
 
 La otra mitad de la decisión del equipo fue que "el admin también ve el error en

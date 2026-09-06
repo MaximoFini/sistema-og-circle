@@ -45,6 +45,8 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import type { AppMetadataClaims } from "./lib/auth/claims";
+import { getRol } from "./lib/auth/claims";
 import type { Database } from "./lib/database.types";
 
 /**
@@ -111,6 +113,27 @@ const PUBLIC_PREFIXES = [
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;
   return PUBLIC_PREFIXES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+// -----------------------------------------------------------------------------
+// VGRP-35 — capa de ROL para el área de admin.
+//
+// `/admin` es una carpeta LITERAL (no route group), así que es un prefijo real
+// de URL que el middleware puede matchear — esa es toda la razón por la que no
+// se usó un route group `(admin)`. Igual que el gating de sesión de este
+// archivo es fail-closed (todo lo que no está en PUBLIC_* exige sesión), acá el
+// prefijo alcanza: una ruta nueva bajo `/admin` o `/api/admin` que nadie
+// agregó a ninguna lista IGUAL queda cubierta.
+//
+// Este check SUMA una capa; no afloja nada del fail-closed de sesión de más
+// arriba. Corre sólo cuando YA hay sesión (después del bloque `if (!haySesion)`).
+// Si el claim `rol` no es `'admin'`: 404 — nunca 403 (revelaría que la ruta
+// existe), nunca un redirect a algo que confirme el área.
+// -----------------------------------------------------------------------------
+const ADMIN_PREFIXES = ["/admin", "/api/admin"];
+
+function isAdminArea(pathname: string): boolean {
+  return ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 /**
@@ -214,6 +237,26 @@ export async function middleware(request: NextRequest) {
     // parámetro sería un open redirect.
     loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return withRefreshedCookies(NextResponse.redirect(loginUrl), response);
+  }
+
+  // Acá ya sabemos que `haySesion === true`. VGRP-35 — capa de rol.
+  if (isAdminArea(pathname)) {
+    // `data.claims`: mismo shape que consume `getVerifiedClaims()` en
+    // lib/auth/server.ts. `getRol()` cae a `'user'` (default seguro) si el
+    // claim falta o no es un valor válido del enum — nunca lanza.
+    const claims = (data as { claims?: AppMetadataClaims } | undefined)?.claims ?? null;
+    if (getRol(claims) !== "admin") {
+      // 404 — nunca 403, nunca revelar que la ruta existe. El 404 "pelado" de
+      // acá es aceptable para el caso (un no-admin sondeando `/admin`);
+      // `app/admin/layout.tsx` da el 404 tematizado en el camino normal.
+      if (pathname.startsWith("/api/")) {
+        return withRefreshedCookies(
+          NextResponse.json({ error: "No encontrado." }, { status: 404 }),
+          response,
+        );
+      }
+      return withRefreshedCookies(new NextResponse("Not Found", { status: 404 }), response);
+    }
   }
 
   return response;
