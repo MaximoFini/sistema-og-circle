@@ -12,10 +12,10 @@
 
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { createAuthenticatedUser } from "../../../test/helpers/auth";
 import { cleanupUser } from "../../../test/helpers/cleanup";
-import { createTestAdminClient } from "../../../test/helpers/db-client";
-import { SEED_ADMIN_USER } from "../../../test/helpers/seed-users";
+import { applyNivelRol, createTestAdminClient } from "../../../test/helpers/db-client";
+import { SEED_ADMIN_USER, TEST_EMAIL_SUFFIX } from "../../../test/helpers/seed-users";
+import { withAuthRetry } from "../../../test/helpers/with-auth-retry";
 import { insertarPago, proyectarNivel } from "../pagos";
 import {
   contarPagosSinAplicar,
@@ -32,10 +32,20 @@ const admin = createTestAdminClient();
 let actorId = "";
 const creados: string[] = [];
 
+// Crea un usuario de test SIN loguearlo (no necesitamos access token acá) —
+// una llamada de auth menos por usuario que `createAuthenticatedUser`, para no
+// castigar el rate limit de Supabase Auth cuando este archivo corre dentro de
+// la suite completa. Mismo patrón que `test/integration/pagos.test.ts`.
 async function nuevoUsuario(nivel: "ninguno" | "principiante" | "avanzado" = "ninguno") {
-  const u = await createAuthenticatedUser(nivel);
-  creados.push(u.userId);
-  return u;
+  const email = `pagos-adm-${randomUUID()}${TEST_EMAIL_SUFFIX}`;
+  const { data, error } = await withAuthRetry(() =>
+    admin.auth.admin.createUser({ email, password: "test-password-1!", email_confirm: true }),
+  );
+  if (error) throw error;
+  const userId = data.user.id;
+  if (nivel !== "ninguno") await applyNivelRol(admin, userId, nivel, "user");
+  creados.push(userId);
+  return { userId, email };
 }
 
 async function contarPagosDe(userId: string): Promise<number> {
