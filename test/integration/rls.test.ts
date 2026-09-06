@@ -352,6 +352,44 @@ describe("admin_audit_log_select_admin: sólo un rol=admin lee la auditoría (VG
     expect(data).toHaveLength(1);
     expect(data?.[0]?.id).toBe(auditId);
   });
+
+  // VGRP-35 (35-T10) — EL test que pone CI en rojo si alguien desactiva la
+  // policy. Mismo hallazgo que profiles/pagos: `admin_audit_log_select_admin`
+  // es la ÚNICA policy de SELECT sobre la tabla, y RLS en Postgres deniega
+  // TODO por defecto cuando cero policies aplican a una operación. Desactivarla
+  // no abre la tabla — la cierra por completo, incluso para el propio admin.
+  // Esa denegación total es la prueba de que el test hermano de arriba ("el
+  // usuario seed admin sí puede leer") depende de esta policy.
+  it("SIN admin_audit_log_select_admin, ni siquiera el usuario admin lee la tabla (confirma que la policy real protege)", async () => {
+    const user = await crearUsuarioLogueado();
+    actorId = user.userId;
+    auditId = await crearFilaDeAuditoria(actorId);
+    const auditIdCreado = auditId;
+
+    const adminAnon = createTestAnonClient();
+    const { error: signInError } = await withAuthRetry(() =>
+      adminAnon.auth.signInWithPassword({
+        email: SEED_ADMIN_USER.email,
+        password: SEED_ADMIN_USER.password,
+      }),
+    );
+    expect(signInError).toBeNull();
+
+    await withPolicyDisabled(
+      admin,
+      "public",
+      "admin_audit_log",
+      "admin_audit_log_select_admin",
+      async () => {
+        const { data, error } = await adminAnon
+          .from("admin_audit_log")
+          .select()
+          .eq("id", auditIdCreado);
+        expect(error).toBeNull();
+        expect(data).toHaveLength(0); // con la policy activa, el test hermano espera 1
+      },
+    );
+  });
 });
 
 // Criterio del ticket: "un token de nivel principiante no ve contenido de
