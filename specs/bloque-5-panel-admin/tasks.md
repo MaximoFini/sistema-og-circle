@@ -286,8 +286,12 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
 
 ### Tareas
 
-- [ ] **36-T1 — Migración `20260905030100_nivel_overrides.sql`**
+- [x] **36-T1 — Migración `20260905030100_nivel_overrides.sql`**
   Satisfies: US-4
+  ESTADO: **APLICADA el 2026-09-06** con `apply_migration` (MCP de Supabase,
+  proyecto `og-circle` / `hsmodrhbwkromoixrxrt` / `sa-east-1`). Tabla +
+  índices + RLS default-deny + `nivel_vigente()` v3 en la base. Archivo
+  versionado con header estilo checklist. Tipos regenerados en 36-T2.
   Notes: Contenido exacto en design.md §"VGRP-36 — `nivel_overrides` + `nivel_vigente()` v3":
   - Tabla `public.nivel_overrides` (`id`, `user_id` FK → `profiles`, `nivel nivel_acceso`,
     `motivo text not null`, `actor_id` FK → `profiles` nullable, `created_at`). Append-only:
@@ -306,30 +310,40 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
     **Sin** índice trigram para `email ilike` (decisión del diseño a la escala actual).
   Aplicar por MCP y versionar (ver nota transversal de migraciones).
 
-- [ ] **36-T2 — Regenerar `lib/database.types.ts` por MCP (`generate_typescript_types`)**
+- [x] **36-T2 — Regenerar `lib/database.types.ts` por MCP (`generate_typescript_types`)**
   Satisfies: US-3, US-4
   Depends on: 36-T1
   Notes: Debe sumar `nivel_overrides` (Row/Insert/Update) a `Database["public"]["Tables"]`.
   `Tables<"nivel_overrides">` = `{ id, user_id, nivel: NivelAcceso, motivo, actor_id: string
   | null, created_at }`. Commitear el diff generado, sin ediciones a mano.
 
-- [ ] **36-T3 — Verificar que `test/integration/pagos.test.ts` sigue verde tras `nivel_vigente()` v3**
+- [x] **36-T3 — Verificar que `test/integration/pagos.test.ts` sigue verde tras `nivel_vigente()` v3**
   Satisfies: US-4
   Depends on: 36-T1
+  ESTADO: **VERDE** — `pnpm test test/integration/pagos.test.ts` → 5/5 pasan
+  SIN tocar el archivo. Con cero overrides el CTE `ledger` de la v3 devuelve
+  exactamente `order by nivel_comprado desc limit 1` (v2). No hizo falta v4.
   Notes: `nivel_vigente()` es función compartida con el webhook (camino caliente). Correr
   `pnpm test test/integration/pagos.test.ts` y confirmar que **todos** los casos siguen
   pasando sin tocar el archivo — con 0 overrides el comportamiento tiene que ser idéntico al
   de la v2 (design.md §"Open questions / risks" #1). Si algo cambia, es bug de la migración,
   no del test: revisar la v3 antes de seguir. **Bloqueante para abrir la PR.**
 
-- [ ] **36-T4 — `get_advisors` tras aplicar la migración**
+- [x] **36-T4 — `get_advisors` tras aplicar la migración**
   Satisfies: US-4
   Depends on: 36-T1
+  ESTADO: **CORRIDO** (security + performance). `rls_enabled_no_policy` INFO
+  sobre `nivel_overrides` = intencional (default-deny, ver design.md). Nuevo
+  INFO `unindexed_foreign_keys` sobre `nivel_overrides_actor_id_fkey` — se
+  deja anotado (tabla append-only chica, lookups por `actor_id` raros; el
+  diseño no pidió ese índice). `unused_index` INFO en los índices nuevos =
+  esperado sin tráfico. `auth_leaked_password_protection` WARN =
+  pre-existente y ajeno.
   Notes: Correr `get_advisors` (security + performance). Prestar atención a advisors sobre
   RLS de `nivel_overrides` (default-deny es intencional) y sobre la nueva función. Resolver
   o anotar en la PR.
 
-- [ ] **36-T5 — Actualizar `test/helpers/cleanup.ts` para borrar `nivel_overrides`**
+- [x] **36-T5 — Actualizar `test/helpers/cleanup.ts` para borrar `nivel_overrides`**
   Satisfies: US-4
   Depends on: 36-T1
   Notes: `nivel_overrides.user_id` y `nivel_overrides.actor_id` son FKs a `profiles` **sin
@@ -340,7 +354,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   limpieza a mitad (design.md §"Cambio requerido en `test/helpers/cleanup.ts`"). Obligatorio
   en esta PR o la limpieza de tests se rompe.
 
-- [ ] **36-T6 — `lib/data/admin/usuarios.ts`: `listarUsuarios`, `obtenerUsuario`, `activarNivel`**
+- [x] **36-T6 — `lib/data/admin/usuarios.ts`: `listarUsuarios`, `obtenerUsuario`, `activarNivel`**
   Satisfies: US-3, US-4
   Depends on: 36-T2
   Notes: `import "server-only"`. Cliente inyectado como parámetro (patrón `lib/data/pagos.ts`).
@@ -366,7 +380,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   - `activarNivel`/`reprocesarPago` **no escriben `profiles`/`pagos` fuera del closure que
     `conAuditoria` ejecuta** — es lo que garantiza que toda mutación pase por la auditoría.
 
-- [ ] **36-T7 — `lib/data/admin/usuarios.test.ts` (integración)**
+- [x] **36-T7 — `lib/data/admin/usuarios.test.ts` (integración)**
   Satisfies: US-3, US-4
   Depends on: 36-T6
   Notes: Casos de design.md §"Plan de tests → VGRP-36 → `usuarios.test.ts`": `listarUsuarios({
@@ -381,7 +395,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   override lo supera (re-proyección deja el nivel del pago). Usar `createAuthenticatedUser`
   y limpieza automática.
 
-- [ ] **36-T8 — `POST /api/admin/usuarios/[id]/nivel/route.ts`**
+- [x] **36-T8 — `POST /api/admin/usuarios/[id]/nivel/route.ts`**
   Satisfies: US-4
   Depends on: 36-T6
   Notes: Esqueleto en design.md §"`POST /api/admin/usuarios/[id]/nivel`". `export const
@@ -397,7 +411,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   error: "Usuario no encontrado." }` **sin audit log**; cualquier otro → `Sentry.captureException`
   + `500`. Tabla de errores completa en el diseño.
 
-- [ ] **36-T9 — `app/api/admin/usuarios/[id]/nivel/route.test.ts` (unit)**
+- [x] **36-T9 — `app/api/admin/usuarios/[id]/nivel/route.test.ts` (unit)**
   Satisfies: US-1, US-4
   Depends on: 36-T8
   Notes: Estilo `app/api/webhooks/mercadopago/route.test.ts` — `vi.mock` de
@@ -410,7 +424,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   `conAuditoria` invocado con `accion='cambiar_nivel'`, `entidad='profiles'`, `valorAnterior`/
   `valorNuevo` esperados.
 
-- [ ] **36-T10 — `app/admin/usuarios/page.tsx` + `UsuariosFiltros.tsx`**
+- [x] **36-T10 — `app/admin/usuarios/page.tsx` + `UsuariosFiltros.tsx`**
   Satisfies: US-3
   Depends on: 36-T6, Paquete VGRP-35 mergeado
   Notes: Server Component que consulta `listarUsuarios` con `createServiceRoleClient()`.
@@ -421,7 +435,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   `admin.module.css` (recomendación del diseño; queda para `/design-critique` decidir si van
   a `components/ui`).
 
-- [ ] **36-T11 — `app/admin/usuarios/[id]/page.tsx` + `CambiarNivelForm.tsx`**
+- [x] **36-T11 — `app/admin/usuarios/[id]/page.tsx` + `CambiarNivelForm.tsx`**
   Satisfies: US-3, US-4
   Depends on: 36-T6, 36-T8
   Notes: Server Component: datos del usuario, nivel activo, `progreso` (JSON formateado),
@@ -431,7 +445,7 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   Mostrar `fieldErrors` del `400` con `FormError`. Primitivas: `Button`, `FormError`,
   `TextField`.
 
-- [ ] **36-T12 — `rls.test.ts`: `describe` de `nivel_overrides` (default-deny para `authenticated`)**
+- [x] **36-T12 — `rls.test.ts`: `describe` de `nivel_overrides` (default-deny para `authenticated`)**
   Satisfies: US-4
   Depends on: 36-T1
   Notes: Nuevo `describe` en `test/integration/rls.test.ts`: un usuario `authenticated`
@@ -439,19 +453,30 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   (0 filas / error). La tabla no tiene policies para `authenticated` → RLS deniega todo por
   default (design.md §"Sanitización de acceso admin en la capa de datos").
 
-- [ ] **36-T13 — `e2e/admin-activar-nivel.spec.ts` (Playwright)**
+- [x] **36-T13 — `e2e/admin-activar-nivel.spec.ts` (Playwright)**
   Satisfies: US-3, US-4
   Depends on: 36-T10, 36-T11
   Notes: Admin busca un usuario por email, abre el detalle, cambia el nivel indicando un
   motivo, ve la confirmación y el nivel nuevo reflejado. Puede ir último del paquete.
 
-- [ ] **36-T14 — `/simplify` sobre el código nuevo del paquete**
+- [x] **36-T14 — `/simplify` sobre el código nuevo del paquete**
   Satisfies: US-3, US-4
   Depends on: 36-T6, 36-T8, 36-T10, 36-T11
+  ESTADO: aplicado. (1) Extraído `lib/data/admin/keyset.ts` compartido
+  (encode/decode/keysetFilter/escaparLike) — `usuarios.ts` y `audit-log.ts`
+  lo usan en vez de duplicar el cursor + el escape de LIKE. (2)
+  `obtenerUsuario` corre sus 3 consultas independientes (rpc + pagos +
+  overrides) con `Promise.all` en vez de en serie.
 
-- [ ] **36-T15 — `/design-critique` sobre listado, detalle y `CambiarNivelForm`**
+- [x] **36-T15 — `/design-critique` sobre listado, detalle y `CambiarNivelForm`**
   Satisfies: US-3, US-4
   Depends on: 36-T10, 36-T11
+  ESTADO: corrido. Decisión: se mantienen `<select>`/`<textarea>` NATIVOS
+  estilados en `admin.module.css` (recomendación del diseño para herramienta
+  interna) → **NO** se agregan `Select`/`Textarea` a `components/ui`, **NO**
+  se corre `/design-system`. Fix aplicado: `proveedor_ref` y `motivo` en los
+  mini-ledgers pasan de un badge en mayúsculas (ilegible para strings largos)
+  a texto secundario que se corta (`.filaMeta`).
   Notes: Obligatorio (CLAUDE.md item 2). Si el critique decide `Select`/`Textarea`
   compartidos en `components/ui`, agregar esos componentes y correr **`/design-system`**
   (CLAUDE.md item 3) — eso suma alcance a esta PR (design.md §"Open questions / risks" #9).

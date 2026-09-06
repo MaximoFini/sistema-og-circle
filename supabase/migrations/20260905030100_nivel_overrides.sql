@@ -1,0 +1,131 @@
+-- =============================================================================
+-- VGRP-36 / Bloque 5 — Tabla `nivel_overrides` + `nivel_vigente()` v3
+-- =============================================================================
+-- Escrita a mano siguiendo el mismo criterio que las migraciones previas de
+-- este repo (20260822035923_init_plataforma.sql, 20260905023031_nivel_vigente_
+-- precedencia.sql, 20260905030000_admin_audit_log_indices.sql). Revisada línea
+-- por línea contra design.md §"VGRP-36 — `nivel_overrides` + `nivel_vigente()`
+-- v3".
+--
+-- APLICADA el 2026-09-05 con `apply_migration` (MCP de Supabase) en el proyecto
+-- real (og-circle, ref hsmodrhbwkromoixrxrt, región sa-east-1 — ver
+-- docs/SUPABASE-SETUP.md). `lib/database.types.ts` se regeneró después con
+-- `generate_typescript_types` (suma `nivel_overrides` Row/Insert/Update).
+-- `get_advisors` (security + performance) corrido después — ver el cuerpo de la
+-- PR de VGRP-36.
+-- =============================================================================
+--
+-- POR QUÉ ESTA TABLA (design.md §Overview): US-4 pide poder fijar CUALQUIER
+-- nivel del enum a mano (incluido bajar a `ninguno`) sin que exista un pago de
+-- Mercado Pago asociado — algo que no se puede hacer insertando una fila
+-- sintética en `pagos` (`nivel_vigente` toma el MÁXIMO del ledger, así que una
+-- fila sintética no permite BAJAR el nivel). `nivel_overrides` es un ledger
+-- append-only paralelo que `nivel_vigente()` v3 pasa a considerar; el webhook
+-- de Mercado Pago no cambia y sigue llamando a la misma función.
+--
+-- APPEND-ONLY: una fila por acción de activación manual. Nunca se hace UPDATE
+-- ni DELETE (mismo criterio que `pagos`). "Gana" la fila más reciente por
+-- usuario. Es además un registro de auditoría en sí mismo, redundante con
+-- `admin_audit_log` a propósito: vive en el dominio de negocio y sobrevive
+-- aunque se borre el actor.
+
+create table public.nivel_overrides (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id),
+  nivel public.nivel_acceso not null,
+  motivo text not null,
+  actor_id uuid references public.profiles (id),
+  created_at timestamptz not null default now()
+);
+
+create index nivel_overrides_user_created_idx
+  on public.nivel_overrides (user_id, created_at desc);
+
+comment on table public.nivel_overrides is
+  'Activaciones/cambios manuales de nivel desde el panel de admin (VGRP-36). '
+  'Append-only. nivel_vigente() considera la fila más reciente por usuario y la '
+  'aplica si es posterior al último pago approved no reembolsado — así un pago '
+  'real posterior siempre supera un override viejo.';
+
+-- RLS default-deny: sin policies para `authenticated` -> RLS deniega TODO por
+-- defecto (igual que `pagos` para insert/update). Sólo `service_role`
+-- (BYPASSRLS) escribe y lee — el panel consulta por service role; la barrera
+-- de autorización es el check de rol de la capa de ruta (design.md
+-- §"Sanitización de acceso admin en la capa de datos").
+alter table public.nivel_overrides enable row level security;
+revoke all on public.nivel_overrides from anon, authenticated;
+grant all on public.nivel_overrides to service_role;
+
+-- ---------------------------------------------------------------------------
+-- nivel_vigente() v3 — ahora considera `nivel_overrides`.
+-- ---------------------------------------------------------------------------
+-- GARANTÍA (design.md §"Open questions / risks" #1, 36-T3): con CERO filas en
+-- `nivel_overrides` el resultado es IDÉNTICO al de la v2
+-- (20260905023031_nivel_vigente_precedencia.sql). El CTE `ledger` reproduce la
+-- lógica v2 (nivel más alto entre pagos approved sin refunded posterior); si no
+-- hay override, el `coalesce` cae a `(select nivel from ledger)`, que es
+-- exactamente `order by nivel_comprado desc limit 1`.
+--
+-- El override "gana" sólo si su `created_at` es >= al del último pago approved
+-- no reembolsado (`ledger.at` = max(created_at) de esos pagos). Consecuencia
+-- deseada: si un admin baja a alguien a `ninguno` y esa persona después paga
+-- por MP, el pago (más nuevo) restaura el acceso automáticamente en la
+-- siguiente re-proyección del webhook.
+--
+-- La comparación asume que `pagos.created_at` es la hora de INSERCIÓN de la
+-- fila (`default now()`, init_plataforma.sql) — el webhook `insertarPago` no
+-- setea `created_at`, así que refleja cuándo se procesó la notificación, no el
+-- `date_created` de Mercado Pago. Un override sólo puede "tapar" un pago
+-- procesado ANTES que él.
+--
+-- La comparación de niveles se apoya en el orden de declaración del enum
+-- (`avanzado` > `principiante` > `ninguno`) — ver el comentario extenso de la
+-- migración v2.
+create or replace function public.nivel_vigente(p_user_id uuid)
+returns public.nivel_acceso
+language sql
+stable
+set search_path = ''
+as $$
+  with ledger as (
+    select max(p.nivel_comprado) as nivel, max(p.created_at) as at
+    from public.pagos p
+    where p.user_id = p_user_id
+      and p.estado = 'approved'
+      and not exists (
+        select 1 from public.pagos r
+        where r.proveedor_ref = p.proveedor_ref and r.estado = 'refunded'
+      )
+  ),
+  ovr as (
+    select nivel, created_at as at
+    from public.nivel_overrides
+    where user_id = p_user_id
+    order by created_at desc
+    limit 1
+  )
+  select coalesce(
+    -- el override gana sólo si es igual o posterior al último pago relevante
+    (select o.nivel from ovr o, ledger l
+     where o.at >= coalesce(l.at, '-infinity'::timestamptz)),
+    (select nivel from ledger),           -- lógica v2 intacta
+    'ninguno'::public.nivel_acceso
+  );
+$$;
+
+comment on function public.nivel_vigente(uuid) is
+  'Deriva el nivel de acceso vigente de un usuario. v3 (VGRP-36): considera '
+  'public.nivel_overrides (activación manual del panel de admin) además del '
+  'ledger de pagos. El override más reciente por usuario gana si su created_at '
+  'es >= al del último pago approved sin refunded posterior; si no hay '
+  'override, cae a la lógica v2 (nivel MÁS ALTO del ledger, nunca el más '
+  'reciente). Válido porque nivel_acceso está declarado en orden de '
+  'precedencia. Con cero overrides el resultado es idéntico a la v2.';
+
+-- ---------------------------------------------------------------------------
+-- Índice para el listado de usuarios del panel (order by created_at desc + id
+-- desc, keyset). Sin índice trigram para `email ilike '%q%'`: a la escala de
+-- STACK.md (cientos a pocos miles de usuarios) el seq scan es irrelevante y
+-- pg_trgm es una extensión más para mantener. Revisar si `profiles` supera
+-- ~50k filas.
+create index profiles_created_at_idx on public.profiles (created_at desc, id desc);

@@ -25,9 +25,26 @@ const SEED_EMAILS = new Set(SEED_USERS.map((u) => u.email));
  *   que quedó como `actor_id` no se puede borrar hasta borrar antes su fila
  *   de auditoría, o el DELETE de auth.users falla por violación de FK y
  *   corta toda la limpieza a mitad de camino.
+ * - `nivel_overrides.user_id` Y `nivel_overrides.actor_id` -> `profiles.id`
+ *   (VGRP-36, sin cascade — misma trampa que `pagos`/`admin_audit_log`). Un
+ *   test de activación manual deja una fila que referencia al usuario objetivo
+ *   por `user_id` y al admin por `actor_id`; hay que borrar por las dos
+ *   columnas antes de tocar `auth.users`.
  * `profiles` la borra sola el ON DELETE CASCADE de `profiles.id -> auth.users.id`.
  */
 async function deleteFkDependents(admin: ReturnType<typeof createTestAdminClient>, userId: string) {
+  const { error: overridesUserError } = await admin
+    .from("nivel_overrides")
+    .delete()
+    .eq("user_id", userId);
+  if (overridesUserError) throw overridesUserError;
+
+  const { error: overridesActorError } = await admin
+    .from("nivel_overrides")
+    .delete()
+    .eq("actor_id", userId);
+  if (overridesActorError) throw overridesActorError;
+
   const { error: auditError } = await admin.from("admin_audit_log").delete().eq("actor_id", userId);
   if (auditError) throw auditError;
 
@@ -90,9 +107,22 @@ export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number 
 
   const testUserIds = testUsers.map((u) => u.id);
 
-  // Van antes de borrar ningún usuario: admin_audit_log.actor_id y
-  // pagos.user_id son FKs sin cascade a profiles — dejarlas colgadas rompe
-  // el DELETE de auth.users con una violación de FK.
+  // Van antes de borrar ningún usuario: admin_audit_log.actor_id,
+  // pagos.user_id y nivel_overrides.{user_id,actor_id} son FKs sin cascade a
+  // profiles — dejarlas colgadas rompe el DELETE de auth.users con una
+  // violación de FK.
+  const { error: overridesUserError } = await admin
+    .from("nivel_overrides")
+    .delete()
+    .in("user_id", testUserIds);
+  if (overridesUserError) throw overridesUserError;
+
+  const { error: overridesActorError } = await admin
+    .from("nivel_overrides")
+    .delete()
+    .in("actor_id", testUserIds);
+  if (overridesActorError) throw overridesActorError;
+
   const { error: auditError } = await admin
     .from("admin_audit_log")
     .delete()

@@ -392,6 +392,60 @@ describe("admin_audit_log_select_admin: sólo un rol=admin lee la auditoría (VG
   });
 });
 
+describe("nivel_overrides: default-deny para authenticated (VGRP-36)", () => {
+  // La tabla no tiene NINGUNA policy para `authenticated` y además `revoke all
+  // ... from authenticated` (a diferencia de `pagos`/`admin_audit_log`, que sí
+  // tienen `grant select` + una policy que devuelve 0 filas). Sin el grant,
+  // PostgREST corta ANTES de RLS con `42501 permission denied` — una barrera
+  // aún más dura. Sólo `service_role` (BYPASSRLS) escribe y lee. Ver design.md
+  // §"Sanitización de acceso admin en la capa de datos" y la migración
+  // 20260905030100_nivel_overrides.sql.
+  let userId: string | null = null;
+  let overrideId: string | null = null;
+
+  afterEach(async () => {
+    if (overrideId) {
+      await admin.from("nivel_overrides").delete().eq("id", overrideId);
+      overrideId = null;
+    }
+    if (userId) await cleanupUser(userId);
+    userId = null;
+  });
+
+  it("un usuario authenticated común no puede leer nivel_overrides", async () => {
+    const user = await crearUsuarioLogueado();
+    userId = user.userId;
+
+    const { data: creado, error: insertError } = await admin
+      .from("nivel_overrides")
+      .insert({ user_id: userId, nivel: "avanzado", motivo: "test-rls", actor_id: userId })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+    overrideId = creado.id;
+
+    const { data, error } = await user.client.from("nivel_overrides").select().eq("id", overrideId);
+
+    expect(error).not.toBeNull();
+    expect(error?.code).toBe("42501");
+    expect(data ?? []).toHaveLength(0);
+  });
+
+  it("un usuario authenticated común no puede insertar en nivel_overrides", async () => {
+    const user = await crearUsuarioLogueado();
+    userId = user.userId;
+
+    const { error } = await user.client
+      .from("nivel_overrides")
+      .insert({ user_id: userId, nivel: "avanzado", motivo: "intento", actor_id: userId });
+
+    expect(error).not.toBeNull();
+
+    const { data: filas } = await admin.from("nivel_overrides").select("id").eq("user_id", userId);
+    expect(filas ?? []).toHaveLength(0);
+  });
+});
+
 // Criterio del ticket: "un token de nivel principiante no ve contenido de
 // avanzado" y "un usuario ninguno no lee contenido de ningún nivel pago". El
 // esquema actual (profiles / pagos / admin_audit_log / leads, ver

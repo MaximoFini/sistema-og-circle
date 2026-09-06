@@ -6,10 +6,10 @@
 //   supabase gen types typescript --project-id hsmodrhbwkromoixrxrt > lib/database.types.ts
 // (o vía el MCP de Supabase: generate_typescript_types)
 //
-// Regenerado 2026-08-27 (VGRP-44) para sumar test_get_policy_definition,
-// test_drop_policy y test_create_policy (ver
-// supabase/migrations/20260827161404_test_rls_toggle_helpers.sql). El
-// generador no infiere nulabilidad de parámetros de función escalares ni el
+// Regenerado 2026-09-05 (VGRP-36) para sumar `nivel_overrides`
+// (Row/Insert/Update) — ver supabase/migrations/20260905030100_nivel_overrides.sql.
+//
+// El generador no infiere nulabilidad de parámetros de función escalares ni el
 // tipo de elemento de `name[]` — dos ajustes A MANO sobre el output crudo,
 // marcados donde están, que hay que volver a aplicar si se regenera nuevo:
 //   - test_create_policy.Args.p_qual / p_with_check: el generador los marca
@@ -25,7 +25,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17";
+    PostgrestVersion: "14.5";
   };
   public: {
     Tables: {
@@ -93,6 +93,48 @@ export type Database = {
           origen?: string | null;
         };
         Relationships: [];
+      };
+      nivel_overrides: {
+        Row: {
+          actor_id: string | null;
+          created_at: string;
+          id: string;
+          motivo: string;
+          nivel: Database["public"]["Enums"]["nivel_acceso"];
+          user_id: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          created_at?: string;
+          id?: string;
+          motivo: string;
+          nivel: Database["public"]["Enums"]["nivel_acceso"];
+          user_id: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          created_at?: string;
+          id?: string;
+          motivo?: string;
+          nivel?: Database["public"]["Enums"]["nivel_acceso"];
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "nivel_overrides_actor_id_fkey";
+            columns: ["actor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "nivel_overrides_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       pagos: {
         Row: {
@@ -356,8 +398,5 @@ export const Constants = {
   },
 } as const;
 
-// Alias de conveniencia usados por lib/auth/claims.ts y el resto del repo —
-// no son parte del output del generador, se agregan acá para no duplicar
-// los strings de los enums en otro archivo.
 export type NivelAcceso = Database["public"]["Enums"]["nivel_acceso"];
 export type RolUsuario = Database["public"]["Enums"]["rol_usuario"];
