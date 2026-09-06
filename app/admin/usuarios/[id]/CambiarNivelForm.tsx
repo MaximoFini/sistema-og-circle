@@ -1,15 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useTransition } from "react";
 import { Button, FormError } from "@/components/ui";
 import { Constants, type NivelAcceso } from "@/lib/database.types";
 import styles from "../../admin.module.css";
 
 // VGRP-36 — cambio manual de nivel. Client Component: `fetch` POST a
-// `/api/admin/usuarios/[id]/nivel` -> `router.refresh()` para que el Server
-// Component de la ficha vuelva a leer el nivel/overrides. Muestra los
-// `fieldErrors` del 400 con `FormError`.
+// `/api/admin/usuarios/[id]/nivel` -> `router.refresh()` dentro de un
+// `startTransition` para que la ficha (Server Component) vuelva a leer el
+// nivel/overrides y el botón se mantenga en estado "aplicando…" HASTA que ese
+// re-render termine. Sin la transición, `router.refresh()` dispara el refetch
+// pero no se espera: el botón vuelve a estado normal de inmediato y la pantalla
+// se ve sin cambios hasta que Next repinta solo — parece que no hizo nada.
+// Muestra los `fieldErrors` del 400 con `FormError`.
 
 const NIVELES = Constants.public.Enums.nivel_acceso;
 
@@ -26,6 +30,7 @@ export function CambiarNivelForm({
   nivelActual: NivelAcceso;
 }) {
   const router = useRouter();
+  const [refrescando, startTransition] = useTransition();
   const [nivel, setNivel] = useState<NivelAcceso>(nivelActual);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -54,7 +59,11 @@ export function CambiarNivelForm({
         // Resincronizar el <select> con el nivel que quedó vigente: puede
         // diferir del elegido (p. ej. un pago posterior al override gana).
         setNivel(data.nivelNuevo);
-        router.refresh();
+        // Re-fetch de la ficha (Server Component). En una transición para que
+        // `refrescando` siga true hasta que el re-render termine.
+        startTransition(() => {
+          router.refresh();
+        });
         return;
       }
 
@@ -102,7 +111,7 @@ export function CambiarNivelForm({
       <FormError>{errorGeneral}</FormError>
       {ok ? <p className={styles.formOk}>{ok}</p> : null}
 
-      <Button type="submit" loading={enviando}>
+      <Button type="submit" loading={enviando || refrescando}>
         Aplicar cambio
       </Button>
     </form>
