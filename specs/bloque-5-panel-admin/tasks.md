@@ -239,9 +239,14 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   `auditoria/page.tsx` + `not-found.tsx`. Aplicar el feedback antes de dar las pantallas por
   terminadas.
 
-- [ ] **35-T16 — Abrir PR de VGRP-35**
+- [~] **35-T16 — Abrir PR de VGRP-35**
   Satisfies: US-1, US-2
   Depends on: 35-T1..35-T15
+  ESTADO (impl VGRP-35): rama `bloque-5/vgrp-35-panel-admin-base` pusheada a
+  `origin` (commit `a56781e`). `gh pr create` quedó bloqueado por el
+  clasificador de permisos de la sesión → **el coordinador abre la PR** con el
+  cuerpo ya redactado (link "Create a pull request" que devolvió el push, o el
+  texto guardado en el scratchpad de la sesión). Base `main`.
   Notes: Verificar la DoD del paquete completa. PR describiendo el ticket (rol + protección
   de rutas + audit log + migración de índices + doc de alta de admin). Push por Claude Code.
 
