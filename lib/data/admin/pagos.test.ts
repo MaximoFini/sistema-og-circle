@@ -280,6 +280,70 @@ describe("listarPagos", () => {
     expect(pagos[0].sin_aplicar).toBe(false);
   });
 
+  it("NO marca sin_aplicar cuando un nivel_overrides POSTERIOR al pago lo tapa (baja manual del admin)", async () => {
+    // Usuario con pago approved de `avanzado` sin proyectar -> profiles.nivel
+    // sigue en `ninguno`, así que sin este cambio la fila daría sin_aplicar=true.
+    const u = await nuevoUsuario("ninguno");
+    const ref = `test-ref-${randomUUID()}`;
+    await insertarPago(admin, {
+      userId: u.userId,
+      proveedorRef: ref,
+      nivelComprado: "avanzado",
+      montoArs: 5000,
+      estado: "approved",
+      payloadRaw: {},
+    });
+
+    const antesOverride = await listarPagos(admin, { proveedorRef: ref, limit: 10 });
+    expect(antesOverride.pagos[0].sin_aplicar).toBe(true);
+    const totalConFalsoPositivo = await contarPagosSinAplicar(admin);
+
+    // El admin baja el nivel a mano DESPUÉS del pago (override.created_at >= pago).
+    const { error } = await admin.from("nivel_overrides").insert({
+      user_id: u.userId,
+      nivel: "principiante",
+      motivo: "baja manual",
+      actor_id: actorId,
+    });
+    if (error) throw error;
+
+    const { pagos } = await listarPagos(admin, { proveedorRef: ref, limit: 10 });
+    expect(pagos).toHaveLength(1);
+    expect(pagos[0].sin_aplicar).toBe(false); // el override posterior lo tapa
+    // <= por si otro archivo de test (corren en paralelo) mueve el conteo global
+    // en la ventana entre las dos lecturas; lo que importa es que ESTE pago dejó
+    // de contar, ya verificado con `sin_aplicar === false` arriba.
+    expect(await contarPagosSinAplicar(admin)).toBeLessThanOrEqual(totalConFalsoPositivo - 1);
+  });
+
+  it("SÍ marca sin_aplicar cuando el pago es POSTERIOR al override (override viejo no lo tapa)", async () => {
+    const u = await nuevoUsuario("ninguno");
+
+    // Override viejo primero...
+    const { error } = await admin.from("nivel_overrides").insert({
+      user_id: u.userId,
+      nivel: "principiante",
+      motivo: "activacion vieja",
+      actor_id: actorId,
+    });
+    if (error) throw error;
+
+    // ...y después un pago approved de nivel más alto, sin proyectar (webhook falló).
+    const ref = `test-ref-${randomUUID()}`;
+    await insertarPago(admin, {
+      userId: u.userId,
+      proveedorRef: ref,
+      nivelComprado: "avanzado",
+      montoArs: 5000,
+      estado: "approved",
+      payloadRaw: {},
+    });
+
+    const { pagos } = await listarPagos(admin, { proveedorRef: ref, limit: 10 });
+    expect(pagos).toHaveLength(1);
+    expect(pagos[0].sin_aplicar).toBe(true); // override más viejo que el pago: no lo tapa
+  });
+
   it("totalSinAplicar sube al sembrar un pago sin aplicar", async () => {
     const antes = await contarPagosSinAplicar(admin);
     const u = await nuevoUsuario("ninguno");

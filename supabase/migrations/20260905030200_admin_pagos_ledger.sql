@@ -21,6 +21,12 @@
 -- hallazgo nuevo por esta migración es `unused_index` (INFO) sobre
 -- `pagos_created_at_idx`, esperado: sin tráfico todavía. Ninguno es bloqueante.
 -- Ver el cuerpo de la PR de VGRP-37 para el detalle completo.
+--
+-- ACTUALIZADA el 2026-09-06 (migración `admin_pagos_ledger_excluir_overrides`,
+-- opción B): `sin_aplicar` ahora excluye los pagos tapados por un
+-- `nivel_overrides` posterior — ver el bloque más abajo. `create or replace
+-- view` (columnas y orden idénticos); grants/security_invoker sin cambios.
+-- `get_advisors` re-corrido: nada nuevo. `lib/database.types.ts` sin diff.
 -- =============================================================================
 --
 -- POR QUÉ ESTA VISTA (design.md §"Detección de pago aprobado sin nivel
@@ -31,12 +37,24 @@
 -- total (`totalSinAplicar`) sin traer todo a memoria.
 --
 -- `sin_aplicar` = el pago está `approved`, NO tiene un `refunded` para su
--- `proveedor_ref`, y lo que compró es MÁS ALTO que el nivel actual del perfil.
+-- `proveedor_ref`, lo que compró es MÁS ALTO que el nivel actual del perfil, y
+-- NO hay un `nivel_overrides` posterior al pago que lo "tape".
 -- La comparación por `>` sobre el enum `nivel_acceso` (declarado en orden de
 -- precedencia: `avanzado` > `principiante` > `ninguno`) es lo que hace correcto
 -- el caso "compró Principiante y después Avanzado": la fila de Principiante
 -- nunca se marca porque `principiante > avanzado` es falso — sólo se marca lo
 -- genuinamente no aplicado.
+--
+-- EXCLUSIÓN POR OVERRIDE POSTERIOR (opción B, decidida por el coordinador —
+-- espeja `nivel_vigente()` v3, "un override posterior al pago gana"): si existe
+-- una fila en `public.nivel_overrides` para el usuario con `created_at >=` al
+-- `created_at` del pago (activación/baja manual del admin posterior al pago), el
+-- pago NO se marca `sin_aplicar`. Antes, si un admin bajaba el nivel a mano, el
+-- pago legítimo anterior de nivel más alto quedaba marcado como falso positivo
+-- para siempre y `totalSinAplicar` quedaba permanentemente >= 1. Un pago NUEVO
+-- de nivel más alto que entra DESPUÉS del override (override más viejo que el
+-- pago) se sigue marcando bien: verdadero positivo, el webhook falló en
+-- proyectarlo.
 --
 -- `payload_raw` NO va en la vista: es JSON crudo y pesado, sólo se muestra en
 -- el detalle de un pago y filtrado (`sanitizarPayloadRaw`, lib/data/admin/pagos.ts).
@@ -52,10 +70,11 @@
 --     acá Y en `nivel_vigente()`.
 --  2. `pr.nivel` (no un `nivel_vigente()` fresco) es el nivel YA MATERIALIZADO
 --     por la última proyección — lo mismo que ve el claim y el gating. Un
---     override manual que bajó el nivel a propósito puede dejar un pago approved
---     de nivel más alto marcado `sin_aplicar` de forma persistente; es un
---     compromiso conocido (design.md §"Detección…") y aceptable: el badge es una
---     señal para que el admin mire, no una acción automática.
+--     override manual posterior al pago (activación/baja manual del admin) NO
+--     deja el pago marcado `sin_aplicar`: la condición extra del `and` lo
+--     excluye, espejando `nivel_vigente()` v3 ("un override posterior gana").
+--     El badge sigue siendo una señal para que el admin mire, no una acción
+--     automática.
 
 create view public.admin_pagos_ledger
 with (security_invoker = true)
@@ -78,6 +97,12 @@ select
       where r.proveedor_ref = p.proveedor_ref and r.estado = 'refunded'
     )
     and p.nivel_comprado > pr.nivel
+    -- Un override posterior al pago (activación/baja manual del admin) lo tapa —
+    -- espeja `nivel_vigente()` v3 ("un override posterior al pago gana").
+    and not exists (
+      select 1 from public.nivel_overrides o
+      where o.user_id = p.user_id and o.created_at >= p.created_at
+    )
   ) as sin_aplicar
 from public.pagos p
 join public.profiles pr on pr.id = p.user_id;
@@ -85,8 +110,9 @@ join public.profiles pr on pr.id = p.user_id;
 comment on view public.admin_pagos_ledger is
   'Ledger de pagos para el panel de admin (VGRP-37). Une pagos + profiles y '
   'calcula `sin_aplicar` (pago approved, sin refunded para su proveedor_ref, '
-  'con nivel_comprado > nivel actual del perfil). Se consulta SÓLO por service '
-  'role; security_invoker = true, sin grants a anon/authenticated.';
+  'con nivel_comprado > nivel actual del perfil, y sin un nivel_overrides '
+  'posterior que lo tape — espeja nivel_vigente() v3). Se consulta SÓLO por '
+  'service role; security_invoker = true, sin grants a anon/authenticated.';
 
 -- La vista se consulta por service role (BYPASSRLS); no se expone a los roles
 -- de cliente. `revoke` explícito por si algún grant por defecto de `PUBLIC`

@@ -542,6 +542,14 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   `admin_pagos_ledger` (`security_invoker = true`, `revoke` anon/authenticated,
   `grant select` a service_role) + columna calculada `sin_aplicar` (`>` sobre el
   enum) + índice `pagos_created_at_idx`. Archivo versionado con header checklist.
+  **Ajuste 2026-09-06 (opción B, migración `admin_pagos_ledger_excluir_overrides`):**
+  `sin_aplicar` suma una condición más al `and` — NO se marca el pago si existe
+  un `nivel_overrides` para el usuario con `created_at >= pago.created_at`. Espeja
+  `nivel_vigente()` v3 ("un override posterior al pago gana"): una baja manual
+  del admin ya no deja el pago legítimo anterior como falso positivo permanente
+  (`totalSinAplicar` no queda pegado en >= 1). Un pago nuevo de nivel más alto
+  posterior al override se sigue marcando (verdadero positivo). 2 tests nuevos en
+  `lib/data/admin/pagos.test.ts`.
   Notes: Contenido exacto en design.md §"VGRP-37 — vista `admin_pagos_ledger`":
   - `create view public.admin_pagos_ledger with (security_invoker = true) as select …` — las
     columnas del diseño (`id, user_id, proveedor, proveedor_ref, nivel_comprado, monto_ars,
