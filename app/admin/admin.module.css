@@ -454,3 +454,107 @@
   font-size: 14px;
   margin: 0;
 }
+
+/* --- Ledger de pagos (VGRP-37) -------------------------------------- */
+
+/* Badge de estado del pago: neutro por defecto. */
+.badgeEstado {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* `sin aplicar`: es LO que el admin tiene que cazar — acento ámbar, alto
+   contraste, sin depender del color para el significado (el texto lo dice). */
+.badgeSinAplicar {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--accent-40);
+  border-radius: var(--radius-control);
+  background: var(--accent-12, var(--surface-2));
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  color: var(--accent-from);
+  white-space: nowrap;
+}
+
+.pagoDatos {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Contenedor de los badges de una fila / cabecera de detalle. */
+.badgeFila {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.notaFiltrada {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.reprocesar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  max-width: 420px;
+}
+
+/* --- Callout del índice: pagos sin aplicar (VGRP-37 / 37-T11) -------- */
+.callout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-1);
+  transition:
+    border-color var(--duration-base),
+    background var(--duration-base);
+}
+
+.callout:hover {
+  border-color: var(--glass-border-active);
+  background: var(--surface-1-hover);
+}
+
+.calloutAlerta {
+  border-color: var(--accent-40);
+}
+
+.calloutNumero {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: clamp(32px, 6vw, 44px);
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.calloutAlerta .calloutNumero {
+  color: var(--accent-from);
+}
+
+.calloutTexto {
+  color: var(--text-secondary);
+  font-size: 14px;
+}

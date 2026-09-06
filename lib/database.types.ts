@@ -6,8 +6,9 @@
 //   supabase gen types typescript --project-id hsmodrhbwkromoixrxrt > lib/database.types.ts
 // (o vía el MCP de Supabase: generate_typescript_types)
 //
-// Regenerado 2026-09-05 (VGRP-36) para sumar `nivel_overrides`
-// (Row/Insert/Update) — ver supabase/migrations/20260905030100_nivel_overrides.sql.
+// Regenerado 2026-09-06 (VGRP-37) para sumar la vista `admin_pagos_ledger`
+// a `Database["public"]["Views"]` — ver
+// supabase/migrations/20260905030200_admin_pagos_ledger.sql.
 //
 // El generador no infiere nulabilidad de parámetros de función escalares ni el
 // tipo de elemento de `name[]` — dos ajustes A MANO sobre el output crudo,
@@ -224,7 +225,30 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      admin_pagos_ledger: {
+        Row: {
+          created_at: string | null;
+          estado: string | null;
+          id: string | null;
+          monto_ars: number | null;
+          nivel_comprado: Database["public"]["Enums"]["nivel_acceso"] | null;
+          proveedor: string | null;
+          proveedor_ref: string | null;
+          sin_aplicar: boolean | null;
+          user_email: string | null;
+          user_id: string | null;
+          user_nivel_actual: Database["public"]["Enums"]["nivel_acceso"] | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pagos_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
