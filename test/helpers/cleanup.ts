@@ -88,6 +88,11 @@ export async function cleanupUser(userId: string) {
  * recrea/corrige, nunca los duplica), así que no son "residuo" — son el
  * estado de partida esperado.
  *
+ * Excepción: el pago sintético `proveedor='seed'` que `seed-test-users.ts`
+ * le inserta a los usuarios seed de nivel pago (para que `nivel_vigente()`
+ * coincida con `profiles.nivel`) NO se borra — es parte de ese estado de
+ * partida. Todo lo demás en `pagos` de un usuario seed sí se limpia.
+ *
  * `pagos`/`admin_audit_log` se borran en una sola query cada uno (`IN`) y
  * los usuarios se borran en paralelo: no hay necesidad de serializar N
  * round-trips independientes contra la API de Supabase.
@@ -106,6 +111,15 @@ export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number 
   if (testUsers.length === 0) return { usersDeleted: 0 };
 
   const testUserIds = testUsers.map((u) => u.id);
+  // Los 4 usuarios seed no se borran; sus filas hijas SÍ se vacían salvo el
+  // pago sintético `proveedor='seed'` que `seed-test-users.ts` les inserta
+  // para que `nivel_vigente()` coincida con `profiles.nivel` — ese es estado
+  // de partida, no residuo (ver el comentario de la función).
+  const seedUserIds = testUsers
+    .filter((u) => u.email && SEED_EMAILS.has(u.email))
+    .map((u) => u.id);
+  const seedUserIdSet = new Set(seedUserIds);
+  const adHocUserIds = testUserIds.filter((id) => !seedUserIdSet.has(id));
 
   // Van antes de borrar ningún usuario: admin_audit_log.actor_id,
   // pagos.user_id y nivel_overrides.{user_id,actor_id} son FKs sin cascade a
@@ -129,8 +143,24 @@ export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number 
     .in("actor_id", testUserIds);
   if (auditError) throw auditError;
 
-  const { error: pagosError } = await admin.from("pagos").delete().in("user_id", testUserIds);
-  if (pagosError) throw pagosError;
+  // Usuarios ad-hoc: todos sus pagos (se van a borrar enteros abajo).
+  if (adHocUserIds.length > 0) {
+    const { error: pagosAdHocError } = await admin
+      .from("pagos")
+      .delete()
+      .in("user_id", adHocUserIds);
+    if (pagosAdHocError) throw pagosAdHocError;
+  }
+  // Usuarios seed: solo lo que insertó un test (todo menos el pago sintético
+  // del seed), para que el estado de partida sobreviva a la limpieza.
+  if (seedUserIds.length > 0) {
+    const { error: pagosSeedError } = await admin
+      .from("pagos")
+      .delete()
+      .in("user_id", seedUserIds)
+      .neq("proveedor", "seed");
+    if (pagosSeedError) throw pagosSeedError;
+  }
 
   const toDelete = testUsers.filter((u) => !(u.email && SEED_EMAILS.has(u.email)));
   const results = await Promise.all(

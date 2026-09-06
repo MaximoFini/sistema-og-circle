@@ -34,11 +34,41 @@ async function upsertSeedUser(
     console.log(`  + ${user.email} creado (${userId})`);
   }
 
+  // Para los niveles pagos, sembrar además una fila real en el ledger de
+  // `pagos`. Motivo: el panel de admin (VGRP-37) muestra "nivel vigente"
+  // —derivado del ledger por `nivel_vigente()`— al lado de "nivel en el
+  // perfil" —la columna `profiles.nivel` materializada—. `applyNivelRol` solo
+  // escribe la segunda; sin un pago real, `nivel_vigente()` devuelve 'ninguno'
+  // para un usuario seed y las dos no coinciden, lo que en la ficha se lee
+  // como un bug. Con este pago, ambas dan `user.nivel`.
+  //
+  // `proveedor: 'seed'` es la marca que usa `cleanup.ts` para NO borrar esta
+  // fila al vaciar el ledger de los usuarios seed (un pago que un test le
+  // insertó a un usuario seed sí es residuo; este no). `proveedor_ref`
+  // determinístico + upsert con `ignoreDuplicates` -> idempotente.
+  if (user.nivel !== "ninguno") {
+    const montoArs = user.nivel === "avanzado" ? 125_000 : 75_000; // PRD §1.1; cosmético en el ledger
+    const { error: pagoError } = await admin.from("pagos").upsert(
+      {
+        user_id: userId,
+        proveedor: "seed",
+        proveedor_ref: `seed-${user.nivel}-${userId}`,
+        nivel_comprado: user.nivel,
+        monto_ars: montoArs,
+        estado: "approved",
+        payload_raw: { seed: true },
+      },
+      { onConflict: "proveedor_ref,estado", ignoreDuplicates: true },
+    );
+    if (pagoError) throw pagoError;
+  }
+
   // El trigger on_auth_user_created (supabase/migrations/…init_plataforma.sql)
   // ya insertó la fila en profiles con nivel='ninguno'/rol='user'. applyNivelRol
   // la pisa con service role para dejar cada usuario seed en el nivel/rol que
   // le corresponde, reflejado también en app_metadata para que el próximo
-  // login emita el JWT con el claim correcto.
+  // login emita el JWT con el claim correcto. Va DESPUÉS del pago para que,
+  // aunque en el futuro se cambie por `proyectarNivel`, el ledger ya esté listo.
   await applyNivelRol(admin, userId, user.nivel, user.rol);
 }
 
