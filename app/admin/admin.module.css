@@ -278,3 +278,179 @@
   display: inline-flex;
   margin-top: var(--space-4);
 }
+
+/* --- Select / textarea nativos del panel (VGRP-36) --------------------- */
+/* Decisión del diseño: nativos estilados localmente, no primitivas de
+   components/ui — el panel es herramienta interna. Ver design.md §UI y
+   /design-critique de VGRP-36. */
+.selectNativo,
+.textareaNativo {
+  appearance: none;
+  color-scheme: dark;
+  background: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  width: 100%;
+}
+
+.textareaNativo {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.selectNativo:focus-visible,
+.textareaNativo:focus-visible {
+  outline: none;
+  border-color: var(--accent-40);
+}
+
+/* --- Listado de usuarios (VGRP-36) ------------------------------------ */
+.userRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 14px;
+}
+
+.userRow:last-child {
+  border-bottom: none;
+}
+
+.userRow:hover {
+  background: var(--surface-1-hover);
+}
+
+.userEmail {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.userAlta {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Texto secundario de una fila (motivo de un override, proveedor_ref de un
+   pago): legible, se corta donde haga falta, no compite con el dato
+   principal. NO es un badge — un ref o un motivo largo en mayúsculas con
+   letter-spacing sería ilegible. */
+.filaMeta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  flex: 1 1 100%;
+}
+
+@media (min-width: 720px) {
+  .filaMeta {
+    flex: 1 1 auto;
+    text-align: right;
+  }
+}
+
+.nivelPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  color: var(--text-secondary);
+}
+
+.nivelPillActivo {
+  color: var(--champagne);
+  border-color: var(--glass-border-active);
+}
+
+/* --- Detalle de usuario (VGRP-36) ----------------------------------- */
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.seccionTitulo {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 16px;
+  margin: 0;
+}
+
+.dl {
+  display: grid;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+@media (min-width: 560px) {
+  .dl {
+    grid-template-columns: max-content 1fr;
+  }
+}
+
+.dl dt {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.dl dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.pre {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.formCambiarNivel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 420px;
+}
+
+.formCampo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.formLabel {
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  color: var(--text-muted);
+}
+
+.formOk {
+  color: var(--champagne);
+  font-size: 14px;
+  margin: 0;
+}

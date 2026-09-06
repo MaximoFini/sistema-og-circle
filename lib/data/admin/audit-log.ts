@@ -19,6 +19,7 @@ import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database, Json } from "../../database.types";
+import { decodeCursor, encodeCursor, keysetFilter } from "./keyset";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -144,37 +145,6 @@ export interface ListarAuditResultado {
   nextCursor: string | null;
 }
 
-interface CursorKeyset {
-  createdAt: string;
-  id: string;
-}
-
-const cursorSchema = z.object({
-  // Se validan estrictamente ANTES de interpolarse en el filtro `.or()` de
-  // PostgREST: `createdAt` como ISO datetime, `id` como uuid. Un cursor
-  // fabricado con otra cosa (intento de inyectar operadores PostgREST en el
-  // OR) no pasa el schema -> se ignora (arranca desde el principio).
-  createdAt: z.iso.datetime({ offset: true }),
-  id: z.uuid(),
-});
-
-/** Cursor opaco: base64url de `{ createdAt, id }`. Malformado o con valores
- *  fuera de forma -> `null` (se ignora). */
-function decodeCursor(cursor: string | undefined): CursorKeyset | null {
-  if (!cursor) return null;
-  try {
-    const raw = Buffer.from(cursor, "base64url").toString("utf8");
-    const parsed = cursorSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
-}
-
-function encodeCursor(k: CursorKeyset): string {
-  return Buffer.from(JSON.stringify(k), "utf8").toString("base64url");
-}
-
 interface AuditDbRow {
   id: string;
   actor_id: string | null;
@@ -220,12 +190,7 @@ export async function listarAuditLog(
   if (hasta) query = query.lte("created_at", hasta);
 
   const keyset = decodeCursor(cursor);
-  if (keyset) {
-    // (created_at, id) < (cursor.createdAt, cursor.id) en orden desc.
-    query = query.or(
-      `created_at.lt.${keyset.createdAt},and(created_at.eq.${keyset.createdAt},id.lt.${keyset.id})`,
-    );
-  }
+  if (keyset) query = query.or(keysetFilter(keyset));
 
   const { data, error } = await query.returns<AuditDbRow[]>();
   if (error) throw error;
