@@ -181,7 +181,7 @@ sobre `profiles.rol`.
 **Prerequisito:** la persona ya tiene que estar **registrada** (existe su fila
 en `profiles`). Esto sólo cambia el `rol`.
 
-**Sentencia (opción A — `set_config` en la misma transacción):**
+**Sentencia (`set_config` en la misma transacción):**
 
 ```sql
 -- El trigger profiles_guard_nivel_rol_trigger (init_plataforma.sql §5) aborta
@@ -196,22 +196,14 @@ update public.profiles
 commit;
 ```
 
-**Sentencia (opción B — desactivar el trigger, requiere rol `postgres`):**
-
-```sql
-alter table public.profiles disable trigger profiles_guard_nivel_rol_trigger;
-update public.profiles set rol = 'admin' where email = 'persona@ogcircle.example';
-alter table public.profiles enable trigger profiles_guard_nivel_rol_trigger;
-```
-
-> **VERIFICACIÓN PENDIENTE (35-T12) — para el coordinador.** No se pudo probar
-> desde la sesión de implementación de VGRP-35: el MCP de Supabase no estaba
-> autorizado (`list_projects` devolvió vacío) y no hay `execute_sql`. Hay que
-> confirmar contra el proyecto real **cuál de las dos opciones funciona** en el
-> SQL editor de este proyecto y dejar documentada acá SÓLO esa. Lo más
-> probable es que la opción A alcance (es la que asume `applyNivelRol` de
-> hecho, vía `service_role`); la B es el fallback si `set_config` no satisface
-> `auth.role()` en el SQL editor.
+> **Verificado (35-T12) contra el proyecto real (`og-circle`, ref
+> `hsmodrhbwkromoixrxrt`, `sa-east-1`) el 2026-09-05:** tras
+> `set_config('request.jwt.claims','{"role":"service_role"}', true)`,
+> `auth.role()` devuelve `'service_role'`, que es exactamente lo que el guard
+> `profiles_guard_nivel_rol()` compara (`auth.role() is distinct from
+> 'service_role'` pasa a ser falso → no lanza). El `set_config` con el tercer
+> argumento en `true` es local a la transacción, así que el `update` **tiene
+> que ir en el mismo `begin; … commit;`**. No hace falta desactivar el trigger.
 
 **Propagación al claim:** no hace falta tocar `app_metadata` a mano — el Auth
 Hook (`custom_access_token_hook`) lee `profiles.rol` fresco en cada emisión de

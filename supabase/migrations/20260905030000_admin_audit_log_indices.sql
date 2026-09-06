@@ -3,20 +3,17 @@
 -- =============================================================================
 -- Escrita a mano siguiendo el mismo criterio que las migraciones previas de
 -- este repo (20260822035923_init_plataforma.sql, 20260905023031_nivel_vigente_
--- precedencia.sql): esta máquina no tiene el Supabase CLI ni el MCP de Supabase
--- autorizado apuntando al proyecto (`list_projects` devolvió vacío al
--- implementar VGRP-35), así que NO fue posible aplicarla con `apply_migration`
--- ni correr `get_advisors` después. Revisada línea por línea contra
--- design.md §"VGRP-35 — índices en admin_audit_log".
+-- precedencia.sql). Revisada línea por línea contra design.md §"VGRP-35 —
+-- índices en admin_audit_log".
 --
--- Antes de aplicarla en el proyecto real (og-circle, ref hsmodrhbwkromoixrxrt,
--- región sa-east-1 — ver docs/SUPABASE-SETUP.md):
---   1. `apply_migration` con este archivo (o `supabase db push`).
---   2. `get_advisors` (security + performance) — se espera CERO hallazgos
---      nuevos: sólo se agregan 2 índices, no se toca ninguna policy, grant,
---      tabla ni función.
---   3. NO hace falta regenerar `lib/database.types.ts`: un índice no cambia la
---      forma de la tabla.
+-- APLICADA el 2026-09-05 con `apply_migration` (MCP de Supabase) en el proyecto
+-- real (og-circle, ref hsmodrhbwkromoixrxrt, región sa-east-1 — ver
+-- docs/SUPABASE-SETUP.md). `get_advisors` (security + performance) corrido
+-- después: sin hallazgos nuevos (los 2 índices aparecen como `unused_index`
+-- INFO por no haber recibido tráfico todavía, esperado; el único WARN de
+-- seguridad, `auth_leaked_password_protection`, es pre-existente y ajeno a
+-- esta migración). NO se regeneró `lib/database.types.ts`: un índice no cambia
+-- la forma de la tabla.
 -- =============================================================================
 --
 -- La pantalla de auditoría (app/admin/auditoria/) ordena SIEMPRE por

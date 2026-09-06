@@ -57,14 +57,13 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
 
 ### Tareas
 
-- [~] **35-T1 — Migración `20260905030000_admin_audit_log_indices.sql` (2 índices)**
+- [x] **35-T1 — Migración `20260905030000_admin_audit_log_indices.sql` (2 índices)**
   Satisfies: US-2
-  ESTADO (impl VGRP-35): **SQL escrito y revisado, SIN aplicar.** El MCP de
-  Supabase no estaba autorizado en la sesión de implementación (`list_projects`
-  devolvió `[]`). El archivo está en `supabase/migrations/` con el header de
-  checklist. Requiere que el coordinador lo aplique con `apply_migration` (o
-  `supabase db push`). Los índices no cambian tipos → el resto del paquete
-  avanzó igual; `lib/database.types.ts` NO se toca.
+  ESTADO: **APLICADA por el coordinador el 2026-09-05** con `apply_migration`
+  (MCP de Supabase, proyecto `og-circle` / `hsmodrhbwkromoixrxrt` / `sa-east-1`).
+  Los 2 índices existen en la base (`admin_audit_log_created_at_idx`,
+  `admin_audit_log_actor_created_idx`). Archivo versionado con header actualizado.
+  `lib/database.types.ts` NO se tocó (un índice no cambia la forma de la tabla).
   Notes: Crear los 2 índices de design.md §"VGRP-35 — índices en `admin_audit_log`":
   `admin_audit_log_created_at_idx (created_at desc, id desc)` y
   `admin_audit_log_actor_created_idx (actor_id, created_at desc, id desc)` — sirven al orden
@@ -73,12 +72,14 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   versionar (ver nota transversal de migraciones). Los índices no cambian el esquema de
   tipos → **no hace falta** regenerar `lib/database.types.ts` en este paquete.
 
-- [ ] **35-T2 — `get_advisors` tras aplicar la migración**
+- [x] **35-T2 — `get_advisors` tras aplicar la migración**
   Satisfies: US-2
   Depends on: 35-T1
-  ESTADO (impl VGRP-35): **BLOQUEADO** — depende de 35-T1 aplicada. Correr
-  `get_advisors` (security + performance) junto con la aplicación de la
-  migración. Se espera cero hallazgos nuevos (sólo 2 índices).
+  ESTADO: **CORRIDO por el coordinador el 2026-09-05** (security + performance).
+  Sin hallazgos nuevos por la migración: los 2 índices nuevos figuran como
+  `unused_index` (INFO, esperado — sin tráfico todavía); el único WARN de
+  seguridad es `auth_leaked_password_protection`, pre-existente y ajeno (setting
+  de Auth, no de esta migración).
   Notes: Correr `get_advisors` (security + performance) del MCP. Resolver o anotar en la PR
   cualquier hallazgo nuevo. Se espera cero cambios (sólo índices), pero es la verificación
   obligatoria por paquete (design.md §"Open questions / risks" #3).
@@ -201,14 +202,15 @@ con los tests al lado de lo que verifican, y al final los pasos de cierre (`/sim
   de auditoría falla post-mutación → `Sentry.captureException` con tag `admin-audit-gap`,
   severidad alta, es un **incidente** (hueco de auditoría), no un error de request.
 
-- [~] **35-T12 — Verificar el workaround del trigger `profiles_guard_nivel_rol` para el alta de admin**
+- [x] **35-T12 — Verificar el workaround del trigger `profiles_guard_nivel_rol` para el alta de admin**
   Satisfies: US-1
   Depends on: 35-T11
-  ESTADO (impl VGRP-35): **documentadas las DOS opciones** en
-  `docs/SUPABASE-SETUP.md` §9bis (opción A `set_config('request.jwt.claims', …)`
-  en la misma transacción; opción B `disable trigger … / enable trigger`) con
-  una nota explícita de "verificar cuál funciona en este proyecto". No se pudo
-  ejecutar: sin MCP autorizado / `execute_sql`. Pendiente para el coordinador.
+  ESTADO: **VERIFICADO por el coordinador el 2026-09-05** contra el proyecto
+  real. `set_config('request.jwt.claims','{"role":"service_role"}', true)` hace
+  que `auth.role()` devuelva `'service_role'`, que es lo que compara el guard
+  → la opción `set_config` (en la misma transacción que el `update`) funciona.
+  `docs/SUPABASE-SETUP.md` §9bis quedó con esa única opción y la nota de
+  verificación. No hace falta desactivar el trigger.
   Notes: `profiles_guard_nivel_rol_trigger` (`init_plataforma.sql §5`) aborta cualquier
   UPDATE de `nivel`/`rol` salvo `auth.role() = 'service_role'`. Verificar contra el proyecto
   real cuál de las dos vías funciona desde el SQL editor / MCP `execute_sql`: (a)
