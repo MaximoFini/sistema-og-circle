@@ -1,4 +1,10 @@
-import { Button } from "@/components/ui";
+import NextLink from "next/link";
+// VGRP-22 — se reusan las clases de `Button` (no el componente en sí) para
+// el CTA de abajo: `Button` renderiza un `<button>`, y anidar un `<button>`
+// dentro del `<a>` de `next/link` es HTML inválido (contenido interactivo
+// anidado). Mismo look exacto, sin el elemento equivocado — ver el
+// comentario puntual sobre el CTA más abajo.
+import buttonStyles from "@/components/ui/Button.module.css";
 import { getNivel } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
 import styles from "./dashboard.module.css";
@@ -9,8 +15,8 @@ import styles from "./dashboard.module.css";
 // El estado más común de este bloque es `nivel === 'ninguno'` (usuario
 // registrado sin pagar, ver CLAUDE.md/contexto de negocio): tiene que verse
 // como un estado válido y cuidado, no como una pantalla rota. El checkout
-// real detrás del CTA es Bloque 3 — acá el botón no lleva a ningún lado
-// todavía a propósito.
+// real detrás del CTA es VGRP-22 (Bloque 3): el CTA de abajo ya lleva a
+// `/comprar`, donde vive la selección de nivel y el armado del pago.
 //
 // Este page.tsx SÍ puede leer `getVerifiedClaims()` (a diferencia del layout
 // de `(app)`, ver el comentario de ese archivo): es contenido por-usuario de
@@ -29,7 +35,9 @@ export default async function DashboardPage() {
           <p className={styles.copy}>
             Comprá un nivel para desbloquear el contenido de la plataforma.
           </p>
-          <Button variant="primary">Comprar acceso</Button>
+          <NextLink href="/comprar" className={`${buttonStyles.button} ${buttonStyles.primary}`}>
+            Comprar acceso
+          </NextLink>
         </div>
       </div>
     );
