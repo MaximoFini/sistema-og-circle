@@ -35,25 +35,37 @@ cada request.
 proyecto maneja datos de pago (Mercado Pago) y tokens de sesión (Supabase Auth). Sentry
 no debe recibir PII por default.
 
+**Actualizado (VGRP-48)** — la cuenta de Sentry ya existe y `SENTRY_DSN`/
+`NEXT_PUBLIC_SENTRY_DSN` ya están cargadas en `.env.local`. La sección "Lo que falta"
+de abajo quedó obsoleta en ese punto — se conserva el resto (Alert Rule, source maps)
+porque sigue vigente.
+
+### `environment` — nunca inferido de `NODE_ENV` (bug real, corregido)
+
+Encontrado corriendo el E2E de VGRP-48 contra un build de producción local: **con la
+cuenta ya conectada, cualquier build o test corrido en una máquina local mandaba sus
+errores a Sentry etiquetados `environment: production`** — indistinguible de un deploy
+real — y disparaba la Alert Rule de verdad (email al equipo) por simplemente correr
+`pnpm build && pnpm start` a mano o `pnpm test:e2e` (que fuerza `NODE_ENV=production`
+para el server que levanta, ver `playwright.config.ts`). Causa: el SDK de Sentry, sin
+`environment` explícito, lo infiere de `NODE_ENV`.
+
+Fix en `instrumentation.ts`/`instrumentation-client.ts`: `environment` se arma a partir
+de `VERCEL_ENV`/`NEXT_PUBLIC_VERCEL_ENV` (variables de sistema que Vercel expone solas
+en cada deploy — `production` | `preview` | `development`, nunca presentes en una
+máquina local), con fallback a `"local"`. Cualquier corrida fuera de un deploy real de
+Vercel queda etiquetada `local`, así que una Alert Rule filtrada por
+`environment = production` no vuelve a capturar ruido de desarrollo/tests.
+
 ## Lo que falta — bloqueante externo (no es código)
 
-Igual que pasó con Mercado Pago y Vercel: no hay cuenta de Sentry real todavía. Alguien
-del equipo con acceso tiene que:
-
-1. Crear el proyecto en [sentry.io](https://sentry.io) (plataforma: Next.js).
-2. Conseguir el DSN del proyecto (Project Settings → Client Keys (DSN)).
-3. Cargar dos env vars en **Vercel → Settings → Environment Variables** (production,
-   preview y development):
-   - `SENTRY_DSN` — el mismo DSN, para la inicialización de servidor.
-   - `NEXT_PUBLIC_SENTRY_DSN` — el mismo DSN, para la inicialización de cliente (viaja al
-     bundle del browser a propósito, es el patrón estándar de Sentry — un DSN no es un
-     secreto, sólo identifica a qué proyecto de Sentry mandar eventos).
-4. (Opcional, sólo para subir source maps en el build de CI/producción — no hace falta
+1. (Opcional, sólo para subir source maps en el build de CI/producción — no hace falta
    en desarrollo local) `SENTRY_AUTH_TOKEN`, generado en Organization Settings → Auth
    Tokens, con scope `project:releases`. Sin esta env var el build funciona igual, sólo
    que sin source maps legibles en los stack traces de Sentry.
-5. Bajar las mismas env vars a local con `vercel env pull .env.local` (mismo flujo que
-   `EDGE_CONFIG`, ver `docs/EDGE-CONFIG.md`).
+2. Confirmar en **Vercel → Settings → Environment Variables** que `SENTRY_DSN` y
+   `NEXT_PUBLIC_SENTRY_DSN` también estén cargadas ahí (production, preview y
+   development) — hoy sólo están confirmadas en `.env.local`.
 
 ### Alert Rule — la alerta por email del fallo del webhook
 

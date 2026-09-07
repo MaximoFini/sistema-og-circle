@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { insertarPago, proyectarNivel } from "../../lib/data/pagos";
 import { cleanupUser } from "../helpers/cleanup";
-import { createTestAdminClient } from "../helpers/db-client";
+import { applyNivelRol, createTestAdminClient } from "../helpers/db-client";
 import { TEST_EMAIL_SUFFIX } from "../helpers/seed-users";
 import { withAuthRetry } from "../helpers/with-auth-retry";
 
@@ -203,5 +203,46 @@ describe("proyectarNivel (VGRP-24a)", () => {
       .single();
     expect(error).toBeNull();
     expect(profile?.nivel).toBe("ninguno");
+  });
+
+  // VGRP-46 §3 — invariante documentado en el código de `proyectarNivel`
+  // (lib/data/pagos.ts) y sin test hasta ahora: si se rompe, un admin pierde
+  // el panel en silencio la próxima vez que se le proyecte un pago (por
+  // ejemplo, si compra un nivel él mismo, o si se le reprocesa un pago desde
+  // el propio panel de admin).
+  it("proyectarNivel no pisa el rol de un usuario admin", async () => {
+    const uid = await crearUsuarioDeTest("pagos-preserva-rol");
+    userId = uid;
+    await applyNivelRol(admin, uid, "ninguno", "admin");
+
+    const resultado = await insertarPago(admin, {
+      userId: uid,
+      proveedorRef: `test-ref-${randomUUID()}`,
+      nivelComprado: "principiante",
+      montoArs: 1000,
+      estado: "approved",
+      payloadRaw: {},
+    });
+    expect(resultado.inserted).toBe(true);
+
+    const nivel = await proyectarNivel(admin, uid);
+    expect(nivel).toBe("principiante");
+
+    const { data: profile, error } = await admin
+      .from("profiles")
+      .select("nivel, rol")
+      .eq("id", uid)
+      .single();
+    expect(error).toBeNull();
+    expect(profile?.nivel).toBe("principiante");
+    expect(profile?.rol).toBe("admin");
+
+    const { data: authUser, error: authError } = await withAuthRetry(() =>
+      admin.auth.admin.getUserById(uid),
+    );
+    expect(authError).toBeNull();
+    expect((authUser?.user?.app_metadata as Record<string, unknown> | undefined)?.rol).toBe(
+      "admin",
+    );
   });
 });

@@ -12,6 +12,11 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Bloque 6 (VGRP-46/48): sin esto, los tests de integración del webhook
+      # (firma HMAC real) y del checkout (preferencia real) no tienen contra
+      # qué correr. Cuenta de prueba de Mercado Pago dedicada a este proyecto.
+      MERCADOPAGO_ACCESS_TOKEN: ${{ secrets.MERCADOPAGO_ACCESS_TOKEN }}
+      MERCADOPAGO_WEBHOOK_SECRET: ${{ secrets.MERCADOPAGO_WEBHOOK_SECRET }}
     steps:
       - uses: actions/checkout@v4
 

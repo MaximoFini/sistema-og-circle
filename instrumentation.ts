@@ -5,12 +5,31 @@
 // los dos está corriendo. Éste es el patrón moderno de `@sentry/nextjs` que
 // reemplazó a los viejos `sentry.server.config.ts` / `sentry.edge.config.ts`.
 //
-// FAIL-OPEN A PROPÓSITO: todavía no existe una cuenta de Sentry real ni un
-// DSN (mismo tipo de bloqueante externo que ya se resolvió para Mercado Pago
-// y Vercel — ver docs/OBSERVABILIDAD.md). Si `SENTRY_DSN` no está seteada,
-// esta función no hace absolutamente nada: no lanza, no loguea un warning en
-// cada arranque, simplemente no instrumenta. La app tiene que arrancar y
-// funcionar exactamente igual que hoy sin esta env var.
+// FAIL-OPEN cuando no hay DSN: si `SENTRY_DSN` no está seteada, esta función
+// no hace absolutamente nada: no lanza, no loguea un warning en cada
+// arranque, simplemente no instrumenta. La app tiene que arrancar y
+// funcionar exactamente igual sin esta env var.
+//
+// -----------------------------------------------------------------------------
+// `environment` — NUNCA inferido de `NODE_ENV` (bug real, encontrado en VGRP-48)
+// -----------------------------------------------------------------------------
+// Sin esto, el SDK de Sentry infiere `environment` de `NODE_ENV`. El problema:
+// tanto `pnpm build && pnpm start` corrido a mano en una máquina local como
+// `playwright.config.ts` (fuerza `NODE_ENV=production` para el server que usa
+// el E2E) dejan `NODE_ENV=production` — así que CUALQUIER build o test local
+// mandaba sus errores a Sentry etiquetados `environment: production`,
+// indistinguibles de un deploy real, y disparaban la Alert Rule de verdad
+// (mail al equipo) por simplemente correr la suite de tests en la propia
+// compu. `VERCEL_ENV` es la señal correcta: sólo existe en deploys reales de
+// Vercel (`production` | `preview` | `development`; ver
+// https://vercel.com/docs/environment-variables/system-environment-variables)
+// — nunca en una máquina local. Todo lo que corre fuera de un deploy de
+// Vercel queda como `"local"`, y las Alert Rules de Sentry se pueden filtrar
+// por `environment = production` sin capturar ruido de desarrollo/tests.
+function sentryEnvironment(): string {
+  return process.env.VERCEL_ENV || "local";
+}
+
 export async function register(): Promise<void> {
   if (!process.env.SENTRY_DSN) {
     return;
@@ -20,6 +39,7 @@ export async function register(): Promise<void> {
     const Sentry = await import("@sentry/nextjs");
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
+      environment: sentryEnvironment(),
       tracesSampleRate: 0.1,
       // Nunca mandar PII por default: este proyecto maneja datos de pago
       // (Mercado Pago) y tokens de sesión (Supabase Auth). Sentry no debe
@@ -33,6 +53,7 @@ export async function register(): Promise<void> {
     const Sentry = await import("@sentry/nextjs");
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
+      environment: sentryEnvironment(),
       tracesSampleRate: 0.1,
       sendDefaultPii: false,
     });

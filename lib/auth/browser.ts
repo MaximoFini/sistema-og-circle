@@ -15,14 +15,35 @@
 // cliente de servidor no sirve para esto: cada request de servidor lee la
 // cookie tal cual llegó, no puede "refrescarla y esperar" en medio de un
 // polling que vive enteramente en el cliente.
-
+//
+// -----------------------------------------------------------------------------
+// BUG encontrado por VGRP-48 (E2E de pago real, `e2e/pago-aprobado-acceso.spec.ts`)
+// -----------------------------------------------------------------------------
+// Este archivo NO puede usar `getEnv()` (lib/env.ts) para leer las variables
+// `NEXT_PUBLIC_*`: `getEnv()` hace `process.env[name]` con `name` DINÁMICO, y
+// Next.js sólo puede inlinear en el bundle del browser las referencias
+// LITERALES `process.env.NEXT_PUBLIC_ALGO` (reemplazo estático en build time,
+// vía webpack `DefinePlugin` — no existe un `process.env` real en el
+// browser). Con acceso dinámico, `process.env[name]` siempre da `undefined`
+// del lado del cliente, sin importar qué haya en `.env.local` — esto rompía
+// en silencio TODA build de producción de esta pantalla (nunca se detectó
+// antes porque ningún test previo ejecutaba este componente contra un build
+// real; los tests de integración pasan por Node, donde `process.env` sí
+// existe de verdad). Por eso acá se referencia cada variable de forma
+// literal y NO se reutiliza `getEnv()`.
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "../database.types";
-import { getEnv } from "../env";
+
+function requerirEnvPublica(valor: string | undefined, nombre: string): string {
+  if (!valor) {
+    throw new Error(`Falta la variable de entorno ${nombre}. (config de Supabase)`);
+  }
+  return valor;
+}
 
 export function createSupabaseBrowserClient() {
   return createBrowserClient<Database>(
-    getEnv("NEXT_PUBLIC_SUPABASE_URL", "(config de Supabase)"),
-    getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "(config de Supabase)"),
+    requerirEnvPublica(process.env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL"),
+    requerirEnvPublica(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   );
 }
