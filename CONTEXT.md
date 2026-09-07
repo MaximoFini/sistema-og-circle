@@ -60,7 +60,7 @@ Se construye una landing page que presenta la plataforma completa: diseño, desc
 
 La versión más simple del producto que ya permite generar ingresos reales.
 
-- Registro + login (email/contraseña + Google/Apple) y recuperación de contraseña
+- Registro + login (email/contraseña + Google) y recuperación de contraseña
 - Checkout con Mercado Pago automático vía webhook
 - Panel de administración mínimo: activación de nivel y gestión de usuarios
 - Dashboard básico con Stage 1 y Stage 2 (placeholders hasta que los videos estén listos)
