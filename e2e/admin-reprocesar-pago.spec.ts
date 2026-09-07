@@ -47,6 +47,14 @@ test("el admin reprocesa un pago aprobado sin aplicar y el nivel del usuario sub
   try {
     await login(page, SEED_ADMIN_USER.email, SEED_ADMIN_USER.password);
 
+    // VGRP-48 — el panel AVISA antes de que el admin entre al detalle: el
+    // callout "Hay N en total" (app/admin/pagos/page.tsx) es lo único que le
+    // hace saber a alguien que hay un pago colgado sin que lo esté buscando a
+    // propósito. Sin filtro de `ref` para que el contador incluya el pago que
+    // acabamos de sembrar junto con cualquier otro "sin aplicar" preexistente.
+    await page.goto("/admin/pagos");
+    await expect(page.getByText(/Hay \d+ en total\./)).toBeVisible();
+
     await page.goto(`/admin/pagos?ref=${encodeURIComponent(ref)}`);
     const fila = page.getByRole("link", { name: new RegExp(objetivo.email) });
     await expect(fila).toContainText("sin aplicar");

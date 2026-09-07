@@ -115,9 +115,7 @@ export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number 
   // pago sintético `proveedor='seed'` que `seed-test-users.ts` les inserta
   // para que `nivel_vigente()` coincida con `profiles.nivel` — ese es estado
   // de partida, no residuo (ver el comentario de la función).
-  const seedUserIds = testUsers
-    .filter((u) => u.email && SEED_EMAILS.has(u.email))
-    .map((u) => u.id);
+  const seedUserIds = testUsers.filter((u) => u.email && SEED_EMAILS.has(u.email)).map((u) => u.id);
   const seedUserIdSet = new Set(seedUserIds);
   const adHocUserIds = testUserIds.filter((id) => !seedUserIdSet.has(id));
 

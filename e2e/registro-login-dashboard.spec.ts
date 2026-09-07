@@ -122,7 +122,13 @@ test.describe("registro → login → dashboard", () => {
       await page.waitForURL("**/dashboard");
       await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
       await expect(page.getByText("Comprá un nivel para desbloquear el contenido")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeVisible();
+      // El CTA es un `<NextLink>` (un `<a>`), no un `<button>` — su rol
+      // accesible real es "link" (app/(app)/dashboard/page.tsx, VGRP-22:
+      // reusa las clases de Button.module.css para el estilo, nunca el
+      // elemento, para no anidar un <button> dentro del <a>). Hallazgo de
+      // VGRP-48 corriendo esta suite contra un build real: este selector
+      // nunca podía matchear.
+      await expect(page.getByRole("link", { name: "Comprar acceso" })).toBeVisible();
       // Ningún error 500 ni contenido de otro nivel: el texto de otros
       // niveles ("Tenés acceso …") no debería estar en pantalla.
       await expect(page.getByText(/Tenés acceso/)).toHaveCount(0);
@@ -142,7 +148,13 @@ test.describe("registro → login → dashboard", () => {
 
       await page.waitForURL("**/dashboard");
       await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeVisible();
+      // El CTA es un `<NextLink>` (un `<a>`), no un `<button>` — su rol
+      // accesible real es "link" (app/(app)/dashboard/page.tsx, VGRP-22:
+      // reusa las clases de Button.module.css para el estilo, nunca el
+      // elemento, para no anidar un <button> dentro del <a>). Hallazgo de
+      // VGRP-48 corriendo esta suite contra un build real: este selector
+      // nunca podía matchear.
+      await expect(page.getByRole("link", { name: "Comprar acceso" })).toBeVisible();
     });
   });
 });

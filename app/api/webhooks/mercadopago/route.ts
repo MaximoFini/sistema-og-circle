@@ -96,7 +96,7 @@ function reportarFalloDeProcesamiento(detalle: string, error: unknown): void {
   // fallido) — ver docs/OBSERVABILIDAD.md. La alerta por email de este
   // capture la configura alguien con acceso al dashboard de Sentry (Alert
   // Rule), no algo que el código pueda hacer por sí solo.
-  Sentry.captureException(error, { extra: { detalle } });
+  Sentry.captureException(error, { extra: { detalle: `[mercadopago-webhook] ${detalle}` } });
 }
 
 /**
@@ -245,6 +245,21 @@ export async function POST(request: Request): Promise<Response> {
       } catch (error) {
         reportarFalloDeProcesamiento("notificarPagoAprobado falló", error);
       }
+    }
+
+    // PRD §8 (decisión ya tomada: revocación automática) — un reembolso
+    // vuelve a proyectar el nivel del usuario. `nivel_vigente()` ya excluye
+    // de su cálculo cualquier pago `approved` que tenga un `refunded`
+    // posterior con el mismo `proveedor_ref` (ver la migración
+    // `20260905023031_nivel_vigente_precedencia.sql`), así que sólo hace
+    // falta volver a llamar a `proyectarNivel` para que ese recálculo se
+    // refleje en `profiles.nivel` y en el claim del JWT — es la misma
+    // función que usa el camino de aprobación arriba, sin lógica nueva.
+    //
+    // Sin email ni evento de conversión acá: no hay "confirmación" que
+    // mandar y "pago_aprobado" no aplica a este caso.
+    if (estadoInterno === "refunded") {
+      await proyectarNivel(admin, userId);
     }
 
     return Response.json({}, { status: 200 });

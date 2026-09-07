@@ -213,5 +213,182 @@ secrets del repo.
   API en el estado que un registro real dejaría; (2) el link de recuperación
   real no canjea con `?code=` en este proyecto (ver la sección de arriba) —
   probado en cambio que hoy aterriza honestamente en el error real.
-- VGRP-42: segundo flujo E2E — pago aprobado → acceso activado — y
-  regresión final de todo el sistema integrado.
+- VGRP-42: el E2E de pago se adelantó al Bloque 6 (VGRP-48, ver abajo). Lo
+  que queda para VGRP-42 es la regresión final sobre el sistema integrado
+  completo (dashboard, gating, secciones, legales), no el primer E2E de pago.
+- VGRP-47 §4: hecho — ver "El ritual de romper a propósito..." más abajo. La
+  vista resultó tener una segunda capa de protección independiente
+  (`nivel_overrides` sin grant a `authenticated`) que ni el propio ticket
+  anticipaba; documentado como hallazgo, no como pendiente.
+
+## Bloque 6 — VGRP-46/47/48 (tests de cobro y panel de admin)
+
+Cierra en tests los Bloques 4 y 5. Resumen de cobertura nueva y de los
+hallazgos reales, no supuestos:
+
+- **VGRP-46** — `app/(app)/comprar/_actions.test.ts` (checkout, mockeado),
+  `test/integration/webhook-mercadopago.test.ts` (el webhook real, Postgres
+  real, firma HMAC real, sólo la API de MP mockeada — idempotencia,
+  precedencia de nivel, revocación por `refunded`, FK de usuario inexistente),
+  `instrumentation.test.ts`/`instrumentation-client.test.ts` (Sentry,
+  `sendDefaultPii` siempre `false`), `lib/email/pago-aprobado.test.ts`. Un
+  test agregado a `test/integration/pagos.test.ts` cubre que `proyectarNivel`
+  no le pisa el `rol` a un admin.
+  - **Bug real encontrado y corregido**: el webhook nunca revocaba el nivel
+    ante un `refunded` (sólo reproyectaba en `approved`) — el PRD §8 dejaba
+    la política de reembolso abierta; se definió revocación automática y se
+    implementó en `app/api/webhooks/mercadopago/route.ts`.
+  - **Bug real encontrado y corregido**: `reportarFalloDeProcesamiento` no
+    incluía el string `mercadopago-webhook` en `extra.detalle` — el filtro
+    de la Alert Rule de Sentry documentado en `docs/OBSERVABILIDAD.md` nunca
+    iba a matchear.
+- **VGRP-47** — `lib/auth/admin.test.ts`, `test/structural/admin-surface.test.ts`
+  y `test/structural/server-only-boundary.test.ts` (estructurales: guard
+  `requireAdmin()` obligatorio y en orden, `server-only` presente),
+  `lib/data/admin/audit-log.unit.test.ts` (el hueco de auditoría: insert de
+  auditoría que falla después de una mutación exitosa),
+  `test/integration/admin-usuarios-nivel.test.ts`,
+  `lib/data/admin/keyset.test.ts` + `usuarios-busqueda.test.ts`
+  (`escaparLike`, empate de `created_at`),
+  `test/integration/admin-pagos-ledger-rls.test.ts` (la vista
+  `admin_pagos_ledger` no es legible por `anon`/`authenticated`),
+  `lib/data/admin/pagos-sin-aplicar.test.ts`,
+  `test/integration/admin-pagos-reprocesar-concurrente.test.ts`,
+  `lib/data/admin/pagos-sanitizar.unit.test.ts` (fuga de `payload_raw`).
+  - Hallazgo: `admin_audit_log.actor_id` y `nivel_overrides.actor_id` SÍ
+    tienen FK a `profiles` — un `actorId` simulado sin un usuario real
+    detrás rompe el insert.
+- **VGRP-48** — `e2e/pago-aprobado-acceso.spec.ts` (nuevo),
+  `e2e/superficie-no-admin.spec.ts` (nuevo), y un callout agregado a
+  `e2e/admin-reprocesar-pago.spec.ts` (el panel avisa con "Hay N en total"
+  antes de que el admin entre al detalle).
+  - **Bug real encontrado y corregido** (el más importante de los tres):
+    `lib/auth/browser.ts::createSupabaseBrowserClient()` usaba `getEnv()`
+    (`lib/env.ts`, acceso dinámico `process.env[name]`) para leer
+    `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`. Next.js sólo
+    inlinea en el bundle del browser las referencias LITERALES
+    `process.env.NEXT_PUBLIC_ALGO` — con acceso dinámico, esas dos variables
+    siempre resolvían `undefined` del lado del cliente, sin importar
+    `.env.local`. Esto rompía en silencio TODA build de producción de
+    `/comprar/pendiente` (la pantalla de espera post-pago, VGRP-22): nunca se
+    detectó antes porque ningún test previo ejecutaba ese componente contra
+    un build real. Se arregló referenciando las dos variables de forma
+    literal en `lib/auth/browser.ts`, sin pasar por `getEnv()`.
+  - **Límite de entorno confirmado y documentado como `test.skip()`**:
+    `app/(app)/comprar/page.tsx` se prerenderiza estático en build time;
+    `getPrecios()` falla sin un store de Edge Config vinculado (VGRP-39) y
+    ese resultado ("Checkout no disponible") queda horneado en el HTML del
+    build — ningún test contra este build puede ver los botones de compra
+    reales. Mismo tipo de límite que ya documentaba VGRP-45 para `/registro`.
+  - Suite completa verificada: `pnpm test` (294 passed / 4 todo — los 2
+    fallos de `test/integration/auth-actions.test.ts` son preexistentes, ver
+    nota abajo) y `pnpm test:e2e` (14 passed / 3 skipped documentados, 0
+    failed). `pnpm test:cleanup` corrido al final: 0 residuos.
+
+### El ritual de "romper a propósito y confirmar rojo" — ejecutado de verdad
+
+Los tres tickets del bloque piden explícitamente romper garantías clave,
+correr la suite, confirmar rojo, y revertir. Se ejecutó cada rotura de
+verdad (editando el código, corriendo la suite, confirmando el fallo, y
+revirtiendo) en vez de darlo por sentado porque "el test ya existe":
+
+- **VGRP-46 (a) — confiar en el `status` del body**: se hizo leer
+  `JSON.parse(cuerpoCrudo).status` en vez de sólo `pago.status` (la API real)
+  en `route.ts`. Rojo confirmado: el test "un status inventado en el body
+  nunca pisa el status real de la API" falló (`expected 'rejected' to be
+  'approved'`). Nota: inyectar el campo `status` en el objeto ya validado por
+  Zod (`parseado`) NO alcanza para reproducir el bug — `payloadSchema`, sin
+  `strict()`, ya lo strippea; hay que leerlo del JSON crudo antes de Zod para
+  que la rotura tenga efecto. Revertido y confirmado limpio con `git diff`.
+- **VGRP-46 (b) — romper la idempotencia**: se agregó un sufijo random a
+  `proveedor_ref` en `insertarPago` (`lib/data/pagos.ts`), evadiendo el
+  `UNIQUE(proveedor_ref, estado)`. Rojo confirmado: 2 tests fallaron ("cero
+  filas nuevas" pasó a 2 filas; el nivel no cayó tras un `refunded` porque el
+  reembolso ya no matcheaba el `proveedor_ref` original). Revertido.
+- **VGRP-47 (a) — sacarle `requireAdmin()` a un handler**: se reemplazó el
+  guard real por uno hardcodeado en
+  `app/api/admin/pagos/[id]/reprocesar/route.ts`. Primer intento en falso
+  verde: el test estructural (`test/structural/admin-surface.test.ts`) hace
+  `content.indexOf("requireAdmin(")` sobre el archivo completo SIN sacar
+  comentarios — el comentario de cabecera ("`requireAdmin()` va PRIMERO...")
+  ya contenía ese substring literal y lo hacía pasar aunque el código real ya
+  no llamara a nada. **Bug real de test encontrado y corregido**: se agregó
+  `sinComentarios()` (saca `//` y `/* */` antes de buscar la llamada) y se
+  aplicó a los tres chequeos de texto del archivo (`requireAdminPage()` en el
+  layout, `requireAdmin()` en los handlers, `conAuditoria()` en los
+  handlers). Con el fix, la rotura confirmó rojo de verdad. Revertido y
+  vuelto a confirmar verde con el fix del test ya en pie.
+- **VGRP-47 (b) — mutar sin pasar por `conAuditoria()`**: se llamó a
+  `reprocesarPago()` directo, sin envolver en `conAuditoria()`, en el mismo
+  handler. Rojo confirmado (con el fix de `sinComentarios()` del punto
+  anterior). Revertido.
+- **VGRP-47 (c) — dar `grant select` a `authenticated` sobre
+  `admin_pagos_ledger`**: ejecutado contra el proyecto real (MCP de Supabase,
+  una vez autenticado) y con un hallazgo real en el camino. El `grant`
+  literal que pide el ticket (sólo sobre la vista) **no alcanzó para exponer
+  datos**: `admin_pagos_ledger` tiene `security_invoker=true`, y una de las
+  tablas que joinea (`nivel_overrides`, usada en el cálculo de
+  `sin_aplicar`) nunca tuvo `grant select` para `authenticated` — es una
+  segunda barrera independiente de la de la vista. Con sólo el grant de la
+  vista, el test seguía en verde, pero por un motivo distinto al esperado:
+  `select` fallaba con `42501 permission denied for table nivel_overrides`,
+  no por la vista en sí. Para confirmar que el test NO es decorativo, se
+  agregó también `grant select on public.nivel_overrides to authenticated`
+  (recreando la brecha completa que haría falta para exponer datos de
+  verdad) — con las dos capas rotas, el test SÍ se puso rojo
+  (`AssertionError: expected null not to be null`, en el caso del usuario
+  autenticado normal). Confirmado el mecanismo real, se revirtieron ambos
+  grants (`revoke select on nivel_overrides from authenticated` y `revoke
+  select on admin_pagos_ledger from authenticated`) y se confirmó con una
+  query a `information_schema.role_table_grants` que el estado quedó
+  idéntico al original (cero filas para `anon`/`authenticated` en ambas
+  tablas). Se corrió `NOTIFY pgrst, 'reload schema'` después de cada cambio
+  de grants — sin eso, PostgREST puede tardar en reflejar el cambio. El test
+  volvió a verde tras el revert.
+- **VGRP-48 — el mismo ritual "sobre el sistema entero" (E2E/integrado)**:
+  - La rotura de RLS sobre `pagos` (`pagos_select_own`) YA es un test
+    permanente en pie desde VGRP-44
+    (`test/integration/rls.test.ts` — "SIN pagos_select_own, ni siquiera el
+    dueño puede leer su propio pago"), que corre en cada ejecución de la
+    suite contra el proyecto real vía `withPolicyDisabled`. Se corrió de
+    nuevo para esta verificación y confirmó el mecanismo funcionando (pasó en
+    verde, que es lo esperado: la aserción positiva de la garantía).
+  - La rotura de status-trust del webhook **no tiene un punto de entrada
+    E2E**: los specs de `pago-aprobado-acceso.spec.ts` llaman directo a
+    `insertarPago`/`proyectarNivel` (las mismas funciones que usa el
+    Route Handler) en vez de pegarle por HTTP al webhook — ver el comentario
+    grande al inicio de ese archivo (Playwright levanta el server como
+    proceso hijo separado; no hay forma de inyectarle un `vi.mock` a la API
+    de MP desde ahí). La única cobertura real de esa garantía es la de
+    VGRP-46, ya confirmada arriba.
+  - Se intentó romper `requireAdmin()` en
+    `app/api/admin/usuarios/[id]/nivel/route.ts` y correr
+    `superficie-no-admin.spec.ts` (que le pega por `fetch()` real desde el
+    browser). **Falso verde real, no de test sino de capa**:
+    `middleware.ts` (`isAdminArea()`, VGRP-35) ya corta con 404 cualquier
+    request a `/api/admin/**` de un usuario `rol != admin` ANTES de que el
+    Route Handler llegue a ejecutarse — así que sacarle el guard al handler
+    no cambia nada observable desde un browser real; ambas capas protegen la
+    MISMA request. Es defensa en profundidad funcionando tal cual está
+    diseñada, pero significa que el E2E de superficie no puede aislar el
+    guard del handler del guard del middleware — esa garantía específica
+    sólo la cubre `test/structural/admin-surface.test.ts` (ya confirmado
+    rojo arriba) y `lib/auth/admin.test.ts`. Revertido.
+  - Verificación final de que ningún revert quedó a medio camino:
+    `git diff --stat` sobre los cuatro archivos tocados por las roturas
+    (`route.ts` del webhook, `pagos.ts`, ambos `route.ts` de admin) mostró
+    únicamente los cambios legítimos de VGRP-46/48 (revocación por
+    `refunded`, string `mercadopago-webhook`) — cero restos de código de
+    rotura. `pnpm typecheck`, `pnpm biome ci .`, `pnpm test` y
+    `pnpm test:e2e` corridos de nuevo después de todo el ritual: mismo
+    resultado que arriba (294/300 passed, 14/17 E2E passed, sin
+    regresiones). `pnpm test:cleanup`: 0 residuos.
+
+**Nota sobre `test/integration/auth-actions.test.ts`** (VGRP-18, no es de
+este bloque): sus dos tests de `registrarse()` fallan hoy en este entorno por
+la misma causa que ya documenta VGRP-45 — `flags.registro_habilitado`
+resuelve `false` sin Edge Config vinculada, así que la Server Action nunca
+llega a redirigir. No es una regresión de este bloque (confirmado con `git
+log`/`git diff`, el archivo no se tocó) ni algo que el Bloque 6 deba
+arreglar — queda anotado acá para que quien vea rojo en `pnpm test` sepa por
+qué antes de investigar de cero.
