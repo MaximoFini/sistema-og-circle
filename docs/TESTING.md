@@ -216,14 +216,10 @@ secrets del repo.
 - VGRP-42: el E2E de pago se adelantó al Bloque 6 (VGRP-48, ver abajo). Lo
   que queda para VGRP-42 es la regresión final sobre el sistema integrado
   completo (dashboard, gating, secciones, legales), no el primer E2E de pago.
-- VGRP-47 §4: falta correr una vez, a mano, con acceso interactivo real al
-  proyecto de Supabase (login de la CLI o del MCP), la tercera rotura
-  intencional pendiente — `grant select on public.admin_pagos_ledger to
-  authenticated;`, confirmar que `test/integration/admin-pagos-ledger-rls.test.ts`
-  se pone rojo, y revertir con el `revoke`/`grant to service_role` de
-  `20260905030200_admin_pagos_ledger.sql`. Ver el detalle de por qué no se
-  pudo ejecutar sin esa sesión interactiva en "El ritual de romper a
-  propósito..." más abajo.
+- VGRP-47 §4: hecho — ver "El ritual de romper a propósito..." más abajo. La
+  vista resultó tener una segunda capa de protección independiente
+  (`nivel_overrides` sin grant a `authenticated`) que ni el propio ticket
+  anticipaba; documentado como hallazgo, no como pendiente.
 
 ## Bloque 6 — VGRP-46/47/48 (tests de cobro y panel de admin)
 
@@ -327,23 +323,28 @@ revirtiendo) en vez de darlo por sentado porque "el test ya existe":
   handler. Rojo confirmado (con el fix de `sinComentarios()` del punto
   anterior). Revertido.
 - **VGRP-47 (c) — dar `grant select` a `authenticated` sobre
-  `admin_pagos_ledger`**: **no se pudo ejecutar.** A diferencia de una RLS
-  policy (que sí tiene el mecanismo `withPolicyDisabled` de VGRP-44, vía RPC
-  ya aplicada al proyecto real), el aislamiento de esta vista es un
-  `GRANT`/`REVOKE` de nivel de vista, y no hay ningún canal disponible en
-  este entorno para correr DDL arbitrario contra el proyecto real: el MCP de
-  Supabase requiere un login OAuth interactivo que no corre en una sesión no
-  interactiva, la Supabase CLI local no está logueada ni el proyecto
-  linkeado (`supabase link`), y no hay una connection string directa de
-  Postgres en `.env.local`. Crear un RPC nuevo tipo `test_grant`/`test_revoke`
-  (análogo a `test_drop_policy`/`test_create_policy`) tendría el mismo
-  problema: aplicar esa migración también requiere uno de esos mismos
-  canales. **Queda pendiente de que alguien con acceso interactivo al
-  proyecto** (login de Supabase CLI o del MCP) corra esta verificación una
-  vez: `grant select on public.admin_pagos_ledger to authenticated;`, confirmar
-  que `test/integration/admin-pagos-ledger-rls.test.ts` se pone rojo, y
-  revertir con el `revoke`/`grant to service_role` de
-  `20260905030200_admin_pagos_ledger.sql`.
+  `admin_pagos_ledger`**: ejecutado contra el proyecto real (MCP de Supabase,
+  una vez autenticado) y con un hallazgo real en el camino. El `grant`
+  literal que pide el ticket (sólo sobre la vista) **no alcanzó para exponer
+  datos**: `admin_pagos_ledger` tiene `security_invoker=true`, y una de las
+  tablas que joinea (`nivel_overrides`, usada en el cálculo de
+  `sin_aplicar`) nunca tuvo `grant select` para `authenticated` — es una
+  segunda barrera independiente de la de la vista. Con sólo el grant de la
+  vista, el test seguía en verde, pero por un motivo distinto al esperado:
+  `select` fallaba con `42501 permission denied for table nivel_overrides`,
+  no por la vista en sí. Para confirmar que el test NO es decorativo, se
+  agregó también `grant select on public.nivel_overrides to authenticated`
+  (recreando la brecha completa que haría falta para exponer datos de
+  verdad) — con las dos capas rotas, el test SÍ se puso rojo
+  (`AssertionError: expected null not to be null`, en el caso del usuario
+  autenticado normal). Confirmado el mecanismo real, se revirtieron ambos
+  grants (`revoke select on nivel_overrides from authenticated` y `revoke
+  select on admin_pagos_ledger from authenticated`) y se confirmó con una
+  query a `information_schema.role_table_grants` que el estado quedó
+  idéntico al original (cero filas para `anon`/`authenticated` en ambas
+  tablas). Se corrió `NOTIFY pgrst, 'reload schema'` después de cada cambio
+  de grants — sin eso, PostgREST puede tardar en reflejar el cambio. El test
+  volvió a verde tras el revert.
 - **VGRP-48 — el mismo ritual "sobre el sistema entero" (E2E/integrado)**:
   - La rotura de RLS sobre `pagos` (`pagos_select_own`) YA es un test
     permanente en pie desde VGRP-44
