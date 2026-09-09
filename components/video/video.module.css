@@ -1,0 +1,95 @@
+/* VGRP-29 — grilla de videos (Stage 1/2). Tokens de app/tokens.css, mismo criterio que
+   components/inicio/inicio.module.css (agentesGrid/agenteCard). */
+
+.stats {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-2);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  color: var(--text-primary);
+}
+
+.tileVisual {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-1);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.tileVisual:disabled {
+  cursor: default;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tileProximamente {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.embed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.tituloVideo {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.botonVisto {
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--accent-to);
+  background: transparent;
+  border: 1px solid var(--accent-40);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+}
+
+.botonVisto:disabled {
+  color: var(--text-muted);
+  border-color: var(--glass-border);
+  cursor: default;
+}

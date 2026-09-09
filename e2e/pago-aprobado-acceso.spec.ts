@@ -165,7 +165,10 @@ test.describe("pago aprobado → acceso activado", () => {
     // recargue la página ni navegue a mano (eso probaría otra cosa distinta
     // de lo que hace un usuario real, ver el comentario de PendienteClient.tsx).
     await page.waitForURL("**/dashboard", { timeout: 30_000 });
-    await expect(page.getByText(/Tenés acceso/)).toBeVisible();
+    // VGRP-27 reemplazó el placeholder "Tenés acceso {nivel}" (VGRP-18) por
+    // el shell real (variante prerenderizada por nivel, vía rewrite de
+    // middleware.ts) — el heading que confirma el nivel activo ahora es este.
+    await expect(page.getByRole("heading", { name: "Nivel principiante" })).toBeVisible();
   });
 
   test("pago rejected: la pantalla de pendiente no desbloquea nada (no hay loop infinito ni acceso falso)", async ({

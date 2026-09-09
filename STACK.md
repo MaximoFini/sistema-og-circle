@@ -88,6 +88,14 @@ Llamar a `supabase.auth.getUser()` en cada request es el error de performance m�
 
 Modelo mínimo: `profiles` (1 fila por usuario, `progreso` como `jsonb`), `pagos` (ledger inmutable con `proveedor_ref UNIQUE`), `leads`. Detalle en ADR §5.
 
+**Contenido también vive acá (VGRP-38, 2026-09-09) — decisión revertida sobre la de arriba:**
+`agentes`, `videos`, `profesionales`, `servicios_financieros`, con RLS filtrando por
+`nivel_requerido` contra el claim del JWT (mismo criterio que el resto: `(select auth.jwt())`
+envuelto en subselect, nunca una policy que dispare una query aparte). CRUD completo desde
+`/admin/contenido/:entidad`, con `revalidateTag` en cada escritura para que las grillas
+públicas sigan estáticas. Los campos sensibles (`agentes.contacto`, `videos.provider_ref`)
+sólo se leen del lado del servidor — nunca directo a un Client Component.
+
 ---
 
 ## 6. Estilos: seguir con CSS + tokens, no migrar a Tailwind
@@ -185,7 +193,12 @@ El cuello de botella de este proyecto no es técnico. Es la **confirmación manu
 7. [ ] pnpm + Biome + `tsconfig` en `strict`.
 8. [ ] Route group `(app)` con layout y middleware de sesión propios.
 9. [ ] Supabase Auth con claves asimétricas + Auth Hook que inyecta `app_metadata.nivel`.
-10. [ ] `content/*.ts` tipado, split `publicMeta` / `secret`, `import 'server-only'` en los secretos.
+10. [x] ~~`content/*.ts` tipado~~ — **decisión revertida (VGRP-38, 2026-09-09):** el contenido
+    (`agentes`, `videos`, `profesionales`, `servicios_financieros`) vive en Supabase con RLS +
+    CRUD completo en el panel de admin, no en módulos TypeScript — ver §5. El split
+    `publicMeta` / `secret` y `import 'server-only'` en los secretos SÍ se mantienen, ahora
+    implementados como `lib/data/admin/contenido.ts` (capa de escritura) +
+    `lib/data/secretos.ts` (`resolverSecreto()`, VGRP-30) para la lectura pública.
 11. [ ] `profiles` y `pagos` con RLS leyendo `auth.jwt()`. Connection string por el pooler (6543).
 12. [ ] Webhook de MP: firma HMAC + `proveedor_ref UNIQUE` + trigger que proyecta el nivel.
 13. [ ] Dashboard: shell prerenderizado + `<Suspense>` para stats. `VideoProvider` desde el día uno.

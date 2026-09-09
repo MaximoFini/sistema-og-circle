@@ -28,6 +28,11 @@ const SECCIONES = [
     titulo: "Auditoría",
     desc: "Registro inmutable de toda acción de admin: quién, qué y con qué valores.",
   },
+  {
+    href: "/admin/contenido",
+    titulo: "Contenido",
+    desc: "Agentes, videos, profesionales y servicios financieros.",
+  },
 ] as const;
 
 export default async function AdminIndexPage() {

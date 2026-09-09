@@ -1,0 +1,155 @@
+/* VGRP-27 — shell de Inicio + slots vacíos. Tokens de app/tokens.css. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--layout-wrap-max-width);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.saludo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.eyebrowNivel {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--accent-to);
+}
+
+.tituloPrincipal {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-h2-size);
+  font-weight: var(--text-h2-weight);
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+/* --- Slot tipo tarjeta (grillas) --- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-surface);
+}
+
+.encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-tag-label-size);
+  letter-spacing: var(--text-tag-label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tituloFila {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.titulo {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-h3-size);
+  font-weight: var(--text-h3-weight);
+  color: var(--text-primary);
+}
+
+.descripcion {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 60ch;
+}
+
+.badge {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-to);
+  background: var(--accent-05);
+  border: 1px solid var(--accent-40);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-2);
+  white-space: nowrap;
+}
+
+.grillaFantasma {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+}
+
+.tileFantasma {
+  aspect-ratio: 16 / 10;
+  background: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+}
+
+/* --- VGRP-30: demo de agentes (temporal, ver AgentesDemo.tsx) --- */
+
+.agentesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.agenteCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+}
+
+/* --- Slot tipo banner (accesos directos) --- */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-surface);
+}
+
+@media (min-width: 640px) {
+  .banner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .banner .encabezado {
+    gap: var(--space-1);
+  }
+}

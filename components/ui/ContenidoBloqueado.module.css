@@ -1,0 +1,22 @@
+.bloqueado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-control);
+}
+
+.mensaje {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.mensaje strong {
+  color: var(--accent-to);
+  font-weight: 700;
+}

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Button, TextLink } from "@/components/ui";
+import { cerrarSesion } from "@/lib/auth/actions";
 import { requireAdminPage } from "@/lib/auth/admin";
-import { cerrarSesion } from "./_actions";
 import styles from "./admin.module.css";
 
 // =============================================================================
@@ -25,6 +25,7 @@ const NAV = [
   { href: "/admin/usuarios", label: "Usuarios" },
   { href: "/admin/pagos", label: "Pagos" },
   { href: "/admin/auditoria", label: "Auditoría" },
+  { href: "/admin/contenido", label: "Contenido" },
 ] as const;
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

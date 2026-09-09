@@ -34,10 +34,18 @@ export interface AuditoriaMeta {
   actorId: string;
   accion: string;
   entidad: string;
-  entidadId: string;
+  /**
+   * Opcional: VGRP-38 lo necesita así para "crear" (el id de la fila nueva
+   * no existe hasta después de la mutación) — en ese caso se completa vía
+   * `ResultadoMutacion.entidadId` en vez de acá. Si ninguno de los dos lo
+   * trae, `conAuditoria()` tira (ver abajo) en vez de auditar con un id
+   * vacío.
+   */
+  entidadId?: string;
 }
 
 export interface EntradaAudit extends AuditoriaMeta {
+  entidadId: string;
   valorAnterior: Json | null;
   valorNuevo: Json | null;
 }
@@ -62,6 +70,8 @@ export interface ResultadoMutacion<T> {
   resultado: T;
   valorAnterior: Json | null;
   valorNuevo: Json | null;
+  /** Tiene prioridad sobre `meta.entidadId` — ver el comentario de `AuditoriaMeta`. */
+  entidadId?: string;
 }
 
 /**
@@ -86,10 +96,32 @@ export async function conAuditoria<T>(
   mutacion: () => Promise<ResultadoMutacion<T>>,
 ): Promise<T> {
   // Si esto tira, se propaga tal cual: NO se escribe nada en admin_audit_log.
-  const { resultado, valorAnterior, valorNuevo } = await mutacion();
+  const { resultado, valorAnterior, valorNuevo, entidadId } = await mutacion();
+
+  const entidadIdFinal = entidadId ?? meta.entidadId;
+  if (!entidadIdFinal) {
+    // Ni `meta.entidadId` (conocido de antes) ni `resultado.entidadId`
+    // (recién creado) — no hay nada válido que auditar. La mutación de
+    // negocio YA ocurrió (no se revierte acá tampoco), pero registrar un
+    // audit log sin entidadId sería peor que no registrarlo.
+    Sentry.captureException(
+      new Error("conAuditoria: falta entidadId (ni en meta ni en el resultado)"),
+      {
+        level: "error",
+        tags: { "admin-audit-gap": "true" },
+        extra: { meta },
+      },
+    );
+    return resultado;
+  }
 
   try {
-    await registrarAccionAdmin(admin, { ...meta, valorAnterior, valorNuevo });
+    await registrarAccionAdmin(admin, {
+      ...meta,
+      entidadId: entidadIdFinal,
+      valorAnterior,
+      valorNuevo,
+    });
   } catch (error) {
     // Best-effort: la mutación de negocio YA ocurrió y no es reversible acá.
     // Fail-open: sin SENTRY_DSN, `captureException` es un no-op (ver

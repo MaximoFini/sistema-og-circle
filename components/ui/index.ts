@@ -4,6 +4,7 @@
 
 export { Button, type ButtonProps } from "./Button";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
+export { ContenidoBloqueado, type ContenidoBloqueadoProps } from "./ContenidoBloqueado";
 export { FormError, type FormErrorProps } from "./FormError";
 export { TextField, type TextFieldProps } from "./TextField";
 export { TextLink, type TextLinkProps } from "./TextLink";

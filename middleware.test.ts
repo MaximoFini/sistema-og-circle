@@ -242,4 +242,62 @@ describe("middleware", () => {
       expect(res.status).toBe(200);
     });
   });
+
+  // VGRP-27 — rewrite de /dashboard a la variante estática según nivel. Ver
+  // design.md: NextResponse.rewrite responde 200 (no es un redirect) y deja
+  // el destino en el header `x-middleware-rewrite`.
+  describe("shell de Inicio por nivel (VGRP-27)", () => {
+    it("sesión + nivel='ninguno' (o sin claim de nivel): sin rewrite, sigue a /dashboard tal cual", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/dashboard"));
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
+    it("sesión + nivel='principiante': rewrite a /dashboard/principiante", async () => {
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "u1", app_metadata: { nivel: "principiante" } } },
+        error: null,
+      });
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/dashboard"));
+
+      expect(res.status).toBe(200);
+      const destino = res.headers.get("x-middleware-rewrite");
+      expect(destino).not.toBeNull();
+      expect(new URL(destino as string).pathname).toBe("/dashboard/principiante");
+    });
+
+    it("sesión + nivel='avanzado': rewrite a /dashboard/avanzado", async () => {
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "u2", app_metadata: { nivel: "avanzado" } } },
+        error: null,
+      });
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/dashboard"));
+
+      expect(res.status).toBe(200);
+      const destino = res.headers.get("x-middleware-rewrite");
+      expect(destino).not.toBeNull();
+      expect(new URL(destino as string).pathname).toBe("/dashboard/avanzado");
+    });
+
+    it("el rewrite no aplica a otras rutas privadas (p. ej. /comprar)", async () => {
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "u1", app_metadata: { nivel: "principiante" } } },
+        error: null,
+      });
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/comprar"));
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+  });
 });
