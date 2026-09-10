@@ -6,9 +6,9 @@
 //   supabase gen types typescript --project-id hsmodrhbwkromoixrxrt > lib/database.types.ts
 // (o vía el MCP de Supabase: generate_typescript_types)
 //
-// Regenerado 2026-09-06 (VGRP-37) para sumar la vista `admin_pagos_ledger`
-// a `Database["public"]["Views"]` — ver
-// supabase/migrations/20260905030200_admin_pagos_ledger.sql.
+// Regenerado 2026-09-09 (VGRP-38) para sumar las tablas de contenido
+// `agentes`, `videos`, `profesionales`, `servicios_financieros` — ver
+// supabase/migrations/20260909041306_contenido_agentes_videos_profesionales_servicios.sql.
 //
 // El generador no infiere nulabilidad de parámetros de función escalares ni el
 // tipo de elemento de `name[]` — dos ajustes A MANO sobre el output crudo,
@@ -70,6 +70,42 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      agentes: {
+        Row: {
+          activo: boolean;
+          contacto: string | null;
+          created_at: string;
+          especialidad: string;
+          id: string;
+          nivel_requerido: Database["public"]["Enums"]["nivel_acceso"];
+          nombre: string;
+          orden: number;
+          updated_at: string;
+        };
+        Insert: {
+          activo?: boolean;
+          contacto?: string | null;
+          created_at?: string;
+          especialidad: string;
+          id?: string;
+          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
+          nombre: string;
+          orden?: number;
+          updated_at?: string;
+        };
+        Update: {
+          activo?: boolean;
+          contacto?: string | null;
+          created_at?: string;
+          especialidad?: string;
+          id?: string;
+          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
+          nombre?: string;
+          orden?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       leads: {
         Row: {
@@ -181,6 +217,42 @@ export type Database = {
           },
         ];
       };
+      profesionales: {
+        Row: {
+          activo: boolean;
+          contacto: string | null;
+          created_at: string;
+          descripcion: string | null;
+          id: string;
+          nombre: string;
+          orden: number;
+          rubro: string;
+          updated_at: string;
+        };
+        Insert: {
+          activo?: boolean;
+          contacto?: string | null;
+          created_at?: string;
+          descripcion?: string | null;
+          id?: string;
+          nombre: string;
+          orden?: number;
+          rubro: string;
+          updated_at?: string;
+        };
+        Update: {
+          activo?: boolean;
+          contacto?: string | null;
+          created_at?: string;
+          descripcion?: string | null;
+          id?: string;
+          nombre?: string;
+          orden?: number;
+          rubro?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           created_at: string;
@@ -219,6 +291,78 @@ export type Database = {
           telefono?: string | null;
           terminos_aceptados_at?: string | null;
           terminos_version?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      servicios_financieros: {
+        Row: {
+          activo: boolean;
+          created_at: string;
+          descripcion: string | null;
+          id: string;
+          nivel_requerido: Database["public"]["Enums"]["nivel_acceso"];
+          orden: number;
+          titulo: string;
+          updated_at: string;
+        };
+        Insert: {
+          activo?: boolean;
+          created_at?: string;
+          descripcion?: string | null;
+          id?: string;
+          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
+          orden?: number;
+          titulo: string;
+          updated_at?: string;
+        };
+        Update: {
+          activo?: boolean;
+          created_at?: string;
+          descripcion?: string | null;
+          id?: string;
+          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
+          orden?: number;
+          titulo?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      videos: {
+        Row: {
+          created_at: string;
+          descripcion: string | null;
+          id: string;
+          nivel_requerido: Database["public"]["Enums"]["nivel_acceso"];
+          orden: number;
+          provider_ref: string | null;
+          publicado: boolean;
+          stage: number;
+          titulo: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          descripcion?: string | null;
+          id?: string;
+          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
+          orden?: number;
+          provider_ref?: string | null;
+          publicado?: boolean;
+          stage: number;
+          titulo: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          descripcion?: string | null;
+          id?: string;
+          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
+          orden?: number;
+          provider_ref?: string | null;
+          publicado?: boolean;
+          stage?: number;
+          titulo?: string;
           updated_at?: string;
         };
         Relationships: [];

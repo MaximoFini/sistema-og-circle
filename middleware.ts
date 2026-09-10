@@ -46,7 +46,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import type { AppMetadataClaims } from "./lib/auth/claims";
-import { getRol } from "./lib/auth/claims";
+import { getNivel, getRol } from "./lib/auth/claims";
 import type { Database } from "./lib/database.types";
 
 /**
@@ -256,6 +256,29 @@ export async function middleware(request: NextRequest) {
         );
       }
       return withRefreshedCookies(new NextResponse("Not Found", { status: 404 }), response);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // VGRP-27 — shell de Inicio prerenderizado según nivel.
+  //
+  // `/dashboard` en sí (nivel 'ninguno') sigue siendo la página de VGRP-18,
+  // sin rewrite. Para 'principiante'/'avanzado' se reescribe hacia la
+  // variante estática correspondiente (app/(app)/dashboard/[variante]/,
+  // generateStaticParams + dynamicParams=false) — cero query nueva: usa el
+  // mismo `data.claims` que `getClaims()` ya resolvió arriba en este mismo
+  // request. La URL que ve el usuario sigue siendo `/dashboard` (rewrite, no
+  // redirect). Ver design.md: esto es una optimización de rendering, NO el
+  // mecanismo de seguridad — ese lo aporta VGRP-30 sección por sección.
+  // -----------------------------------------------------------------------
+  if (pathname === "/dashboard") {
+    const claims = (data as { claims?: AppMetadataClaims } | undefined)?.claims ?? null;
+    const nivel = getNivel(claims);
+
+    if (nivel === "principiante" || nivel === "avanzado") {
+      const url = request.nextUrl.clone();
+      url.pathname = `/dashboard/${nivel}`;
+      return withRefreshedCookies(NextResponse.rewrite(url), response);
     }
   }
 

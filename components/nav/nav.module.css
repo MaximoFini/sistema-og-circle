@@ -1,0 +1,340 @@
+/* VGRP-27 — header + drawer de navegación. Tokens de app/tokens.css, sin
+   valores hardcodeados. Animación acotada al presupuesto de DESIGN.md §4
+   (transform/opacity, nada de scroll-jacking), apagada bajo
+   prefers-reduced-motion. */
+
+.header {
+  position: sticky;
+  top: 0;
+  /* Por encima del overlay/panel (z-index 100): el botón hamburguesa vive acá
+     y tiene que seguir visible (y clickeable) con el drawer abierto para que
+     se vea la animación a X y sirva como control de cierre. */
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  background: rgba(5, 5, 5, 0.72);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-control);
+  text-decoration: none;
+  color: inherit;
+  transition: opacity var(--duration-base) var(--ease-out-expo);
+}
+
+.marca:hover {
+  opacity: 0.85;
+}
+
+.marca:focus-visible {
+  outline: 2px solid var(--accent-40);
+  outline-offset: 2px;
+}
+
+/*
+ * Recorte del ícono por CSS, sin generar un segundo archivo de imagen.
+ * `public/logo-og-circle.png` mide 630×612; el hexágono ocupa el recuadro
+ * x:181–452 / y:125–434 dentro de ese archivo (medido una sola vez). Se
+ * escala el PNG completo a un tamaño fijo y se lo desplaza dentro de un
+ * contenedor `overflow: hidden` del tamaño del recorte — técnica clásica de
+ * "sprite crop", evita mantener un asset duplicado del mismo logo.
+ */
+.logoMark {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 48px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.logoFull {
+  position: absolute;
+  top: -19px;
+  left: -28px;
+  width: 98px;
+  height: 95px;
+  max-width: none;
+}
+
+.wordmark {
+  font-family: var(--font-heading);
+  font-weight: 300;
+  font-size: 19px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.abrir {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-base) var(--ease-out-expo),
+    background-color var(--duration-base) var(--ease-out-expo);
+}
+
+.abrir:hover {
+  border-color: var(--glass-border-active);
+  background: var(--surface-1-hover);
+}
+
+.abrir:focus-visible {
+  outline: 2px solid var(--accent-40);
+  outline-offset: 2px;
+}
+
+/* Hamburguesa → X: las barras 1/3 rotan 45°/-45° hasta superponerse en el
+   centro (misma "top") y la barra 2 se desvanece. */
+.hamburguesa {
+  position: relative;
+  display: inline-flex;
+  width: 20px;
+  height: 16px;
+}
+
+.barra {
+  position: absolute;
+  left: 0;
+  width: 20px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+  transition:
+    top var(--duration-base) var(--ease-out-expo),
+    transform var(--duration-base) var(--ease-out-expo),
+    opacity var(--duration-base) var(--ease-out-expo);
+}
+
+.barra:nth-child(1) {
+  top: 0;
+}
+
+.barra:nth-child(2) {
+  top: 7px;
+}
+
+.barra:nth-child(3) {
+  top: 14px;
+}
+
+.hamburguesa[data-abierto="true"] .barra:nth-child(1) {
+  top: 7px;
+  transform: rotate(45deg);
+}
+
+.hamburguesa[data-abierto="true"] .barra:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburguesa[data-abierto="true"] .barra:nth-child(3) {
+  top: 7px;
+  transform: rotate(-45deg);
+}
+
+/* --- Drawer --- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  animation: overlay-in var(--duration-base) var(--ease-out-expo);
+}
+
+.panel {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  /* Overlay y panel son hermanos (ver NavDrawer.tsx) — sin esto, el panel
+     (sin z-index propio) queda por DEBAJO del overlay (z-index 100) y su
+     blur, aunque venga después en el DOM. Bug real: encontrado por el
+     usuario probando a mano ("se ve borroso y no lo puedo usar"). */
+  z-index: 101;
+  width: min(320px, 85vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  /* padding-top más grande a propósito: el header (z-index 110) queda por
+     encima de este panel para que el botón hamburguesa/X siga visible y
+     clickeable con el drawer abierto — este espacio evita que el primer
+     destino quede tapado detrás de esa franja. */
+  padding: 88px var(--space-5) var(--space-5);
+  background: var(--surface-1);
+  border-left: 1px solid var(--glass-border);
+  animation: panel-in var(--duration-slow) var(--ease-out-expo);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item {
+  display: flex;
+}
+
+.destino {
+  width: 100%;
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-control);
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background-color var(--duration-base) var(--ease-out-expo);
+}
+
+.destino:hover {
+  background: var(--glass-bg);
+}
+
+.destino:focus-visible {
+  outline: 2px solid var(--accent-40);
+  outline-offset: 2px;
+}
+
+.destinoProximamente {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-3);
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.badge {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-to);
+  background: var(--accent-05);
+  border: 1px solid var(--accent-40);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-2);
+  white-space: nowrap;
+}
+
+/* --- Pie del drawer: identidad + cerrar sesión --- */
+
+.userFooter {
+  /* Empuja el pie al fondo del panel sea cual sea la altura de la lista de
+     arriba — el panel ya es `display:flex; flex-direction:column`. */
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--glass-border);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+  color: var(--bg);
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.userTexto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.userNombre {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userEmail {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userSkeleton {
+  display: block;
+  width: 120px;
+  height: 14px;
+  border-radius: var(--radius-control);
+  background: var(--glass-bg);
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .panel {
+    animation: none;
+  }
+
+  .barra {
+    transition: none;
+  }
+}

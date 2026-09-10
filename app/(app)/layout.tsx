@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { DashboardHeader } from "@/components/nav/DashboardHeader";
 import { TextLink } from "@/components/ui";
 import styles from "./layout.module.css";
 
@@ -47,6 +48,11 @@ const FOOTER_LINKS = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className={styles.shell}>
+      {/* VGRP-27 — header + drawer. Client Component sin fetching propio (los
+          5 destinos son iguales para todo usuario/nivel): no vuelve dinámico
+          este layout, sigue prerenderizado igual que antes. */}
+      <DashboardHeader />
+
       <div className={styles.content}>{children}</div>
 
       <footer className={styles.footer}>
