@@ -13,6 +13,7 @@
 
 import "server-only";
 
+import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import type { Database } from "../database.types";
@@ -95,10 +96,55 @@ const obtenerVideosPorStageCached = unstable_cache(
   { tags: [TAG_POR_ENTIDAD.videos] },
 );
 
+/** La grilla entera como tiles de relleno: la forma degradada de `obtenerVideosStageConFallback`. */
+function grillaDeRelleno(stage: 1 | 2): VideoGridItem[] {
+  return Array.from({ length: CANTIDAD_STAGE[stage] }, () => tileRelleno());
+}
+
+/**
+ * Fail-open sobre la lectura cacheada: si la base no responde, la grilla sale
+ * en tiles de "Próximamente" en vez de propagar el error.
+ *
+ * El motivo es el BUILD, no el runtime. `app/(app)/dashboard/[variante]` es una
+ * ruta estática (`generateStaticParams` + `dynamicParams = false`), así que este
+ * await corre durante `next build`: sin este catch, cualquier problema de base o
+ * de credenciales en el entorno de build —una service role key vencida fue
+ * exactamente el caso— voltea el deploy entero de la app, incluidas las rutas
+ * que no tienen nada que ver con videos.
+ *
+ * El precio, explícito: cuando falla en build, el HTML estático queda con la
+ * grilla vacía servida desde el CDN hasta el próximo `revalidateTag` (el que
+ * VGRP-38 ya dispara en cada escritura sobre `videos`). Se prefiere una sección
+ * degradada a un sitio caído, y Sentry avisa que pasó.
+ *
+ * El catch va AFUERA de `unstable_cache` a propósito: así el fallo no se cachea
+ * y el request siguiente vuelve a intentar la lectura real.
+ */
+async function obtenerVideosStageConFallback(stage: 1 | 2): Promise<VideoGridItem[]> {
+  try {
+    return await obtenerVideosPorStageCached(stage);
+  } catch (error) {
+    // Fail-open igual que lib/data/admin/audit-log.ts: sin SENTRY_DSN,
+    // `captureException` es un no-op (ver instrumentation.ts) y no rompe nada.
+    Sentry.captureException(error, {
+      level: "error",
+      tags: { "videos-grilla-degradada": "true" },
+      extra: {
+        stage,
+        detalle:
+          "No se pudo leer la tabla `videos`; la grilla de Inicio se sirve con tiles de " +
+          "relleno. Si ocurrió durante `next build`, el HTML estático queda degradado " +
+          "hasta el próximo revalidateTag.",
+      },
+    });
+    return grillaDeRelleno(stage);
+  }
+}
+
 export function obtenerVideosStage1(): Promise<VideoGridItem[]> {
-  return obtenerVideosPorStageCached(1);
+  return obtenerVideosStageConFallback(1);
 }
 
 export function obtenerVideosStage2(): Promise<VideoGridItem[]> {
-  return obtenerVideosPorStageCached(2);
+  return obtenerVideosStageConFallback(2);
 }
