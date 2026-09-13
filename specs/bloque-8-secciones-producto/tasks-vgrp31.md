@@ -1,9 +1,19 @@
 # Tasks: VGRP-31 — Banner de la calculadora y directorio de agentes de compra
 
 **Status:** Implementado, pendiente `/simplify` + `/design-critique` + PR
-**Last updated:** 2026-09-12
+**Last updated:** 2026-09-13
 **Design:** [design-vgrp31.md](./design-vgrp31.md)
 **Requirements:** [requirements-vgrp31.md](./requirements-vgrp31.md)
+
+## Corrección del link de fallback (2026-09-13)
+
+El valor de emergencia en `lib/config/index.ts` (`DEFAULT_LINKS.calculadora`) apuntaba a
+`ogcircle.com/calculadora` — un dominio que no es el real. El usuario confirmó que la
+calculadora sigue en `vegroup.vercel.app/calculadora` (coincide con la PRD y con
+`components/nav/destinos.ts`, que siempre tuvo el dominio correcto). Corregido el
+fallback + su test (`lib/config/index.test.ts`). El valor real sigue viniendo de Edge
+Config (`links.calculadora`) cuando esté configurado — esto sólo corrige qué se muestra
+si Edge Config no responde.
 
 - [x] **31-T1 — Verificación del estado real antes de tocar código**
   Notes: `AgentesGrid.tsx`/`lib/data/agentes.ts`/`ContenidoBloqueado` ya estaban

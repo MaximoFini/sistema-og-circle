@@ -21,9 +21,12 @@ con sólo SWIFT exclusivo de Avanzado. Encontrado y citado en VGRP-33
 
 > Principiante — [...] servicios financieros. Avanzado — Todo lo anterior + [...] SWIFT.
 
-Se procede con esa lectura (documentada, no inventada). **Sigue pendiente la
-confirmación explícita de Jota** por si la PRD estuviera desactualizada — no bloqueante
-para implementar, sí para dar el ticket por cerrado de negocio.
+Se procede con esa lectura (documentada, no inventada). **Confirmado (2026-09-13)**: un
+Principiante ve título y descripción de "Servicios financieros" en general, con los
+datos SWIFT específicamente bloqueados y un cartel de "mejorá tu nivel" — exactamente
+el mecanismo ya implementado (`ContenidoBloqueado` sobre la descripción de la fila
+`nivel_requerido='avanzado'`, título siempre visible). Sin ambigüedad de negocio
+pendiente.
 
 ## Estado real al empezar
 

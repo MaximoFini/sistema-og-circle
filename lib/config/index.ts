@@ -28,7 +28,13 @@ const DEFAULT_FLAGS: Config["flags"] = {
 };
 
 const DEFAULT_LINKS: Config["links"] = {
-  calculadora: "https://ogcircle.com/calculadora",
+  // VGRP-31 — corregido 2026-09-13: el valor anterior ("ogcircle.com/calculadora")
+  // apuntaba a un dominio que no es el real. La PRD y el ticket original documentan
+  // que la calculadora sigue viviendo en vegroup.vercel.app (confirmado con el
+  // usuario) — no se migra en Fase 2 (decisión ya registrada). Este es sólo el
+  // fallback si Edge Config no responde; el valor real vive en Edge Config
+  // (`links.calculadora`), cambiable sin deploy.
+  calculadora: "https://vegroup.vercel.app/calculadora",
   whatsapp: "https://wa.me/5491100000000",
   traxcargo: "https://traxcargo.com",
 };
