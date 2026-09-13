@@ -5,7 +5,32 @@
   margin: 0;
   font-family: var(--font-body);
   font-size: 13px;
+  line-height: 1.4;
   color: var(--text-muted);
+}
+
+/* VGRP-28 — skeleton mientras carga la primera lectura de progreso. Mismo <p>/tamaño de
+   fuente que el texto real (línea 4 de arriba) — no genera salto de layout al resolver. */
+.skeletonBar {
+  display: inline-block;
+  width: 11ch;
+  height: 1em;
+  vertical-align: text-bottom;
+  background: var(--surface-2);
+  border-radius: var(--radius-control);
+  animation: pulso 1.4s ease-in-out infinite;
+}
+
+@keyframes pulso {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBar {
+    animation: none;
+  }
 }
 
 .grid {

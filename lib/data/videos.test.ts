@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 async function crearVideoTest(valores: {
-  stage: 1 | 2;
+  stage: 1 | 2 | 3;
   titulo: string;
   provider_ref?: string | null;
   publicado?: boolean;
@@ -47,6 +47,11 @@ describe("TOTAL_VIDEOS / CANTIDAD_STAGE", () => {
     expect(CANTIDAD_STAGE[1]).toBe(8);
     expect(CANTIDAD_STAGE[2]).toBe(3);
     expect(TOTAL_VIDEOS).toBe(11);
+  });
+
+  it("stage 3 (explicativo de agentes) es 1 y NO cuenta para TOTAL_VIDEOS (VGRP-31)", () => {
+    expect(CANTIDAD_STAGE[3]).toBe(1);
+    expect(TOTAL_VIDEOS).toBe(11); // 8 + 3, no 8 + 3 + 1
   });
 });
 
@@ -137,5 +142,28 @@ describe("obtenerVideosPorStage", () => {
     const idsReales = items.filter((i) => i.id !== null).map((i) => i.id);
 
     expect(idsReales).toEqual([a.id, b.id]);
+  });
+
+  it("stage 3 (VGRP-31) usa el mismo mecanismo: 1 tile, disponible si publicado+provider_ref", async () => {
+    const video = await crearVideoTest({
+      stage: 3,
+      titulo: "Cómo usar el directorio de agentes",
+      provider_ref: "dQw4w9WgXcQ",
+      publicado: true,
+    });
+
+    const items = await obtenerVideosPorStage(admin, 3);
+
+    expect(items).toHaveLength(CANTIDAD_STAGE[3]);
+    expect(items[0]?.id).toBe(video.id);
+    expect(items[0]?.estado).toBe("disponible");
+  });
+
+  it("stage 3 sin filas reales se completa con 1 tile sintético 'próximamente'", async () => {
+    const items = await obtenerVideosPorStage(admin, 3);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBeNull();
+    expect(items[0]?.estado).toBe("proximamente");
   });
 });

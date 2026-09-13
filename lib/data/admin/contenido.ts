@@ -76,7 +76,9 @@ const agenteSchema = z.object({
 });
 
 const videoSchema = z.object({
-  stage: z.union([z.literal(1), z.literal(2)]),
+  // 3 = video explicativo del directorio de agentes (VGRP-31) — ver comment de
+  // columna en la migración 20260912233815_videos_stage_explicativo.sql.
+  stage: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   titulo: z.string().trim().min(1),
   descripcion: z.string().trim().nullable().optional(),
   // SENSIBLE — igual pasa por acá porque el admin SÍ puede cargar/editarlo;

@@ -23,8 +23,11 @@ import { TAG_POR_ENTIDAD } from "./admin/contenido";
 type AdminClient = SupabaseClient<Database>;
 
 /** Tamaño fijo de cada grilla (PRD / MODULOS.md §2) — no depende de cuántas filas haya
- *  cargadas todavía en la tabla, ver requirements-vgrp29.md "Decisiones asumidas". */
-export const CANTIDAD_STAGE = { 1: 8, 2: 3 } as const;
+ *  cargadas todavía en la tabla, ver requirements-vgrp29.md "Decisiones asumidas".
+ *  stage 3 (VGRP-31) = video explicativo del directorio de agentes, 1 solo video. */
+export const CANTIDAD_STAGE = { 1: 8, 2: 3, 3: 1 } as const;
+// El explicativo (stage 3) NO cuenta acá: MODULOS.md §2 fija el contador de stats en
+// "X / 11" (8+3, formación) — el video de agentes es infraestructura, otra sección.
 export const TOTAL_VIDEOS = CANTIDAD_STAGE[1] + CANTIDAD_STAGE[2];
 
 export interface VideoGridItem {
@@ -57,7 +60,7 @@ function tileRelleno(): VideoGridItem {
  */
 export async function obtenerVideosPorStage(
   admin: AdminClient,
-  stage: 1 | 2,
+  stage: 1 | 2 | 3,
 ): Promise<VideoGridItem[]> {
   const { data, error } = await admin
     .from("videos")
@@ -90,7 +93,7 @@ export async function obtenerVideosPorStage(
 // createServiceRoleClient() en el resto del repo). El tag es el que VGRP-38 ya dispara
 // con revalidateTag() en cada escritura sobre `videos`.
 const obtenerVideosPorStageCached = unstable_cache(
-  (stage: 1 | 2) => obtenerVideosPorStage(createServiceRoleClient(), stage),
+  (stage: 1 | 2 | 3) => obtenerVideosPorStage(createServiceRoleClient(), stage),
   ["videos-por-stage"],
   { tags: [TAG_POR_ENTIDAD.videos] },
 );
@@ -101,4 +104,8 @@ export function obtenerVideosStage1(): Promise<VideoGridItem[]> {
 
 export function obtenerVideosStage2(): Promise<VideoGridItem[]> {
   return obtenerVideosPorStageCached(2);
+}
+
+export function obtenerVideosStage3(): Promise<VideoGridItem[]> {
+  return obtenerVideosPorStageCached(3);
 }

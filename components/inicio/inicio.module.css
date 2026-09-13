@@ -33,6 +33,22 @@
   text-transform: capitalize;
 }
 
+/* --- VGRP-28: fila de stats (videos completados + envíos) bajo el título --- */
+
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+
+.envios {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 /* --- Slot tipo tarjeta (grillas) --- */
 
 .card {
@@ -151,5 +167,30 @@
 
   .banner .encabezado {
     gap: var(--space-1);
+  }
+}
+
+/* --- VGRP-31: CTA de acceso directo (calculadora) dentro de un banner. Mismo look
+   que Button variant="primary" (components/ui/Button.module.css) — DESIGN.md §1,
+   regla dura: el ámbar como fondo pleno nunca lleva texto blanco, el texto pasa a
+   `--bg`. No se reusa <Button> porque esto navega (es un link), no ejecuta una
+   acción — mismo criterio que TextLink en el resto del panel. */
+
+.ctaBanner {
+  align-self: flex-start;
+  flex-shrink: 0;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bg);
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  border-radius: var(--radius-pill);
+  padding: var(--space-3) var(--space-5);
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .ctaBanner {
+    align-self: center;
   }
 }
