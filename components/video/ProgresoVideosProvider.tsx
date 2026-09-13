@@ -12,6 +12,10 @@ import { marcarVideoVisto, obtenerProgresoVideos } from "./_actions";
 interface ProgresoContexto {
   vistos: Set<string>;
   totalVideos: number;
+  /** VGRP-28 — true hasta que resuelva (u falle) la primera lectura de progreso. Sirve
+   *  para distinguir "todavía no sabemos" de "de verdad tiene 0 videos vistos" en el
+   *  contador (StatsVideos), sin generar salto de layout. */
+  cargando: boolean;
   marcarVisto: (videoId: string) => void;
 }
 
@@ -25,6 +29,7 @@ export function ProgresoVideosProvider({
   children: ReactNode;
 }) {
   const [vistos, setVistos] = useState<Set<string>>(new Set());
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     let cancelado = false;
@@ -35,6 +40,9 @@ export function ProgresoVideosProvider({
       .catch(() => {
         // Fallo silencioso: el contador queda en 0 hasta el próximo mount — no es
         // contenido crítico del render inicial (mismo criterio que AgentesGrid).
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
       });
     return () => {
       cancelado = true;
@@ -56,7 +64,9 @@ export function ProgresoVideosProvider({
   }
 
   return (
-    <Contexto.Provider value={{ vistos, totalVideos, marcarVisto }}>{children}</Contexto.Provider>
+    <Contexto.Provider value={{ vistos, totalVideos, cargando, marcarVisto }}>
+      {children}
+    </Contexto.Provider>
   );
 }
 

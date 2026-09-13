@@ -1,9 +1,30 @@
 # Tasks: VGRP-29 — VideoProvider y grillas de Stage 1 y Stage 2
 
 **Status:** Implementado, pendiente `/simplify` + `/design-critique` + PR
-**Last updated:** 2026-09-09
+**Last updated:** 2026-09-13
 **Design:** [design-vgrp29.md](./design-vgrp29.md)
 **Requirements:** [requirements-vgrp29.md](./requirements-vgrp29.md)
+
+## Rediseño visual "camino de aprendizaje" (2026-09-13)
+
+Pedido del usuario después de ver la grilla original en uso ("no me gusta mucho la UI").
+Se probaron 2 rondas de propuestas visuales (mockups) antes de elegir; la primera
+elegida ("editorial / feed continuo", sin cajas en toda la pantalla) se implementó,
+se revirtió a pedido del usuario, y se reemplazó por esta.
+
+- **Qué cambió:** `VideoGrid.tsx`/`VideoCard.tsx`/`video.module.css` — de grilla de
+  tarjetas sueltas a una lista de pasos conectados por una línea vertical (nodo
+  numerado + línea, estilo path de curso). Estados del nodo: completado (check,
+  degradé ámbar), disponible (contorno ámbar), próximamente (gris) — mapean 1:1 a
+  `estado`/`vistos` que ya existían, no se agregó ningún bloqueo secuencial falso
+  (todo "disponible" sigue siendo accesible sin depender del paso anterior).
+- **Qué NO cambió:** `lib/data/videos.ts`, el mecanismo de gating, `ProgresoVideosProvider`,
+  las Server Actions — sólo presentación. El resto del dashboard (agentes, profesionales,
+  servicios financieros, banners) sigue con el diseño de tarjetas original, sin cambios.
+- **Verificado:** typecheck, lint, Vitest (`videos.test.ts`, sin relación con el cambio
+  visual pero confirmado en verde), y a mano en el navegador: estado completado (check +
+  línea llena) confirmado marcando un video real como visto, mobile sin overflow.
+- Sin commitear todavía.
 
 - [x] **29-T1 — `VideoProvider` (interfaz + YouTube no listado)**
   Satisfies: US-1

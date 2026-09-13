@@ -206,6 +206,7 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
               >
                 <option value="1">1</option>
                 <option value="2">2</option>
+                <option value="3">3 (explicativo de agentes)</option>
               </select>
             ) : campo.tipo === "number" ? (
               <input

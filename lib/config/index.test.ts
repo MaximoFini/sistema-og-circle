@@ -84,7 +84,7 @@ describe("getConfig", () => {
 
     expect(config.precios).toEqual({ ok: true, precios: VALID_CONFIG.precios });
     expect(config.links).toEqual({
-      calculadora: "https://ogcircle.com/calculadora",
+      calculadora: "https://vegroup.vercel.app/calculadora",
       whatsapp: "https://wa.me/5491100000000",
       traxcargo: "https://traxcargo.com",
     });

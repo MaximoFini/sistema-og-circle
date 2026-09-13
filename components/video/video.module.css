@@ -1,55 +1,136 @@
-/* VGRP-29 — grilla de videos (Stage 1/2). Tokens de app/tokens.css, mismo criterio que
-   components/inicio/inicio.module.css (agentesGrid/agenteCard). */
+/* VGRP-29 — camino de videos (Stage 1/2). Tokens de app/tokens.css. */
 
 .stats {
   margin: 0;
   font-family: var(--font-body);
   font-size: 13px;
+  line-height: 1.4;
   color: var(--text-muted);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--space-2);
+/* VGRP-28 — skeleton mientras carga la primera lectura de progreso. Mismo <p>/tamaño de
+   fuente que el texto real (línea 4 de arriba) — no genera salto de layout al resolver. */
+.skeletonBar {
+  display: inline-block;
+  width: 11ch;
+  height: 1em;
+  vertical-align: text-bottom;
+  background: var(--surface-2);
+  border-radius: var(--radius-control);
+  animation: pulso 1.4s ease-in-out infinite;
 }
 
-.card {
+@keyframes pulso {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBar {
+    animation: none;
+  }
+}
+
+/* Rediseño "camino de aprendizaje" (2026-09-13, elegido sobre 3 propuestas): cada
+   video es un paso conectado por una línea vertical (estilo path de curso), no una
+   tarjeta suelta en una grilla. */
+
+.camino {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  background: var(--surface-2);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
-  overflow: hidden;
-  color: var(--text-primary);
 }
 
-.tileVisual {
-  position: relative;
-  aspect-ratio: 16 / 10;
+.fila {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.riel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.nodo {
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.nodoCompletado {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+  color: var(--bg);
+}
+
+.nodoActual {
+  background: transparent;
+  border: 2px solid var(--accent-to);
+  color: var(--accent-to);
+}
+
+.nodoBloqueado {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.linea {
+  width: 2px;
+  flex: 1;
+  min-height: var(--space-5);
+  background: var(--glass-border);
+  margin-block: 2px;
+}
+
+.lineaLlena {
+  background: var(--accent-to);
+}
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-5);
+  flex: 1;
+  min-width: 0;
+}
+
+.filaMedia {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.thumbBtn {
+  position: relative;
+  width: 96px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: var(--radius-control);
+  overflow: hidden;
   background: var(--surface-1);
   border: 0;
   padding: 0;
   cursor: pointer;
-  color: inherit;
-  font: inherit;
 }
 
-.tileVisual:disabled {
-  cursor: default;
-}
-
-.thumbnail {
+.thumbnailChica {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-.tileProximamente {
+.etiquetaProximamente {
   font-family: var(--font-body);
   font-size: 12px;
   color: var(--text-muted);
@@ -59,19 +140,13 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 0;
+  border-radius: var(--radius-control);
 }
 
-.info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: 0 var(--space-3) var(--space-3);
-}
-
-.tituloVideo {
+.tituloPaso {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }

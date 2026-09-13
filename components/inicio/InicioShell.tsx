@@ -11,21 +11,38 @@
 // cacheado + revalidado por tag — no rompe el rendering estático, ver design-vgrp29.md).
 // Envuelve todo en <ProgresoVideosProvider> porque el contador de stats del header y
 // las dos grillas comparten el mismo estado de "videos vistos".
+//
+// VGRP-31: suma el CTA de la calculadora (link desde Edge Config, lib/config) y el
+// video explicativo del directorio de agentes (stage 3, mismo mecanismo de VGRP-29).
 
+import { TextLink } from "@/components/ui";
 import { ProgresoVideosProvider } from "@/components/video/ProgresoVideosProvider";
 import { StatsVideos } from "@/components/video/StatsVideos";
 import { VideoGrid } from "@/components/video/VideoGrid";
-import { obtenerVideosStage1, obtenerVideosStage2, TOTAL_VIDEOS } from "@/lib/data/videos";
+import { getLinks } from "@/lib/config";
+import {
+  obtenerVideosStage1,
+  obtenerVideosStage2,
+  obtenerVideosStage3,
+  TOTAL_VIDEOS,
+} from "@/lib/data/videos";
 import { AgentesGrid } from "./AgentesGrid";
 import styles from "./inicio.module.css";
+import { ProfesionalesGrid } from "./ProfesionalesGrid";
 import { SeccionSlot } from "./SeccionSlot";
+import { ServiciosFinancierosGrid } from "./ServiciosFinancierosGrid";
 
 export interface InicioShellProps {
   variante: "principiante" | "avanzado";
 }
 
 export async function InicioShell({ variante }: InicioShellProps) {
-  const [stage1, stage2] = await Promise.all([obtenerVideosStage1(), obtenerVideosStage2()]);
+  const [stage1, stage2, stage3, links] = await Promise.all([
+    obtenerVideosStage1(),
+    obtenerVideosStage2(),
+    obtenerVideosStage3(),
+    getLinks(),
+  ]);
 
   return (
     <ProgresoVideosProvider totalVideos={TOTAL_VIDEOS}>
@@ -33,7 +50,13 @@ export async function InicioShell({ variante }: InicioShellProps) {
         <header className={styles.saludo}>
           <p className={styles.eyebrowNivel}>Tu cuenta</p>
           <h1 className={styles.tituloPrincipal}>Nivel {variante}</h1>
-          <StatsVideos />
+          <div className={styles.statsRow}>
+            <StatsVideos />
+            {/* VGRP-28 — sin módulo de envíos en Fase 2 (roadmap: Fase 3). Estado
+                explícito y estático (no requiere query) en vez de un "0" que al lado
+                de un contador real podría leerse como un bug. */}
+            <p className={styles.envios}>Seguimiento de envíos: próximamente</p>
+          </div>
         </header>
 
         <SeccionSlot
@@ -49,7 +72,16 @@ export async function InicioShell({ variante }: InicioShellProps) {
           titulo="Calculadora de costos"
           descripcion="Cuánto te sale realmente importar, en dos minutos."
           variante="banner"
-        />
+        >
+          <TextLink
+            href={links.calculadora}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.ctaBanner}
+          >
+            Abrir calculadora
+          </TextLink>
+        </SeccionSlot>
 
         <SeccionSlot
           eyebrow="Stage 2"
@@ -64,6 +96,7 @@ export async function InicioShell({ variante }: InicioShellProps) {
           titulo="Agentes de compra en China"
           descripcion="6 agentes verificados con los que ya opera Jota."
         >
+          <VideoGrid videos={stage3} />
           <AgentesGrid />
         </SeccionSlot>
 
@@ -79,15 +112,17 @@ export async function InicioShell({ variante }: InicioShellProps) {
           eyebrow="Infraestructura"
           titulo="Profesionales al servicio"
           descripcion="Contable, automatizaciones, agencia de marketing y UGC, listos para tu operación."
-          itemsFantasma={4}
-        />
+        >
+          <ProfesionalesGrid />
+        </SeccionSlot>
 
         <SeccionSlot
           eyebrow="Infraestructura"
           titulo="Servicios financieros"
           descripcion="Pagos al exterior y gestión financiera para tu importación."
-          itemsFantasma={3}
-        />
+        >
+          <ServiciosFinancierosGrid />
+        </SeccionSlot>
       </div>
     </ProgresoVideosProvider>
   );
