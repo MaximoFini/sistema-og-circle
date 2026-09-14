@@ -19,7 +19,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3000"}`,
     trace: "on-first-retry",
   },
   projects: [
@@ -34,7 +34,7 @@ export default defineConfig({
   // despliega, no contra `next dev`.
   webServer: {
     command: "pnpm build && pnpm start",
-    url: "http://localhost:3000",
+    url: `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3000"}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     // `pnpm test:e2e` corre con NODE_ENV=test (ver package.json — lo exige
@@ -42,6 +42,6 @@ export default defineConfig({
     // hijo NO debe heredarlo: Next.js no carga `.env.local` cuando
     // NODE_ENV=test (a propósito, para que los tests no dependan del entorno
     // de cada máquina), y la app SÍ necesita `.env.local` para arrancar.
-    env: { NODE_ENV: "production" },
+    env: { NODE_ENV: "production", ...(process.env.PLAYWRIGHT_PORT ? { PORT: process.env.PLAYWRIGHT_PORT } : {}) },
   },
 });
