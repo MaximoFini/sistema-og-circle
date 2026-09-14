@@ -9,11 +9,22 @@ import "../test/helpers/load-env";
 async function globalTeardown() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return;
 
-  const { cleanupAllTestArtifacts } = await import("../test/helpers/cleanup");
+  const { cleanupAllTestArtifacts, cleanupContenidoDeTest } = await import(
+    "../test/helpers/cleanup"
+  );
   const { usersDeleted } = await cleanupAllTestArtifacts();
   if (usersDeleted > 0) {
     console.log(
       `[global-teardown] Limpieza post-E2E: ${usersDeleted} usuario(s) de test borrado(s).`,
+    );
+  }
+
+  // VGRP-49 — ver el comentario de test/global-teardown.ts: las 4 tablas de
+  // contenido no cuelgan de un usuario, se limpian aparte.
+  const { filasBorradas } = await cleanupContenidoDeTest();
+  if (filasBorradas > 0) {
+    console.log(
+      `[global-teardown] Limpieza post-E2E: ${filasBorradas} fila(s) de contenido de test borrada(s).`,
     );
   }
 }

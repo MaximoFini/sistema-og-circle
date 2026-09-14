@@ -447,15 +447,10 @@ describe("nivel_overrides: default-deny para authenticated (VGRP-36)", () => {
 });
 
 // Criterio del ticket: "un token de nivel principiante no ve contenido de
-// avanzado" y "un usuario ninguno no lee contenido de ningún nivel pago". El
-// esquema actual (profiles / pagos / admin_audit_log / leads, ver
-// supabase/migrations/20260822035923_init_plataforma.sql) NO tiene ninguna
-// tabla de "contenido" gateado por nivel todavía — no hay cursos, módulos, ni
-// nada parecido que una policy de RLS pudiera proteger por nivel. Forzar acá
-// una tabla o un test fabricado no probaría nada real, así que se documenta
-// como pendiente explícito en vez de simular una garantía que hoy no existe.
-it.todo(
-  "gating de contenido por nivel (principiante no ve avanzado, ninguno no ve contenido pago): " +
-    "no hay ninguna tabla de contenido en el esquema actual (profiles/pagos/admin_audit_log/leads) " +
-    "para aplicarle una policy de RLS por nivel — se retoma cuando exista esa tabla.",
-);
+// avanzado" y "un usuario ninguno no lee contenido de ningún nivel pago".
+// RESUELTO por VGRP-49 (VGRP-38 creó las tablas de contenido — agentes,
+// videos, profesionales, servicios_financieros — con sus 4 policies de RLS):
+// ver test/integration/rls-contenido.test.ts, que cubre exactamente esto
+// contra el proyecto real (anon, ninguno/principiante/avanzado,
+// activo=false/publicado=false, orden de declaración del enum, y
+// INSERT/UPDATE/DELETE denegado para authenticated).

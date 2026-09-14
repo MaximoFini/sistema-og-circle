@@ -169,3 +169,51 @@ export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number 
 
   return { usersDeleted: toDelete.length };
 }
+
+// -----------------------------------------------------------------------------
+// VGRP-49 — barrido de las 4 tablas de contenido (agentes, videos,
+// profesionales, servicios_financieros; VGRP-38). A diferencia de todo lo de
+// arriba, estas tablas NO cuelgan de un usuario de test (no tienen
+// user_id/actor_id): el criterio de "esto es de un test" es un marcador de
+// texto, no un dominio de email. Toda fila que un test de VGRP-49 crea en
+// estas 4 tablas lleva el prefijo "[test]" en su nombre/título — nunca crear
+// una fila de contenido de test sin ese prefijo. La mayoría de los tests ya
+// se borran solos en su propio afterEach; esto es la red de contención para
+// una corrida que se cortó a la mitad.
+// -----------------------------------------------------------------------------
+
+const MARCADOR_CONTENIDO_TEST = "[test]";
+
+const TABLAS_CONTENIDO_POR_COLUMNA_MARCADORA = [
+  { tabla: "agentes", columna: "nombre" },
+  { tabla: "videos", columna: "titulo" },
+  { tabla: "profesionales", columna: "nombre" },
+  { tabla: "servicios_financieros", columna: "titulo" },
+] as const;
+
+/**
+ * Borra, en las 4 tablas de contenido, cualquier fila cuyo nombre/título
+ * empiece con `MARCADOR_CONTENIDO_TEST`. Nunca toca una fila sin ese prefijo
+ * — es lo único que hace seguro correr esto contra el proyecto real
+ * (docs/TESTING.md).
+ */
+export async function cleanupContenidoDeTest(): Promise<{ filasBorradas: number }> {
+  const admin = createTestAdminClient();
+  let filasBorradas = 0;
+
+  for (const { tabla, columna } of TABLAS_CONTENIDO_POR_COLUMNA_MARCADORA) {
+    const { data, error: selectError } = await admin
+      .from(tabla)
+      .select("id")
+      .like(columna, `${MARCADOR_CONTENIDO_TEST}%`);
+    if (selectError) throw selectError;
+    if (!data || data.length === 0) continue;
+
+    const ids = data.map((f) => f.id);
+    const { error: deleteError } = await admin.from(tabla).delete().in("id", ids);
+    if (deleteError) throw deleteError;
+    filasBorradas += ids.length;
+  }
+
+  return { filasBorradas };
+}
