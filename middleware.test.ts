@@ -164,6 +164,22 @@ describe("middleware", () => {
       expect(res.status).toBe(200);
       expect(res.headers.get("location")).toBeNull();
     });
+
+    // VGRP-49 — /api/agentes es el único camino por el que un contacto real
+    // llega al browser (VGRP-30 US-4): no está en PUBLIC_EXACT ni en
+    // PUBLIC_PREFIXES, así que queda cubierta por el mismo fail-closed
+    // genérico que ya prueba "/api/inventado" arriba — este test la fija a
+    // ella en particular, para que un PUBLIC_PREFIXES.push("/api/agentes")
+    // accidental quede en rojo con un mensaje específico.
+    it("/api/agentes sin sesión -> 401 JSON (no es una ruta pública)", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/api/agentes"));
+
+      expect(res.status).toBe(401);
+      expect(res.headers.get("location")).toBeNull();
+    });
   });
 
   // VGRP-35 — capa de ROL sobre `/admin` y `/api/admin`. Suma al fail-closed

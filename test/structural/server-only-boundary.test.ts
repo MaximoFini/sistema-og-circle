@@ -19,6 +19,13 @@ const ARCHIVOS = [
   "lib/data/admin/usuarios.ts",
   "lib/data/admin/pagos.ts",
   "lib/supabase/service-role.ts",
+  // VGRP-49 — ya tenían `import "server-only";` (VGRP-30/38) pero no estaban
+  // en esta lista: el único lugar donde se lee un secreto (contacto de
+  // agente, provider_ref de video) y se decide si se resuelve o se oculta.
+  "lib/data/secretos.ts",
+  "lib/data/agentes.ts",
+  "lib/data/videos.ts",
+  "lib/data/admin/contenido.ts",
 ];
 
 /** Primeras líneas de código real: se descartan comentarios de línea (`//`),
