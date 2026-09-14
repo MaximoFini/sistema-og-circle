@@ -25,6 +25,7 @@ import { getTokenWithClaim } from "../helpers/auth";
 import { createTestAdminClient, createTestAnonClient } from "../helpers/db-client";
 import "../helpers/load-env";
 import { withPolicyDisabled } from "../helpers/rls-toggle";
+import { TEST_EMAIL_SUFFIX } from "../helpers/seed-users";
 
 const admin = createTestAdminClient();
 
@@ -386,15 +387,48 @@ describe("claim de nivel ausente o inválido: comportamiento REAL de hoy (VGRP-4
   // test/integration/claims.test.ts). El comportamiento real verificable acá
   // es doble:
   it("la columna profiles.nivel (origen del claim) rechaza cualquier valor fuera del enum — por eso el claim nunca puede ser 'inválido' vía un login real", async () => {
+    // Bug real de TEST encontrado corriendo esto por primera vez contra la base real
+    // (ninguno de los 4 agentes de Bloque 9 pudo correr la suite real antes de este
+    // paso de integración — ver docs/TESTING.md): la suposición original de este test
+    // ("el UPDATE falla ANTES de buscar la fila, porque Postgres valida el literal al
+    // parsear el statement") es FALSA para un UPDATE con service_role sobre un id que
+    // no matchea ninguna fila. Confirmado directo contra Supabase real: un
+    // `.update({ nivel: "nivel-inventado" }).eq("id", "<uuid inexistente>")` vuelve
+    // `{ data: [], error: null, status: 200 }` — con cero filas a tocar, el target
+    // list del UPDATE nunca se evalúa fila por fila y el literal jamás se castea
+    // contra el enum. Un INSERT con el mismo valor inválido SÍ falla siempre
+    // (`22P02 invalid input value for enum`), confirmando que la columna es un enum
+    // real; lo que hacía falta corregir era el WHERE, no la columna. Se usa acá el id
+    // real del seed "ninguno" (existe siempre, ver test/helpers/seed-users.ts) para
+    // que el UPDATE matchee una fila de verdad y dispare la validación real — Postgres
+    // aborta el UPDATE completo ante el error de tipo, así que la fila del seed NUNCA
+    // llega a mutarse (confirmado: sigue en 'ninguno' después de este test).
+    const { data: seedNinguno, error: seedError } = await admin
+      .from("profiles")
+      .select("id, nivel")
+      .eq("email", `ninguno${TEST_EMAIL_SUFFIX}`)
+      .single();
+    if (seedError || !seedNinguno) {
+      throw new Error(
+        `No se encontró el usuario seed "ninguno${TEST_EMAIL_SUFFIX}". ¿Corriste \`pnpm db:seed:test\`?`,
+      );
+    }
+
     const { error } = await admin
       .from("profiles")
       .update({ nivel: "nivel-inventado" as never })
-      .eq("id", "00000000-0000-0000-0000-000000000000");
-    // No hay fila con ese id, pero el UPDATE falla ANTES de buscarla: Postgres
-    // valida el literal contra el tipo enum de la columna al parsear el
-    // statement.
+      .eq("id", seedNinguno.id);
     expect(error).not.toBeNull();
     expect(error?.message ?? "").toMatch(/invalid input value for enum/i);
+
+    // Confirma que el UPDATE realmente abortó sin tocar la fila (no sólo que devolvió
+    // un error de forma).
+    const { data: sinCambios } = await admin
+      .from("profiles")
+      .select("nivel")
+      .eq("id", seedNinguno.id)
+      .single();
+    expect(sinCambios?.nivel).toBe(seedNinguno.nivel);
   });
 
   it("un token real con la firma corrompida (mismo mecanismo que claims.test.ts) es rechazado por PostgREST antes de llegar a evaluar RLS — nunca devuelve una fila real", async () => {
