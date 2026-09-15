@@ -4,9 +4,9 @@ import styles from "../auth.module.css";
 import { RegistroForm } from "./RegistroForm";
 
 // El registro está gateado por `flags.registro_habilitado` (lib/config,
-// Edge Config). Hoy resuelve `false` por default porque el store de Edge
-// Config todavía no existe — es correcto que esta pantalla no deje
-// registrar todavía; el chequeo se queda igual para cuando se prenda.
+// Edge Config) — hoy resuelve `true` (ver docs/EDGE-CONFIG.md), pero el
+// chequeo se queda: sigue siendo el interruptor real para apagar el
+// registro sin deploy si hiciera falta.
 //
 // `force-dynamic` es necesario acá: esta página no usa ninguna API dinámica
 // de Next (no lee cookies ni searchParams), así que sin esto Next la
