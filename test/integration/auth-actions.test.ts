@@ -194,6 +194,7 @@ describe("registrarse — VGRP-18", () => {
       email,
       telefono: "+54 9 11 5555-1234",
       password: "una-password-valida-1",
+      aceptaTerminos: "true",
     });
 
     const destino = await capturarRedirect(() => registrarse(INITIAL_ACTION_STATE, fd));
@@ -253,6 +254,7 @@ describe("registrarse — VGRP-18", () => {
       email: seed.email,
       telefono: "+54 9 11 5555-0000",
       password: "otra-password-cualquiera-1",
+      aceptaTerminos: "true",
     });
     const t0 = performance.now();
     const resultadoDuplicado = await registrarse(INITIAL_ACTION_STATE, fdDuplicado);
@@ -265,6 +267,7 @@ describe("registrarse — VGRP-18", () => {
       email: emailNuevo,
       telefono: "+54 9 11 5555-0000",
       password: "otra-password-cualquiera-1",
+      aceptaTerminos: "true",
     });
     const t1 = performance.now();
     const destino = await capturarRedirect(() => registrarse(INITIAL_ACTION_STATE, fdNuevo));
