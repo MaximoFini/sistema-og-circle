@@ -35,12 +35,20 @@ function formatearFecha(iso: string): string {
   });
 }
 
-function resumirNivel(valor: Json | null): string {
-  if (valor && typeof valor === "object" && !Array.isArray(valor)) {
-    const nivel = (valor as Record<string, Json | undefined>).nivel;
-    if (typeof nivel === "string") return nivel;
-  }
-  return "—";
+// VGRP-36 guardaba siempre { nivel }; VGRP-40 (actualizar_config) guarda el
+// objeto completo de precios o de flags — sin un campo `nivel` en común. En
+// vez de una función por `accion`, esta resume CUALQUIER objeto plano como
+// "clave: valor, clave: valor", con el caso de `nivel` como atajo (ya
+// probado en producción, se sigue mostrando igual que antes).
+function resumirCambio(valor: Json | null): string {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return "—";
+
+  const obj = valor as Record<string, Json | undefined>;
+  if (typeof obj.nivel === "string") return obj.nivel;
+
+  const entradas = Object.entries(obj).filter(([, v]) => v !== undefined);
+  if (entradas.length === 0) return "—";
+  return entradas.map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
 }
 
 // Escapa los comodines de LIKE/ILIKE (`%`, `_`, `\`) para que el texto que
@@ -144,8 +152,8 @@ export default async function AuditoriaPage({
                 {f.entidadId ? ` (${f.entidadId})` : ""}
               </span>
               <span className={styles.filaCambio}>
-                <strong>{resumirNivel(f.valorAnterior)}</strong> →{" "}
-                <strong>{resumirNivel(f.valorNuevo)}</strong>
+                <strong>{resumirCambio(f.valorAnterior)}</strong> →{" "}
+                <strong>{resumirCambio(f.valorNuevo)}</strong>
               </span>
             </div>
           ))}
