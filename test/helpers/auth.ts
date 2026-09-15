@@ -6,6 +6,14 @@ import { findSeedUser, type SeedUserDefinition, TEST_EMAIL_SUFFIX } from "./seed
 import { withAuthRetry } from "./with-auth-retry";
 
 /**
+ * Password fija para usuarios de test creados ad hoc (no es un secreto real:
+ * sólo existe contra cuentas @test.og-circle.invalid del proyecto de
+ * Supabase de test). Un único punto de definición para no repetir el
+ * literal en cada archivo que crea un usuario "limpio".
+ */
+export const DEFAULT_TEST_PASSWORD = "test-password-1!";
+
+/**
  * Crea un usuario autenticado nuevo (no uno de los del seed) con el nivel
  * (y opcionalmente rol) dado, y devuelve su sesión ya logueada. Pensado para
  * tests que necesitan un usuario "limpio" propio en vez de compartir los 4
@@ -18,7 +26,7 @@ import { withAuthRetry } from "./with-auth-retry";
 export async function createAuthenticatedUser(
   nivel: NivelAcceso,
   rol: RolUsuario = "user",
-  password = "test-password-1!",
+  password = DEFAULT_TEST_PASSWORD,
 ) {
   const admin = createTestAdminClient();
   const email = `helper-${crypto.randomUUID()}${TEST_EMAIL_SUFFIX}`;

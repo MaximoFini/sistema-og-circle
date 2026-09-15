@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { createAuthenticatedUser } from "../test/helpers/auth";
+import { createAuthenticatedUser, DEFAULT_TEST_PASSWORD } from "../test/helpers/auth";
 import { cleanupUser } from "../test/helpers/cleanup";
 import { createTestAdminClient } from "../test/helpers/db-client";
 import "../test/helpers/load-env";
@@ -42,7 +42,7 @@ test.describe("registro → login → dashboard", () => {
   }) => {
     const admin = createTestAdminClient();
     const email = `e2e-registro-${randomUUID()}${TEST_EMAIL_SUFFIX}`;
-    const PASSWORD = "test-password-1!";
+    const PASSWORD = DEFAULT_TEST_PASSWORD;
     let userId: string | null = null;
 
     try {
@@ -107,7 +107,7 @@ test.describe("registro → login → dashboard", () => {
       // que es independiente del flag de registro.
       const created = await createAuthenticatedUser("ninguno");
       userId = created.userId;
-      const PASSWORD = "test-password-1!"; // default de createAuthenticatedUser
+      const PASSWORD = DEFAULT_TEST_PASSWORD;
 
       // --- Primera sesión: login real por /login ---------------------------
       await page.goto("/login");
