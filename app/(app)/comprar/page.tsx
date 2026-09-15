@@ -1,4 +1,5 @@
 import { getPrecios } from "@/lib/config";
+import { formatearPrecio } from "@/lib/format";
 import type { NivelComprable } from "@/lib/mercadopago/preferencia";
 import { ComprarButton } from "./ComprarButton";
 import styles from "./comprar.module.css";
@@ -19,12 +20,6 @@ import styles from "./comprar.module.css";
 // =============================================================================
 
 const NIVELES_COMPRABLES: readonly NivelComprable[] = ["principiante", "avanzado"];
-
-const formatearPrecio = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  maximumFractionDigits: 0,
-});
 
 export default async function ComprarPage() {
   const precios = await getPrecios();

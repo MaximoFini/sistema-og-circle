@@ -1,4 +1,4 @@
-import { getConfig } from "@/lib/config";
+import { getFlags, getPrecios } from "@/lib/config";
 import styles from "../admin.module.css";
 import { FlagsForm } from "./FlagsForm";
 import { PreciosForm } from "./PreciosForm";
@@ -12,7 +12,7 @@ import { PreciosForm } from "./PreciosForm";
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage() {
-  const { precios, flags } = await getConfig();
+  const [precios, flags] = await Promise.all([getPrecios(), getFlags()]);
 
   return (
     <div className={styles.page}>

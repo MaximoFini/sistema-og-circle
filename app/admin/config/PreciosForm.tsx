@@ -2,50 +2,48 @@
 
 // VGRP-40 — Edición de precios, con paso de confirmación inline (US-4: nunca
 // se escribe sin que el admin vea "valor anterior → valor nuevo" y confirme
-// explícitamente). Mismo esqueleto de fetch + `useTransition` + `router.refresh()`
-// que `CambiarNivelForm`/`ReprocesarButton` — ver design.md
-// specs/bloque-10-pendientes/design-vgrp40.md §Trade-offs para por qué es un
-// paso inline y no un modal (el repo no tiene ningún primitive de Dialog hoy).
+// explícitamente). Fetch/estado vía useAdminMutation (../useAdminMutation) —
+// ver design.md specs/bloque-10-pendientes/design-vgrp40.md §Trade-offs para
+// por qué es un paso inline y no un modal (el repo no tiene ningún primitive
+// de Dialog hoy).
 
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 import { Button, FormError, TextField } from "@/components/ui";
+import type { Config } from "@/lib/config/schema";
+import { configSchema } from "@/lib/config/schema";
+import { formatearPrecio } from "@/lib/format";
 import styles from "../admin.module.css";
+import { useAdminMutation } from "../useAdminMutation";
 
-interface Precios {
-  principiante: number;
-  avanzado: number;
-}
+type Precios = Config["precios"];
 
-interface RespuestaError {
-  error?: string;
-  fieldErrors?: { precios?: string[] };
-}
+const PRECIO_FIELD_SCHEMA = configSchema.shape.precios.shape.principiante;
 
-function esEnteroPositivo(v: string): boolean {
+function precioValido(v: string): boolean {
   if (v.trim() === "") return false;
-  const n = Number(v);
-  return Number.isInteger(n) && n > 0;
+  return PRECIO_FIELD_SCHEMA.safeParse(Number(v)).success;
 }
 
 export function PreciosForm({ preciosIniciales }: { preciosIniciales: Precios }) {
-  const router = useRouter();
-  const [refrescando, startTransition] = useTransition();
   const [principiante, setPrincipiante] = useState(String(preciosIniciales.principiante));
   const [avanzado, setAvanzado] = useState(String(preciosIniciales.avanzado));
   const [confirmando, setConfirmando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
+  const { enviando, refrescando, error, ok, setError, submit } = useAdminMutation<
+    { precios: Precios },
+    { valorNuevo: Precios }
+  >({
+    url: "/api/admin/config",
+    mensajeOk: "Precios actualizados.",
+    extraerError: (data) => data.fieldErrors?.precios?.[0],
+  });
 
-  const principianteValido = esEnteroPositivo(principiante);
-  const avanzadoValido = esEnteroPositivo(avanzado);
+  const principianteValido = precioValido(principiante);
+  const avanzadoValido = precioValido(avanzado);
   const formValido = principianteValido && avanzadoValido;
 
   function pedirConfirmacion(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setOk(null);
     if (!formValido) return;
     setConfirmando(true);
   }
@@ -55,35 +53,10 @@ export function PreciosForm({ preciosIniciales }: { preciosIniciales: Precios })
   }
 
   async function confirmar() {
-    setEnviando(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/config", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          precios: { principiante: Number(principiante), avanzado: Number(avanzado) },
-        }),
-      });
-
-      if (res.ok) {
-        setOk("Precios actualizados.");
-        setConfirmando(false);
-        startTransition(() => {
-          router.refresh();
-        });
-        return;
-      }
-
-      const data = (await res.json().catch(() => ({}))) as RespuestaError;
-      setError(data.fieldErrors?.precios?.[0] ?? data.error ?? "No se pudo guardar el cambio.");
-      setConfirmando(false);
-    } catch {
-      setError("No se pudo conectar. Reintentá.");
-      setConfirmando(false);
-    } finally {
-      setEnviando(false);
-    }
+    const resultado = await submit({
+      precios: { principiante: Number(principiante), avanzado: Number(avanzado) },
+    });
+    if (resultado) setConfirmando(false);
   }
 
   if (confirmando) {
@@ -105,8 +78,8 @@ export function PreciosForm({ preciosIniciales }: { preciosIniciales: Precios })
           <ul className={styles.confirmacionLista}>
             {cambios.map((c) => (
               <li key={c.label} className={styles.confirmacionValor}>
-                <strong>{c.label}:</strong> ${c.antes.toLocaleString("es-AR")} → $
-                {c.despues.toLocaleString("es-AR")}
+                <strong>{c.label}:</strong> {formatearPrecio.format(c.antes)} →{" "}
+                {formatearPrecio.format(c.despues)}
               </li>
             ))}
           </ul>

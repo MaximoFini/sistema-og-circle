@@ -23,7 +23,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { getConfig } from "@/lib/config";
+import { getFlags, getPrecios } from "@/lib/config";
 import { configSchema } from "@/lib/config/schema";
 import { escribirEdgeConfig } from "@/lib/config/write";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
@@ -41,7 +41,7 @@ export async function GET(): Promise<Response> {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const { precios, flags } = await getConfig();
+  const [precios, flags] = await Promise.all([getPrecios(), getFlags()]);
   return Response.json({ precios, flags });
 }
 
@@ -62,13 +62,18 @@ export async function PATCH(req: Request): Promise<Response> {
       ? { clave: "precios" as const, valorNuevo: parsed.data.precios }
       : { clave: "flags" as const, valorNuevo: parsed.data.flags };
 
-  const actual = await getConfig();
+  // Sólo se lee la clave que realmente va a cambiar (nunca las tres de
+  // getConfig(), que traería `links` sin usarlo y, en el caso de `flags`,
+  // también `precios` sin necesidad).
+  //
   // Si la lectura previa de precios falló, no hay forma de saber el valor
   // anterior real — se audita `null` en vez de bloquear el cambio: no dejar
   // guardar un precio nuevo justamente PORQUE Edge Config no respondía bien
   // sería el caso exacto que este ticket viene a poder reparar a mano.
   const valorAnterior =
-    clave === "precios" ? (actual.precios.ok ? actual.precios.precios : null) : actual.flags;
+    clave === "precios"
+      ? await getPrecios().then((r) => (r.ok ? r.precios : null))
+      : await getFlags();
 
   const escritura = await escribirEdgeConfig([{ key: clave, value: valorNuevo }]);
   if (!escritura.ok) {

@@ -9,7 +9,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRequireAdmin = vi.fn();
-const mockGetConfig = vi.fn();
+const mockGetPrecios = vi.fn();
+const mockGetFlags = vi.fn();
 const mockEscribirEdgeConfig = vi.fn();
 const mockConAuditoria = vi.fn();
 const mockRegistrar = vi.fn();
@@ -21,7 +22,8 @@ vi.mock("@/lib/auth/admin", () => ({
 }));
 
 vi.mock("@/lib/config", () => ({
-  getConfig: () => mockGetConfig(),
+  getPrecios: () => mockGetPrecios(),
+  getFlags: () => mockGetFlags(),
 }));
 
 vi.mock("@/lib/config/write", () => ({
@@ -72,33 +74,37 @@ describe("GET /api/admin/config", () => {
   beforeEach(() => {
     vi.resetModules();
     mockRequireAdmin.mockReset();
-    mockGetConfig.mockReset();
+    mockGetPrecios.mockReset();
+    mockGetFlags.mockReset();
     mockRequireAdmin.mockResolvedValue({ ok: true, actorId: "admin-1" });
-    mockGetConfig.mockResolvedValue(CONFIG_OK);
+    mockGetPrecios.mockResolvedValue(CONFIG_OK.precios);
+    mockGetFlags.mockResolvedValue(CONFIG_OK.flags);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("sin sesión -> 401 y no llama a getConfig", async () => {
+  it("sin sesión -> 401 y no llama a getPrecios/getFlags", async () => {
     mockRequireAdmin.mockResolvedValue({
       ok: false,
       response: Response.json({ error: "No autenticado." }, { status: 401 }),
     });
     const res = await callGet();
     expect(res.status).toBe(401);
-    expect(mockGetConfig).not.toHaveBeenCalled();
+    expect(mockGetPrecios).not.toHaveBeenCalled();
+    expect(mockGetFlags).not.toHaveBeenCalled();
   });
 
-  it("rol != admin -> 404 y no llama a getConfig", async () => {
+  it("rol != admin -> 404 y no llama a getPrecios/getFlags", async () => {
     mockRequireAdmin.mockResolvedValue({
       ok: false,
       response: Response.json({ error: "No encontrado." }, { status: 404 }),
     });
     const res = await callGet();
     expect(res.status).toBe(404);
-    expect(mockGetConfig).not.toHaveBeenCalled();
+    expect(mockGetPrecios).not.toHaveBeenCalled();
+    expect(mockGetFlags).not.toHaveBeenCalled();
   });
 
   it("admin -> 200 con precios y flags, sin links", async () => {
@@ -114,7 +120,8 @@ describe("PATCH /api/admin/config", () => {
   beforeEach(() => {
     vi.resetModules();
     mockRequireAdmin.mockReset();
-    mockGetConfig.mockReset();
+    mockGetPrecios.mockReset();
+    mockGetFlags.mockReset();
     mockEscribirEdgeConfig.mockReset();
     mockConAuditoria.mockReset();
     mockRegistrar.mockReset();
@@ -122,7 +129,8 @@ describe("PATCH /api/admin/config", () => {
     mockCaptureException.mockReset();
 
     mockRequireAdmin.mockResolvedValue({ ok: true, actorId: "admin-1" });
-    mockGetConfig.mockResolvedValue(CONFIG_OK);
+    mockGetPrecios.mockResolvedValue(CONFIG_OK.precios);
+    mockGetFlags.mockResolvedValue(CONFIG_OK.flags);
     mockEscribirEdgeConfig.mockResolvedValue({ ok: true });
     mockCreateServiceRoleClient.mockReturnValue({});
     mockConAuditoria.mockImplementation(
@@ -199,6 +207,7 @@ describe("PATCH /api/admin/config", () => {
       valorNuevo: nuevoPrecios,
     });
     expect(mockEscribirEdgeConfig).toHaveBeenCalledWith([{ key: "precios", value: nuevoPrecios }]);
+    expect(mockGetFlags).not.toHaveBeenCalled(); // sólo se lee la clave que cambia
     expect(mockRegistrar).toHaveBeenCalledWith(
       expect.objectContaining({
         actorId: "admin-1",
@@ -216,16 +225,14 @@ describe("PATCH /api/admin/config", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ valorAnterior: CONFIG_OK.flags, valorNuevo: nuevoFlags });
     expect(mockEscribirEdgeConfig).toHaveBeenCalledWith([{ key: "flags", value: nuevoFlags }]);
+    expect(mockGetPrecios).not.toHaveBeenCalled(); // sólo se lee la clave que cambia
     expect(mockRegistrar).toHaveBeenCalledWith(
       expect.objectContaining({ entidad: "config", entidadId: "flags" }),
     );
   });
 
   it("precios con lectura previa fallida -> valorAnterior null, no bloquea el cambio", async () => {
-    mockGetConfig.mockResolvedValue({
-      ...CONFIG_OK,
-      precios: { ok: false, error: "Edge Config no respondió" },
-    });
+    mockGetPrecios.mockResolvedValue({ ok: false, error: "Edge Config no respondió" });
     const nuevoPrecios = { principiante: 80000, avanzado: 130000 };
 
     const res = await callPatch({ precios: nuevoPrecios });
