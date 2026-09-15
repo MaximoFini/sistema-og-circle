@@ -206,13 +206,13 @@ secrets del repo.
   del ticket.
 - VGRP-45: hecho (`e2e/registro-login-dashboard.spec.ts`,
   `e2e/recuperar-password.spec.ts`) con dos límites de entorno documentados
-  como `test.skip()`, ninguno arreglable desde este ticket: (1) `/registro`
-  no se puede completar de punta a punta porque `flags.registro_habilitado`
-  resuelve `false` sin un store de Edge Config vinculado (VGRP-39, ver
-  docs/EDGE-CONFIG.md) — probado en cambio con un usuario creado vía Admin
-  API en el estado que un registro real dejaría; (2) el link de recuperación
-  real no canjea con `?code=` en este proyecto (ver la sección de arriba) —
-  probado en cambio que hoy aterriza honestamente en el error real.
+  como `test.skip()`: (1) `/registro` no se podía completar de punta a punta
+  porque `flags.registro_habilitado` resolvía `false` sin un store de Edge
+  Config vinculado (VGRP-39) — **ACTUALIZACIÓN (Bloque 9): esto ya no es así,
+  ver "Bloque 9" más abajo, "Edge Config ahora vinculada"**; (2) el link de
+  recuperación real no canjea con `?code=` en este proyecto (ver la sección
+  de arriba) — probado en cambio que hoy aterriza honestamente en el error
+  real, esto sigue vigente.
 - VGRP-42: el E2E de pago se adelantó al Bloque 6 (VGRP-48, ver abajo). Lo
   que queda para VGRP-42 es la regresión final sobre el sistema integrado
   completo (dashboard, gating, secciones, legales), no el primer E2E de pago.
@@ -385,10 +385,187 @@ revirtiendo) en vez de darlo por sentado porque "el test ya existe":
     regresiones). `pnpm test:cleanup`: 0 residuos.
 
 **Nota sobre `test/integration/auth-actions.test.ts`** (VGRP-18, no es de
-este bloque): sus dos tests de `registrarse()` fallan hoy en este entorno por
-la misma causa que ya documenta VGRP-45 — `flags.registro_habilitado`
-resuelve `false` sin Edge Config vinculada, así que la Server Action nunca
-llega a redirigir. No es una regresión de este bloque (confirmado con `git
-log`/`git diff`, el archivo no se tocó) ni algo que el Bloque 6 deba
-arreglar — queda anotado acá para que quien vea rojo en `pnpm test` sepa por
-qué antes de investigar de cero.
+este bloque): al momento del Bloque 6, sus dos tests de `registrarse()`
+fallaban en este entorno. La causa documentada acá en su momento (`flags.
+registro_habilitado` resolviendo `false` sin Edge Config) era una suposición
+razonable pero **incorrecta** — el propio archivo mockea `getFlags()` a
+`registro_habilitado: true` explícitamente (ver su comentario de cabecera),
+así que ese flag nunca fue la causa real. La causa real (encontrada y
+corregida en el Bloque 9, ver esa sección) era un fixture de test
+desactualizado. Se deja esta nota como registro histórico de un diagnóstico
+que resultó erróneo — el archivo ya está en verde.
+
+## Bloque 9 — integración y validación de VGRP-49/50/52/53
+
+Los 4 agentes que escribieron los tests de estos tickets (Bloques 7 y 8)
+tenían prohibido correr su propia suite completa contra el proyecto real
+(mismo criterio de aislamiento que ya viene aplicando el repo). Este bloque
+mergea las 4 ramas a una sola (`test/bloque-9-validacion`, en orden VGRP-49 →
+VGRP-50 → VGRP-52 → VGRP-53, sin conflictos) y es la **primera vez que toda
+esa cobertura corre de verdad**, junto con el ritual completo de "romper a
+propósito y confirmar rojo" de los 4 tickets.
+
+### Resultado final de la suite completa
+
+- `pnpm typecheck` / `pnpm lint`: limpios, sin cambios necesarios.
+- `pnpm test`: **586 passed, 3 todo, 0 failed** (58 archivos). Los 2 fallos
+  que TESTING.md documentaba como preexistentes (`auth-actions.test.ts`) ya
+  no existen — ver "Bugs reales encontrados y corregidos" abajo.
+- `pnpm test:e2e`: **38 passed, 1 failed, 3 skipped** (42 tests). El único
+  fallo es un hallazgo real de entorno, no un bug de test ni de la app — ver
+  "Edge Config ahora vinculada" abajo.
+- `pnpm test:cleanup`: 0 residuos al final de cada corrida.
+
+### Bloqueo de infraestructura: disco lleno a mitad de la validación
+
+La corrida de este bloque se hizo en una máquina compartida por varios
+agentes en paralelo (uno por worktree). En el peor momento, el disco `C:`
+llegó a **0 bytes libres** — `next build` empezó a fallar con errores poco
+claros (`Fatal process out of memory`, `ENOSPC`) que no tenían nada que ver
+con el código. El coordinador liberó espacio borrando `node_modules` de
+worktrees de agentes ya terminados y el store global de `pnpm`. Queda
+anotado por si vuelve a pasar: un `next build` real de este proyecto necesita
+varios GB libres de scratch (caché de webpack, source maps, `.next/cache`),
+no alcanza con "no estar exactamente en cero".
+
+### Hallazgo de metodología: `pnpm test:e2e` puede reusar el server de OTRA sesión
+
+Con `reuseExistingServer: true` (default fuera de CI), si CUALQUIER servidor
+ya responde en `localhost:3000` — por ejemplo el `pnpm dev` de otra
+sesión/worktree corriendo en paralelo en la misma máquina — Playwright
+reusa ESE servidor en silencio en vez de buildear y levantar el propio, sin
+ningún error ni warning. Pasó de verdad en este bloque: la primera corrida
+completa de `pnpm test:e2e` pegó contra el `next dev` de otra sesión (branch
+y estado de código distinto), dando resultados sin sentido (UI de otro
+branch, logs de Fast Refresh en lo que debía ser un build de producción).
+Se agregó la variable opcional `PLAYWRIGHT_PORT` a `playwright.config.ts`
+(default 3000, sin cambio de comportamiento si no se setea) para poder
+forzar un puerto propio y confirmar que se corre contra el build real de la
+rama bajo prueba — usarla siempre que se sospeche que puede haber otro
+`pnpm dev`/`pnpm test:e2e` corriendo en paralelo en la misma máquina:
+
+```bash
+PLAYWRIGHT_PORT=3100 pnpm test:e2e   # o cross-env en Windows
+```
+
+### Hallazgo de proceso: `cleanupContenidoDeTest()` no cubre todos los títulos de test
+
+`test/helpers/cleanup.ts::cleanupContenidoDeTest()` sólo barre filas de
+`agentes`/`videos`/`profesionales`/`servicios_financieros` cuyo título/nombre
+empiece con el prefijo `"[test]"`. Ninguno de los E2E de los Bloques 7/8 usa
+ese prefijo (`e2e/admin-edita-video-revalida.spec.ts` usa `"Video revalidate
+<uuid>"`, `e2e/camino-aprendizaje.spec.ts` usa `"VGRP-53 ..."`, etc.) — así
+que si una corrida se corta a la mitad (como pasó acá, por el disco lleno) y
+deja una fila huérfana, `pnpm test:cleanup` **no la va a encontrar**. Se
+encontró y se borró a mano una fila así (`videos`, `orden=-999999`, "Video
+revalidate ...", de una corrida anterior interrumpida) que rompía
+determinísticamente 1 de los tests de `camino-aprendizaje.spec.ts` (ver
+abajo). Pendiente para el equipo, no resuelto en este bloque: o bien todos
+los E2E adoptan el prefijo `[test]` en sus títulos, o `cleanupContenidoDeTest()`
+se vuelve más laxo (por ejemplo, cualquier fila con un `orden` muy negativo,
+que es el otro patrón que ya usan todos estos tests para garantizarse el
+primer lugar en la grilla).
+
+### Hallazgo real de producto/entorno: Edge Config ya está vinculada, `registro_habilitado` resuelve `true`
+
+Confirmado en vivo contra el proyecto real (`await get("flags")` con
+`EDGE_CONFIG` de `.env.local`): la store de Edge Config **ya existe y está
+vinculada** (a diferencia de cuando se escribió VGRP-39/45), y
+`flags.registro_habilitado` resuelve **`true`** hoy — un `curl` directo a
+`/registro` contra el build real confirma que `<RegistroForm>` se monta de
+verdad, ya no el card "El registro todavía no está habilitado.".
+
+Esto contradice: (1) el comentario de cabecera de
+`e2e/registro-login-dashboard.spec.ts`, que documenta como "hallazgo
+empírico verificado a mano" que `EDGE_CONFIG` no está seteada — ya no es
+cierto; (2) `docs/EDGE-CONFIG.md`, que documenta `registro_habilitado: false`
+como el valor recomendado para Fase 2 a propósito. El primer test de ese
+archivo (`hoy /registro no ofrece el formulario real...`) por eso queda en
+rojo de forma determinística (3/3 confirmado) — **no se tocó**, porque
+"arreglarlo" implicaría decidir qué se quiso decir: ¿alguien prendió el flag
+a propósito para probar algo y hay que dejarlo así? ¿Fue sin querer y hay que
+volver a apagarlo en el store de Edge Config? Ninguna de las dos es una
+decisión de testing, es una decisión de producto/config que le toca al
+equipo. El segundo test de ese archivo (`un usuario nuevo se registra...`)
+sigue en `test.skip()` con la razón vieja — si el equipo confirma que el
+`true` es intencional y estable, ese test ya podría dejar de estar skipeado
+y probar el flujo real de punta a punta.
+
+### Bugs reales encontrados y corregidos (ninguno es de la app — todos de tests)
+
+- **`test/integration/rls-contenido.test.ts`** — el test "profiles.nivel
+  rechaza cualquier valor fuera del enum" asumía que un `UPDATE` con
+  service_role sobre un id inexistente falla igual por el tipo de la
+  columna. Falso: con cero filas a actualizar, Postgres nunca evalúa el
+  target list y el literal jamás se castea contra el enum (confirmado
+  contra la base real: un INSERT con el mismo valor sí falla siempre). Se
+  corrigió para apuntar al id real de un usuario del seed, que si dispara la
+  validación real.
+- **`e2e/camino-aprendizaje.spec.ts`** (3 tests + 1 más, VGRP-53) — dos bugs
+  distintos:
+  1. Los 3 tests que insertaban `videos` directo por service role nunca
+     veían sus filas reflejadas: un insert directo nunca dispara
+     `revalidateTag(TAG_POR_ENTIDAD.videos)`, así que contra un
+     `next build && next start` real el server sigue sirviendo la lectura
+     cacheada de antes del insert indefinidamente (mismo hallazgo que ya
+     documentaba `e2e/admin-edita-video-revalida.spec.ts` para el mismo
+     caso). Se reemplazó por una sesión de admin real (un solo login,
+     reusado) que crea los videos vía el POST real del panel.
+  2. Un locator `getByRole("button", { name: "Visto" })` sin `exact: true`
+     matcheaba también los botones "Marcar como visto" (Playwright hace
+     match por substring case-insensitive por default). Confirmado
+     determinístico (3/3), no era flakiness.
+- **`e2e/registro-login-dashboard.spec.ts`** — un `getByText(...)` sin scope
+  de rol matcheaba tanto el `<h1>` real como el `div[role=alert]` oculto que
+  Next.js usa para anunciar cambios de ruta a lectores de pantalla
+  (`__next-route-announcer__`), violando modo estricto de forma
+  intermitente (según si el announcer ya se había actualizado). Se
+  reemplazó por `getByRole("heading", ...)`.
+- **`test/integration/auth-actions.test.ts`** (VGRP-18) — los 2 tests de
+  `registrarse()` documentados como "preexistentes, falla por Edge Config"
+  en el Bloque 6 en realidad fallaban por otra razón: su `FormData` no
+  incluía `aceptaTerminos`, campo que `registroSchema` (VGRP-34, posterior a
+  este archivo) exige — Zod cortaba el registro antes de llegar a
+  `signUp()`. Se agregó el campo a los dos fixtures; los 16 tests del
+  archivo pasan ahora.
+
+### El ritual de "romper a propósito y confirmar rojo" — las 7 rupturas de VGRP-49/50/52/53
+
+Igual que en el Bloque 6, cada ruptura se ejecutó de verdad (editar,
+correr, confirmar rojo, revertir, confirmar `git diff` limpio) — nunca se
+dio por sentado que "el test ya existe, tiene que andar".
+
+- **VGRP-49 (b) — `lib/data/secretos.ts::resolverSecreto()` sin gating**: se
+  reemplazó el `return` condicional por `return secreto` incondicional.
+  Rojo confirmado: 8 tests (`lib/data/secretos.test.ts`,
+  `test/integration/agentes-route.test.ts`). Revertido.
+- **VGRP-49 (c) — `POST /api/admin/contenido/[entidad]` sin `requireAdmin()`**:
+  se reemplazó el guard real por un objeto hardcodeado `{ ok: true, ... }`.
+  Rojo confirmado en el test mockeado de la ruta (3 tests). Nota: el test
+  ESTRUCTURAL (`test/structural/admin-surface.test.ts`) NO lo detectó — su
+  chequeo confirma que el archivo llama a `requireAdmin()` en algún lado, no
+  que lo haga en CADA handler exportado; el POST y el GET comparten archivo
+  y el GET sigue llamándolo. Queda como límite conocido de ese test
+  estructural, no arreglado en este bloque. Revertido.
+- **VGRP-50 (b) — mover el `try/catch` de `obtenerVideosStageConFallback`
+  adentro de `unstable_cache`**: rojo confirmado (3 tests), exactamente el
+  mecanismo que predice el comentario del propio test ("el fallo se
+  cachearía"). Revertido.
+- **VGRP-50 (c) — pegar una URL de YouTube a mano en `VideoCard.tsx`**: rojo
+  confirmado (`test/structural/video-provider-boundary.test.ts`). Revertido.
+- **VGRP-52 (a) — `lib/data/servicios.ts` sin gating de `descripcion`**: se
+  devolvió `fila.descripcion` sin pasar por `resolverSecreto()`. Rojo
+  confirmado (5 tests, incluido el canario SWIFT). Revertido.
+- **VGRP-52 (c) — inyectar `nivel` en el `UPDATE` de `actualizarPerfil`**: el
+  `UPDATE` completo falló (consistente con que el grant de Postgres ya
+  bloquea la columna, una de las dos salidas válidas que anticipaba el
+  ticket). Rojo confirmado (acción devuelve error en vez de "Guardado.").
+  Revertido.
+- **VGRP-53 (c) — sacar `target="_blank"` del CTA de la calculadora en
+  `InicioShell`**: rojo confirmado
+  (`e2e/camino-aprendizaje.spec.ts`, "Banner calculadora"). Revertido.
+
+Verificación final: `git status`/`git diff --stat` limpio tras cada
+revert, `pnpm typecheck`/`pnpm lint` limpios, y las corridas completas de
+`pnpm test` y `pnpm test:e2e` documentadas arriba corridas DESPUÉS de todo
+el ritual (no antes) — mismos números, sin regresiones.
