@@ -85,7 +85,12 @@ export function PreciosForm({ preciosIniciales }: { preciosIniciales: Precios })
           </ul>
         )}
         <div className={styles.formAcciones}>
-          <Button type="button" onClick={confirmar} loading={enviando || refrescando}>
+          <Button
+            type="button"
+            onClick={confirmar}
+            loading={enviando || refrescando}
+            disabled={cambios.length === 0}
+          >
             Confirmar
           </Button>
           <Button type="button" variant="ghost" onClick={cancelar} disabled={enviando}>
