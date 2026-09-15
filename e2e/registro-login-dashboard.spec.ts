@@ -120,7 +120,15 @@ test.describe("registro → login → dashboard", () => {
       await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
       await page.waitForURL("**/dashboard");
-      await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
+      // `getByRole("heading", ...)`, no `getByText`: Next.js espeja el <h1> en un
+      // `div[role=alert]` oculto (`__next-route-announcer__`, accesibilidad de
+      // navegación) apenas se resuelve la ruta — `getByText` (sin scope de rol)
+      // matchea ambos y viola modo estricto de forma intermitente, según si el
+      // announcer ya se actualizó cuando corre el assert. Hallazgo de Bloque 9
+      // corriendo la suite completa varias veces seguidas.
+      await expect(
+        page.getByRole("heading", { name: "Todavía no tenés acceso a ningún nivel" }),
+      ).toBeVisible();
       await expect(page.getByText("Comprá un nivel para desbloquear el contenido")).toBeVisible();
       // El CTA es un `<NextLink>` (un `<a>`), no un `<button>` — su rol
       // accesible real es "link" (app/(app)/dashboard/page.tsx, VGRP-22:
@@ -147,7 +155,9 @@ test.describe("registro → login → dashboard", () => {
       await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
       await page.waitForURL("**/dashboard");
-      await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Todavía no tenés acceso a ningún nivel" }),
+      ).toBeVisible();
       // El CTA es un `<NextLink>` (un `<a>`), no un `<button>` — su rol
       // accesible real es "link" (app/(app)/dashboard/page.tsx, VGRP-22:
       // reusa las clases de Button.module.css para el estilo, nunca el

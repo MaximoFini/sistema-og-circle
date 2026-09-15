@@ -100,7 +100,7 @@ const obtenerVideosPorStageCached = unstable_cache(
 );
 
 /** La grilla entera como tiles de relleno: la forma degradada de `obtenerVideosStageConFallback`. */
-function grillaDeRelleno(stage: 1 | 2): VideoGridItem[] {
+function grillaDeRelleno(stage: 1 | 2 | 3): VideoGridItem[] {
   return Array.from({ length: CANTIDAD_STAGE[stage] }, () => tileRelleno());
 }
 
@@ -122,8 +122,17 @@ function grillaDeRelleno(stage: 1 | 2): VideoGridItem[] {
  *
  * El catch va AFUERA de `unstable_cache` a propósito: así el fallo no se cachea
  * y el request siguiente vuelve a intentar la lectura real.
+ *
+ * VGRP-53 — extendido a stage 3: originalmente (57ebd28) este wrapper sólo
+ * cubría Stage 1/2, y `obtenerVideosStage3()` llamaba directo a
+ * `obtenerVideosPorStageCached(3)`, sin try/catch. Como `InicioShell` resuelve
+ * stage1/stage2/stage3/links con un único `Promise.all`, si la lectura de
+ * stage 3 fallaba durante `next build`, TODO el `Promise.all` rechazaba —
+ * volteando la ruta estática entera, exactamente el incidente que 57ebd28
+ * vino a evitar para Stage 1/2. Ver lib/data/videos-fallback.unit.test.ts
+ * para la cobertura de este hallazgo.
  */
-async function obtenerVideosStageConFallback(stage: 1 | 2): Promise<VideoGridItem[]> {
+async function obtenerVideosStageConFallback(stage: 1 | 2 | 3): Promise<VideoGridItem[]> {
   try {
     return await obtenerVideosPorStageCached(stage);
   } catch (error) {
@@ -153,5 +162,5 @@ export function obtenerVideosStage2(): Promise<VideoGridItem[]> {
 }
 
 export function obtenerVideosStage3(): Promise<VideoGridItem[]> {
-  return obtenerVideosPorStageCached(3);
+  return obtenerVideosStageConFallback(3);
 }

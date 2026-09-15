@@ -15,11 +15,21 @@ import "./helpers/load-env";
 export async function teardown() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return;
 
-  const { cleanupAllTestArtifacts } = await import("./helpers/cleanup");
+  const { cleanupAllTestArtifacts, cleanupContenidoDeTest } = await import("./helpers/cleanup");
   const { usersDeleted } = await cleanupAllTestArtifacts();
   if (usersDeleted > 0) {
     console.log(
       `[global-teardown] Limpieza post-test: ${usersDeleted} usuario(s) de test borrado(s).`,
+    );
+  }
+
+  // VGRP-49 — agentes/videos/profesionales/servicios_financieros no cuelgan
+  // de un usuario de test, así que cleanupAllTestArtifacts() no las toca; ver
+  // el comentario grande de cleanupContenidoDeTest en helpers/cleanup.ts.
+  const { filasBorradas } = await cleanupContenidoDeTest();
+  if (filasBorradas > 0) {
+    console.log(
+      `[global-teardown] Limpieza post-test: ${filasBorradas} fila(s) de contenido de test borrada(s).`,
     );
   }
 }
