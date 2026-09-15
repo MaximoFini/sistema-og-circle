@@ -19,7 +19,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3000"}`,
+    baseURL:
+      process.env.PLAYWRIGHT_BASE_URL ??
+      `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3000"}`,
     trace: "on-first-retry",
   },
   projects: [
@@ -42,6 +44,9 @@ export default defineConfig({
     // hijo NO debe heredarlo: Next.js no carga `.env.local` cuando
     // NODE_ENV=test (a propósito, para que los tests no dependan del entorno
     // de cada máquina), y la app SÍ necesita `.env.local` para arrancar.
-    env: { NODE_ENV: "production", ...(process.env.PLAYWRIGHT_PORT ? { PORT: process.env.PLAYWRIGHT_PORT } : {}) },
+    env: {
+      NODE_ENV: "production",
+      ...(process.env.PLAYWRIGHT_PORT ? { PORT: process.env.PLAYWRIGHT_PORT } : {}),
+    },
   },
 });

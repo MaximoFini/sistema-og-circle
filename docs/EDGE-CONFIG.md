@@ -17,13 +17,27 @@ sección siguiente. El módulo `lib/config/` sigue tolerando la ausencia del sto
 `EDGE_CONFIG` seteada se comporta como si la lectura hubiera fallado y aplica las reglas
 de fallback de la tabla de abajo.
 
-Editar un valor no requiere deploy (se refleja en segundos):
+Editar un valor no requiere deploy (se refleja en segundos).
+
+**`precios` y `flags` — desde `/admin/config` (VGRP-40, recomendado).** Un admin
+logueado puede cambiarlos desde el panel: los precios piden confirmación explícita
+(valor anterior → nuevo) antes de guardar, y todo cambio queda en el audit log
+(`admin_audit_log`, `entidad = "config"`). Por debajo escribe vía la API REST de Vercel
+(`lib/config/write.ts`), que necesita `VERCEL_EDGE_CONFIG_ID` y
+`VERCEL_EDGE_CONFIG_WRITE_TOKEN` seteados (ver `.env.example`) — sin esos dos, el panel
+muestra el error de guardado en vez de escribir a medias.
+
+**`links` — sólo por CLI, por ahora.** El panel no cubre `links` (no tiene el mismo
+perfil de riesgo que el dinero, y cambia con poca frecuencia). Se sigue editando a mano:
 
 ```bash
 vercel global-config items sistema-og-circle    # ver estado actual del store
 vercel global-config update sistema-og-circle --patch \
-  '{"items":[{"operation":"update","key":"flags","value":{"checkout_habilitado":true,"registro_habilitado":true,"fase":"2"}}]}'
+  '{"items":[{"operation":"update","key":"links","value":{"calculadora":"...","whatsapp":"...","traxcargo":"..."}}]}'
 ```
+
+La misma CLI sigue sirviendo como vía alternativa para `precios`/`flags` si el panel no
+está disponible por algún motivo.
 
 ## Claves
 

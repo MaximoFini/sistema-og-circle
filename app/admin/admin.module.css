@@ -641,3 +641,46 @@
   color: var(--text-secondary);
   font-size: 14px;
 }
+
+/* --- Config: precios y flags (VGRP-40) -------------------------------- */
+
+/* Paso de confirmación inline de PreciosForm — no es un modal (el panel no
+   tiene ningún primitive de Dialog hoy, ver design-vgrp40.md §Trade-offs).
+   Mismo `max-width` que `.formCambiarNivel` para que no "salte" de ancho al
+   pasar del form a la confirmación. */
+.confirmacion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 420px;
+  padding: var(--space-4);
+  border: 1px solid var(--accent-40);
+  border-radius: var(--radius-surface);
+  background: var(--surface-1);
+}
+
+.confirmacionTitulo {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0;
+}
+
+.confirmacionLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.confirmacionValor {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.confirmacionValor strong {
+  color: var(--text-primary);
+}

@@ -31,7 +31,16 @@ export default defineConfig({
     // e2e/ son specs de Playwright (usan su propio `test`, no el de vitest);
     // sin este exclude, el glob por defecto de vitest (*.spec.ts incluido)
     // los agarra también y falla al no encontrar el runner de Playwright.
-    exclude: ["node_modules/**", "e2e/**"],
+    //
+    // `.claude/**` — descubierto corriendo la suite completa después de una
+    // sesión que dejó worktrees de agentes bajo `.claude/worktrees/` (cada
+    // uno una copia entera del repo, incluidos sus propios `*.test.ts`): sin
+    // este exclude, vitest los corre TAMBIÉN — duplicando cientos de tests y
+    // fallando los que dependen de env vars o de un `node_modules` que esa
+    // copia no tiene. `**/node_modules/**` (no sólo `node_modules/**`) por el
+    // mismo motivo: un `node_modules` anidado de un worktree también hay que
+    // excluirlo, no sólo el de la raíz.
+    exclude: ["**/node_modules/**", ".claude/**", "e2e/**"],
     // VGRP-43: limpieza obligatoria de datos de test al terminar la suite
     // (no hay Supabase de test separado — ver test/global-teardown.ts).
     globalSetup: ["./test/global-teardown.ts"],
