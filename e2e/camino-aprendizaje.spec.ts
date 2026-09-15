@@ -1,8 +1,9 @@
-import { expect, type Page, test } from "@playwright/test";
+import { type Browser, expect, type Page, test } from "@playwright/test";
 import { createAuthenticatedUser } from "../test/helpers/auth";
 import { cleanupUser } from "../test/helpers/cleanup";
 import { createTestAdminClient } from "../test/helpers/db-client";
 import "../test/helpers/load-env";
+import { SEED_ADMIN_USER } from "../test/helpers/seed-users";
 
 // =============================================================================
 // VGRP-53 — cierra en tests el resto del Bloque 8: VGRP-28 (stats con skeleton
@@ -31,41 +32,82 @@ import "../test/helpers/load-env";
 
 const PASSWORD = "test-password-1!"; // default de createAuthenticatedUser
 
-async function loginComo(page: Page, email: string): Promise<void> {
+async function loginComo(page: Page, email: string, password: string = PASSWORD): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill(PASSWORD);
+  await page.getByLabel("Contraseña").fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
 
-type Admin = ReturnType<typeof createTestAdminClient>;
-
-async function crearVideoTest(
-  admin: Admin,
-  valores: {
+/**
+ * Sesión de admin logueada UNA sola vez, reutilizable para crear varios
+ * videos vía el panel real (`POST /api/admin/contenido/videos`, mismo
+ * endpoint que usa el form de `/admin/contenido/videos/nuevo`) en vez de un
+ * insert directo por service role — igual criterio que
+ * `e2e/admin-edita-video-revalida.spec.ts` ya documenta: un insert directo
+ * NUNCA dispara `revalidateTag(TAG_POR_ENTIDAD.videos)` (lib/data/videos.ts
+ * sólo invalida esa lectura cacheada cuando la escritura pasa por ese route
+ * handler), así que contra un `next build && next start` real el server
+ * puede seguir sirviendo la lectura cacheada de ANTES del insert
+ * indefinidamente — nunca hay una ventana de tiempo en la que se "ponga al
+ * día" sola. Se encontró corriendo esta suite por primera vez contra un
+ * build real (Bloque 9): las 3 primeras versiones de estos tests insertaban
+ * directo por service role y fallaban de forma determinística por este
+ * motivo.
+ *
+ * Un solo login real por test (no uno por video): 3 videos con 3 contextos
+ * de browser nuevos son 3 logins reales de punta a punta sólo para crear
+ * filas de fixture — el propósito acá es únicamente la cookie de sesión de
+ * admin para el POST vía `page.request`, así que se abre un contexto, se
+ * loguea una vez, y se crean todos los videos del test con esa misma
+ * sesión antes de cerrarlo.
+ *
+ * La limpieza (`borrarVideosTest`, más abajo) sigue siendo un delete
+ * directo por service role — un soft-delete real (el DELETE del panel)
+ * dejaría el tile "Próximamente" con el título de test visible para
+ * siempre en Inicio.
+ */
+async function crearSesionAdminVideos(browser: Browser): Promise<{
+  crearVideo: (valores: {
     stage: 1 | 2 | 3;
     titulo: string;
     provider_ref?: string | null;
     publicado?: boolean;
     orden?: number;
-  },
-) {
-  const { data, error } = await admin
-    .from("videos")
-    .insert({
-      stage: valores.stage,
-      titulo: valores.titulo,
-      descripcion: null,
-      provider_ref: valores.provider_ref ?? null,
-      publicado: valores.publicado ?? false,
-      orden: valores.orden ?? 0,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  }) => Promise<string>;
+  cerrar: () => Promise<void>;
+}> {
+  const contexto = await browser.newContext();
+  const paginaAdmin = await contexto.newPage();
+  await loginComo(paginaAdmin, SEED_ADMIN_USER.email, SEED_ADMIN_USER.password);
+
+  return {
+    async crearVideo(valores) {
+      const res = await paginaAdmin.request.post("/api/admin/contenido/videos", {
+        data: {
+          stage: valores.stage,
+          titulo: valores.titulo,
+          descripcion: null,
+          provider_ref: valores.provider_ref ?? null,
+          nivel_requerido: "principiante",
+          orden: valores.orden ?? 0,
+          publicado: valores.publicado ?? false,
+        },
+      });
+      if (!res.ok()) {
+        throw new Error(
+          `No se pudo crear el video de test vía /api/admin/contenido/videos: ${res.status()} ${await res.text()}`,
+        );
+      }
+      const body = (await res.json()) as { id: string };
+      return body.id;
+    },
+    cerrar: () => contexto.close(),
+  };
 }
+
+type Admin = ReturnType<typeof createTestAdminClient>;
 
 async function borrarVideosTest(admin: Admin, ids: string[]) {
   if (ids.length === 0) return;
@@ -176,6 +218,7 @@ test.describe("Orden de secciones de InicioShell (MODULOS.md §2)", () => {
 test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco total de tests)", () => {
   test("nodo 'disponible' es interactuable sin importar el orden (NO hay bloqueo secuencial real): marcar como visto el paso 3 sin haber tocado los pasos 1 y 2 funciona igual, y el botón nunca desaparece (queda disabled diciendo 'Visto')", async ({
     page,
+    browser,
   }) => {
     const created = await createAuthenticatedUser("principiante");
     const admin = createTestAdminClient();
@@ -184,28 +227,30 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
       // Stage 2 = 3 tiles siempre (CANTIDAD_STAGE[2]). Estas 3 filas, con orden muy
       // negativo, ocupan las 3 posiciones visibles completas — no queda lugar para
       // ninguna fila real preexistente ni para un tile de relleno sintético.
-      const v1 = await crearVideoTest(admin, {
+      const sesionAdmin = await crearSesionAdminVideos(browser);
+      const idV1 = await sesionAdmin.crearVideo({
         stage: 2,
         titulo: "VGRP-53 camino v1",
         provider_ref: "dQw4w9WgXcQ",
         publicado: true,
         orden: -3,
       });
-      const v2 = await crearVideoTest(admin, {
+      const idV2 = await sesionAdmin.crearVideo({
         stage: 2,
         titulo: "VGRP-53 camino v2",
         provider_ref: "dQw4w9WgXcQ",
         publicado: true,
         orden: -2,
       });
-      const v3 = await crearVideoTest(admin, {
+      const idV3 = await sesionAdmin.crearVideo({
         stage: 2,
         titulo: "VGRP-53 camino v3",
         provider_ref: "dQw4w9WgXcQ",
         publicado: true,
         orden: -1,
       });
-      idsCreados.push(v1.id, v2.id, v3.id);
+      await sesionAdmin.cerrar();
+      idsCreados.push(idV1, idV2, idV3);
 
       await loginComo(page, created.email);
 
@@ -220,7 +265,10 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
       await botonesPendientes.nth(2).click();
 
       // El paso 3 pasó a "Visto" (disabled) — nunca desaparece el botón.
-      const botonVistoV3 = seccion.getByRole("button", { name: "Visto" });
+      // `exact: true` es necesario acá: por default getByRole hace match por substring
+      // case-insensitive, y "Marcar como visto" CONTIENE "visto" — sin esto el locator
+      // matchea los 3 botones (los 2 pendientes más el disabled), no sólo el marcado.
+      const botonVistoV3 = seccion.getByRole("button", { name: "Visto", exact: true });
       await expect(botonVistoV3).toHaveCount(1);
       await expect(botonVistoV3).toBeDisabled();
 
@@ -238,13 +286,15 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
 
   test("expandir (thumbnail → iframe) sólo pasa con disponible && embedUrl: clickear 'Reproducir' muestra el iframe con el título del video, ausente antes del click", async ({
     page,
+    browser,
   }) => {
     const created = await createAuthenticatedUser("principiante");
     const admin = createTestAdminClient();
     const idsCreados: string[] = [];
     try {
       const titulo = "VGRP-53 expandir test";
-      const v1 = await crearVideoTest(admin, {
+      const sesionAdmin = await crearSesionAdminVideos(browser);
+      const idV1 = await sesionAdmin.crearVideo({
         stage: 2,
         titulo,
         provider_ref: "dQw4w9WgXcQ",
@@ -252,9 +302,18 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
         orden: -10,
       });
       // Completa el resto del stage para no depender de si hay filas reales de más.
-      const v2 = await crearVideoTest(admin, { stage: 2, titulo: "VGRP-53 relleno a", orden: -9 });
-      const v3 = await crearVideoTest(admin, { stage: 2, titulo: "VGRP-53 relleno b", orden: -8 });
-      idsCreados.push(v1.id, v2.id, v3.id);
+      const idV2 = await sesionAdmin.crearVideo({
+        stage: 2,
+        titulo: "VGRP-53 relleno a",
+        orden: -9,
+      });
+      const idV3 = await sesionAdmin.crearVideo({
+        stage: 2,
+        titulo: "VGRP-53 relleno b",
+        orden: -8,
+      });
+      await sesionAdmin.cerrar();
+      idsCreados.push(idV1, idV2, idV3);
 
       await loginComo(page, created.email);
 
@@ -272,6 +331,7 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
 
   test("una fila real NO publicada (video.id presente, estado='proximamente') muestra su propio título junto al badge 'Próximamente' — dos textos distintos, no es un tile de relleno", async ({
     page,
+    browser,
   }) => {
     const created = await createAuthenticatedUser("principiante");
     const admin = createTestAdminClient();
@@ -280,13 +340,15 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
       const titulo = "VGRP-53 stage3 no publicado";
       // orden muy negativo: CANTIDAD_STAGE[3] = 1, así que esta fila SIEMPRE es la que
       // ocupa el único slot visible, sin importar qué otra fila real exista para stage 3.
-      const v = await crearVideoTest(admin, {
+      const sesionAdmin = await crearSesionAdminVideos(browser);
+      const idV = await sesionAdmin.crearVideo({
         stage: 3,
         titulo,
         publicado: false,
         orden: -1_000_000,
       });
-      idsCreados.push(v.id);
+      await sesionAdmin.cerrar();
+      idsCreados.push(idV);
 
       await loginComo(page, created.email);
 
