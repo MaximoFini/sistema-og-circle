@@ -292,28 +292,26 @@ export async function middleware(request: NextRequest) {
   // -----------------------------------------------------------------------
   // VGRP-27 — shell de Inicio prerenderizado según nivel.
   //
-  // `/dashboard` en sí (nivel 'ninguno') sigue siendo la página de VGRP-18,
-  // sin rewrite. Para 'principiante'/'avanzado' se reescribe hacia la
-  // variante estática correspondiente (app/(app)/dashboard/[variante]/,
-  // generateStaticParams + dynamicParams=false) — cero query nueva: usa el
-  // mismo `data.claims` que `getClaims()` ya resolvió arriba en este mismo
-  // request. La URL que ve el usuario sigue siendo `/dashboard` (rewrite, no
-  // redirect). Ver design.md: esto es una optimización de rendering, NO el
-  // mecanismo de seguridad — ese lo aporta VGRP-30 sección por sección.
+  // `/dashboard` se reescribe hacia la variante estática correspondiente
+  // (app/(app)/dashboard/[variante]/, generateStaticParams +
+  // dynamicParams=false) para los tres niveles — VGRP-54 punto 5 sumó
+  // 'ninguno' a 'principiante'/'avanzado', que ya reescribían. Cero query
+  // nueva: usa el mismo `data.claims` que `getClaims()` ya resolvió arriba en
+  // este mismo request. La URL que ve el usuario sigue siendo `/dashboard`
+  // (rewrite, no redirect). Ver design.md: esto es una optimización de
+  // rendering, NO el mecanismo de seguridad — ese lo aporta VGRP-30 sección
+  // por sección.
   // -----------------------------------------------------------------------
   if (pathname === "/dashboard") {
     const nivel = getNivel(claims);
-
-    if (nivel === "principiante" || nivel === "avanzado") {
-      const url = request.nextUrl.clone();
-      url.pathname = `/dashboard/${nivel}`;
-      return withRefreshedCookies(
-        NextResponse.rewrite(url, {
-          request: { headers: requestHeadersConClaims(request, claims) },
-        }),
-        response,
-      );
-    }
+    const url = request.nextUrl.clone();
+    url.pathname = `/dashboard/${nivel}`;
+    return withRefreshedCookies(
+      NextResponse.rewrite(url, {
+        request: { headers: requestHeadersConClaims(request, claims) },
+      }),
+      response,
+    );
   }
 
   // VGRP-54 punto 2 — propaga los claims YA verificados arriba a la request

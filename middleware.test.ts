@@ -274,15 +274,28 @@ describe("middleware", () => {
   // VGRP-27 — rewrite de /dashboard a la variante estática según nivel. Ver
   // design.md: NextResponse.rewrite responde 200 (no es un redirect) y deja
   // el destino en el header `x-middleware-rewrite`.
-  describe("shell de Inicio por nivel (VGRP-27)", () => {
-    it("sesión + nivel='ninguno' (o sin claim de nivel): sin rewrite, sigue a /dashboard tal cual", async () => {
+  //
+  // VGRP-54 punto 5 — cambio de comportamiento INTENCIONAL: antes, nivel
+  // 'ninguno' se quedaba en `/dashboard` sin rewrite (la única variante sin
+  // generateStaticParams, forzando esa página a leer getVerifiedClaims() y
+  // renderizar dinámico). Ahora reescribe a `/dashboard/ninguno`, que
+  // `app/(app)/dashboard/[variante]/page.tsx` ya sirve como variante estática
+  // más — es exactamente lo que este punto del ticket pide ("extender el
+  // rewrite del middleware"), no una regresión. El test viejo quedaba
+  // afirmando el comportamiento anterior a propósito: se actualiza acá en vez
+  // de dejarlo en rojo, porque el rojo es el resultado esperado de este
+  // punto, no un bug.
+  describe("shell de Inicio por nivel (VGRP-27 / VGRP-54 punto 5)", () => {
+    it("sesión + nivel='ninguno' (o sin claim de nivel): rewrite a /dashboard/ninguno", async () => {
       mockGetClaims.mockResolvedValue(CON_SESION);
       const { middleware } = await import("./middleware");
 
       const res = await middleware(req("/dashboard"));
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+      const destino = res.headers.get("x-middleware-rewrite");
+      expect(destino).not.toBeNull();
+      expect(new URL(destino as string).pathname).toBe("/dashboard/ninguno");
     });
 
     it("sesión + nivel='principiante': rewrite a /dashboard/principiante", async () => {
