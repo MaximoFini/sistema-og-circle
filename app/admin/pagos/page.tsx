@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
 import { listarPagos } from "@/lib/data/admin/pagos";
@@ -58,33 +59,19 @@ function construirQuery(
   return qs ? `/admin/pagos?${qs}` : "/admin/pagos";
 }
 
-export default async function PagosPage({
-  searchParams,
+async function ResultadosPagos({
+  estado,
+  desde,
+  hasta,
+  ref,
+  cursor,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  estado?: string;
+  desde?: string;
+  hasta?: string;
+  ref?: string;
+  cursor?: string;
 }) {
-  const raw = await searchParams;
-  const parsed = searchSchema.safeParse({
-    estado: typeof raw.estado === "string" ? raw.estado : undefined,
-    desde: typeof raw.desde === "string" ? raw.desde : undefined,
-    hasta: typeof raw.hasta === "string" ? raw.hasta : undefined,
-    ref: typeof raw.ref === "string" ? raw.ref : undefined,
-    cursor: typeof raw.cursor === "string" ? raw.cursor : undefined,
-  });
-
-  if (!parsed.success) {
-    return (
-      <div className={styles.page}>
-        <h1 className={styles.h1}>Pagos</h1>
-        <PagosFiltros />
-        <p className={styles.avisoFiltro}>
-          Filtro inválido. Revisá los parámetros y volvé a intentar.
-        </p>
-      </div>
-    );
-  }
-
-  const { estado, desde, hasta, ref, cursor } = parsed.data;
   const admin = createServiceRoleClient();
   const { pagos, nextCursor, totalSinAplicar } = await listarPagos(admin, {
     estado,
@@ -96,8 +83,11 @@ export default async function PagosPage({
   });
 
   return (
-    <div className={styles.page}>
-      <h1 className={styles.h1}>Pagos</h1>
+    <>
+      {/* El total de "sin aplicar" depende de la misma consulta que la lista
+          (VGRP-54 punto 7: se calcula una sola vez, sin cursor) — por eso el
+          lede vive ACÁ adentro y no junto al <h1>, a diferencia de
+          auditoria/usuarios (lede estático, sin datos). */}
       <p className={styles.lede}>
         Ledger completo. Los aprobados que no quedaron aplicados están marcados{" "}
         <span className={styles.badgeSinAplicar}>sin aplicar</span>.
@@ -135,6 +125,45 @@ export default async function PagosPage({
           Cargar más
         </TextLink>
       ) : null}
+    </>
+  );
+}
+
+export default async function PagosPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const raw = await searchParams;
+  const parsed = searchSchema.safeParse({
+    estado: typeof raw.estado === "string" ? raw.estado : undefined,
+    desde: typeof raw.desde === "string" ? raw.desde : undefined,
+    hasta: typeof raw.hasta === "string" ? raw.hasta : undefined,
+    ref: typeof raw.ref === "string" ? raw.ref : undefined,
+    cursor: typeof raw.cursor === "string" ? raw.cursor : undefined,
+  });
+
+  if (!parsed.success) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.h1}>Pagos</h1>
+        <PagosFiltros />
+        <p className={styles.avisoFiltro}>
+          Filtro inválido. Revisá los parámetros y volvé a intentar.
+        </p>
+      </div>
+    );
+  }
+
+  const { estado, desde, hasta, ref, cursor } = parsed.data;
+
+  return (
+    <div className={styles.page}>
+      <h1 className={styles.h1}>Pagos</h1>
+
+      <Suspense fallback={<p className={styles.vacio}>Cargando pagos…</p>}>
+        <ResultadosPagos estado={estado} desde={desde} hasta={hasta} ref={ref} cursor={cursor} />
+      </Suspense>
     </div>
   );
 }

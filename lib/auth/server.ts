@@ -101,9 +101,21 @@ export async function getVerifiedClaims(): Promise<AppMetadataClaims | null> {
  * middleware corriendo delante (tests que llaman un handler directo, por
  * ejemplo) o con el header ausente/roto, siempre se verifica de nuevo, nunca
  * se confía a ciegas.
+ *
+ * El `try/catch` cubre además a quien llame una Server Action / Route Handler
+ * directo desde un test sin pasar por un request real de Next (varios tests
+ * de integración de este repo mockean `next/headers` sólo con `cookies`,
+ * porque hasta este ticket nada de `lib/auth/server.ts` importaba `headers`):
+ * ahí `headers()` puede no estar disponible — mismo criterio que "no vino el
+ * header", cae a la verificación completa en vez de romper la llamada.
  */
 async function claimsDelMiddleware(): Promise<AppMetadataClaims | null | undefined> {
-  const headerList = await headers();
+  let headerList: Awaited<ReturnType<typeof headers>>;
+  try {
+    headerList = await headers();
+  } catch {
+    return undefined;
+  }
   const raw = headerList.get(CLAIMS_HEADER);
   if (!raw) return undefined;
   return decodeClaims(raw) ?? undefined;

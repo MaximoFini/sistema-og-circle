@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
 import { listarUsuarios } from "@/lib/data/admin/usuarios";
@@ -41,6 +42,43 @@ function construirQuery(base: { q?: string; nivel?: string }, cursor?: string): 
   return qs ? `/admin/usuarios?${qs}` : "/admin/usuarios";
 }
 
+async function ResultadosUsuarios({
+  q,
+  nivel,
+  cursor,
+}: {
+  q?: string;
+  nivel?: (typeof Constants.public.Enums.nivel_acceso)[number];
+  cursor?: string;
+}) {
+  const admin = createServiceRoleClient();
+  const { usuarios, nextCursor } = await listarUsuarios(admin, { q, nivel, limit: 20, cursor });
+
+  return (
+    <>
+      {usuarios.length === 0 ? (
+        <p className={styles.vacio}>No hay usuarios para este filtro.</p>
+      ) : (
+        <div className={styles.lista}>
+          {usuarios.map((u) => (
+            <TextLink key={u.id} href={`/admin/usuarios/${u.id}`} className={styles.userRow}>
+              <span className={styles.userEmail}>{u.email}</span>
+              <span className={styles.nivelPill}>{u.nivel}</span>
+              <span className={styles.userAlta}>{formatearFecha(u.created_at)}</span>
+            </TextLink>
+          ))}
+        </div>
+      )}
+
+      {nextCursor ? (
+        <TextLink href={construirQuery({ q, nivel }, nextCursor)} className={styles.cargarMas}>
+          Cargar más
+        </TextLink>
+      ) : null}
+    </>
+  );
+}
+
 export default async function UsuariosPage({
   searchParams,
 }: {
@@ -66,8 +104,6 @@ export default async function UsuariosPage({
   }
 
   const { q, nivel, cursor } = parsed.data;
-  const admin = createServiceRoleClient();
-  const { usuarios, nextCursor } = await listarUsuarios(admin, { q, nivel, limit: 20, cursor });
 
   return (
     <div className={styles.page}>
@@ -78,25 +114,9 @@ export default async function UsuariosPage({
 
       <UsuariosFiltros q={q} nivel={nivel} />
 
-      {usuarios.length === 0 ? (
-        <p className={styles.vacio}>No hay usuarios para este filtro.</p>
-      ) : (
-        <div className={styles.lista}>
-          {usuarios.map((u) => (
-            <TextLink key={u.id} href={`/admin/usuarios/${u.id}`} className={styles.userRow}>
-              <span className={styles.userEmail}>{u.email}</span>
-              <span className={styles.nivelPill}>{u.nivel}</span>
-              <span className={styles.userAlta}>{formatearFecha(u.created_at)}</span>
-            </TextLink>
-          ))}
-        </div>
-      )}
-
-      {nextCursor ? (
-        <TextLink href={construirQuery({ q, nivel }, nextCursor)} className={styles.cargarMas}>
-          Cargar más
-        </TextLink>
-      ) : null}
+      <Suspense fallback={<p className={styles.vacio}>Cargando usuarios…</p>}>
+        <ResultadosUsuarios q={q} nivel={nivel} cursor={cursor} />
+      </Suspense>
     </div>
   );
 }
