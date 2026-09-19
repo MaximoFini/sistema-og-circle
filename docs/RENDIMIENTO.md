@@ -215,18 +215,20 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
    `package.json` o un Client Component se mergea sin el reporte del
    analyzer. El presupuesto en CI (arriba) lo hace cumplir solo.
 
-## Migraciones de este bloque pendientes de verificar en el proyecto real
+## Migraciones de este bloque, estado contra el proyecto real
 
-Escritas en `supabase/migrations/` pero NO aplicadas ni medidas contra
-`hsmodrhbwkromoixrxrt` desde ninguna sesión de esta rama — ese proyecto no
-está entre los que ve el MCP de Supabase acá (cada dev loguea su propia
-cuenta, ver CLAUDE.md). Quien las aplique tiene que completar la medición
-antes de cerrar el ticket:
-
-- `20260918210000_pagos_aprobados_indice_parcial.sql` — `EXPLAIN ANALYZE` de
-  `contarPagosSinAplicar()` antes/después.
-- `20260918211000_nivel_overrides_actor_id_idx.sql` — sin verificación
-  adicional pendiente, es un índice puramente aditivo.
-- `20260918212000_drop_pagos_proveedor_ref_idx_redundante.sql` — **no
-  aplicar** sin antes confirmar con `pg_stat_user_indexes` que
-  `pagos_proveedor_ref_idx` no tiene scans reales.
+- `20260918210000_pagos_aprobados_indice_parcial.sql` — aplicada por Ramiro
+  vía SQL Editor. `EXPLAIN ANALYZE` de antes/después de `nivel_vigente()`
+  pendiente de pegar en el ticket (índice ya creado, falta sólo el número).
+- `20260918211000_nivel_overrides_actor_id_idx.sql` — aplicada. Sin
+  verificación adicional pendiente, es un índice puramente aditivo.
+- ~~`20260918212000_drop_pagos_proveedor_ref_idx_redundante.sql`~~ —
+  **descartada, NO se aplica.** El propio punto 8 del ticket pedía
+  confirmar con `pg_stat_user_indexes` antes de borrar
+  `pagos_proveedor_ref_idx`: contra el proyecto real dio `idx_scan = 5232`
+  (verificado 2026-09-19) — tiene uso real, así que borrarlo sería una
+  regresión de performance, no una limpieza. Migración eliminada del
+  branch en vez de dejarla sin aplicar (una migración "no aplicar todavía"
+  que nadie recuerda por qué es un `drop index` esperando a ejecutarse por
+  error). Análisis original (por qué se pensó redundante) sigue en el
+  commit `dbe403c` si hace falta retomarlo con un caso de uso distinto.
