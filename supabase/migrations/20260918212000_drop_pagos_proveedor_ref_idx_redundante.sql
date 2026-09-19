@@ -1,0 +1,26 @@
+-- =============================================================================
+-- VGRP-54 punto 8 (2/2) — Bloque 10 (Rendimiento). Drop de un índice
+-- redundante en `pagos`.
+-- =============================================================================
+-- `pagos_proveedor_ref_idx on public.pagos (proveedor_ref)`
+-- (20260822035923_init_plataforma.sql:82) es redundante desde que esa misma
+-- migración declaró `constraint pagos_proveedor_ref_estado_key unique
+-- (proveedor_ref, estado)` (línea 72): el índice btree que respalda esa
+-- unique ya tiene `proveedor_ref` como columna líder y sirve cualquier
+-- búsqueda por `proveedor_ref` solo, exactamente igual que el índice de una
+-- sola columna. Mantener los dos es escritura de más en cada insert del
+-- webhook de Mercado Pago, sin ninguna consulta que se beneficie del índice
+-- de más.
+--
+-- ⚠ NO APLICAR sin confirmar antes con `pg_stat_user_indexes` (WHERE
+-- indexrelname = 'pagos_proveedor_ref_idx') que `idx_scan` es 0 (o
+-- consistentemente bajo) en el proyecto real — es el paso que pide el
+-- criterio de aceptación del punto 8 y esta sesión no tiene acceso al
+-- proyecto real (hsmodrhbwkromoixrxrt) para correrlo (ver el comentario de
+-- 20260918210000_pagos_aprobados_indice_parcial.sql). Si esa consulta muestra
+-- scans reales, esta migración no se aplica y se revierte el punto 8b del
+-- ticket, no se fuerza igual.
+--
+-- En commit aparte de la creación del índice de nivel_overrides (mismo punto
+-- del ticket), para poder revertir uno sin el otro.
+drop index if exists public.pagos_proveedor_ref_idx;
