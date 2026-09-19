@@ -140,9 +140,14 @@ export async function listarContenido<E extends Entidad>(
   admin: AdminClient,
   entidad: E,
 ): Promise<Tables<E>[]> {
+  // VGRP-54 punto 9 — sin `.limit()` explícito, un listado sin paginación en
+  // la UI (a diferencia de listarPagos/listarUsuarios/listarAuditLog, que
+  // paginan por keyset). Ninguna de las 4 tablas se acerca hoy a este techo;
+  // es la red de contención, no un cambio de comportamiento.
   const { data, error } = await tabla(admin, entidad)
     .select("*")
-    .order("orden", { ascending: true });
+    .order("orden", { ascending: true })
+    .limit(500);
   if (error) throw error;
   return (data ?? []) as Tables<E>[];
 }
