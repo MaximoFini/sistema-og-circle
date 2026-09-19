@@ -13,7 +13,12 @@ export interface VideoProvider {
 
 export const youtubeVideoProvider: VideoProvider = {
   urlEmbed: (ref) => `https://www.youtube.com/embed/${ref}`,
-  urlThumbnail: (ref) => `https://i.ytimg.com/vi/${ref}/hqdefault.jpg`,
+  // VGRP-56 punto 6 — `mqdefault.jpg` (320×180, ~un tercio del peso de
+  // `hqdefault.jpg` 480×360) alcanza de sobra para el slot de 96×60 donde se
+  // pinta (VideoCard.tsx, `.thumbBtn` en video.module.css). El cambio va
+  // ACÁ (el único lugar permitido para una URL de YouTube, VGRP-50/VGRP-29)
+  // y no en el componente.
+  urlThumbnail: (ref) => `https://i.ytimg.com/vi/${ref}/mqdefault.jpg`,
 };
 
 export const videoProvider: VideoProvider = youtubeVideoProvider;

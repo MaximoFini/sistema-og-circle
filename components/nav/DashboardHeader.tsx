@@ -25,12 +25,19 @@ export function DashboardHeader() {
             wordmark ya lo pone el <span> de al lado en una tipografía más
             fina — mostrar los dos "CIRCLE" juntos sería redundante. */}
         <span className={styles.logoMark}>
+          {/* VGRP-56 punto 5 — width/height al tamaño PINTADO (.logoFull en
+              nav.module.css: 98×95), no al del archivo fuente (630×612): con
+              width={630} y sin `sizes`, el browser bajaba la variante de
+              ~640px (1280px en pantallas 2x) para terminar pintando 98px.
+              Sin `priority`: es un logo decorativo (alt=""), y el LCP real de
+              estas pantallas es el <h1>/contenido, no el logo — el preload
+              con fetchpriority=high le robaba ancho de banda al recurso que
+              sí define esa métrica. */}
           <Image
             src="/logo-og-circle.png"
             alt=""
-            width={630}
-            height={612}
-            priority
+            width={98}
+            height={95}
             className={styles.logoFull}
           />
         </span>

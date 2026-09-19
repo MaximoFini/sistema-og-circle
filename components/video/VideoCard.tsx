@@ -92,8 +92,19 @@ export function VideoCard({
                 {video.thumbnailUrl ? (
                   // <img> nativo a propósito: thumbnail externo de YouTube, no un
                   // asset local que next/image pueda optimizar/servir desde este
-                  // dominio.
-                  <img className={styles.thumbnailChica} src={video.thumbnailUrl} alt="" />
+                  // dominio. width/height = el tamaño pintado (.thumbBtn en
+                  // video.module.css, 96×60) — evita CLS. loading="lazy" +
+                  // decoding="async": son ~12 imágenes de terceros por carga de
+                  // Inicio, ninguna crítica para el primer render (VGRP-56 punto 6).
+                  <img
+                    className={styles.thumbnailChica}
+                    src={video.thumbnailUrl}
+                    alt=""
+                    width={96}
+                    height={60}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : null}
               </button>
               <p className={styles.tituloPaso}>{video.titulo}</p>
