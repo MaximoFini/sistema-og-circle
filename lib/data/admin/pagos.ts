@@ -131,6 +131,11 @@ export function sanitizarPayloadRaw(raw: Json | null | undefined): Json {
 // listarPagos — consulta la vista `admin_pagos_ledger`
 // -----------------------------------------------------------------------------
 
+// `desde`/`hasta` esperan un datetime ISO completo, NO el `z.iso.date()`
+// (yyyy-mm-dd) que valida el querystring en app/admin/pagos/page.tsx: esa
+// página convierte a `${fecha}T00:00:00.000Z` / `${fecha}T23:59:59.999Z`
+// antes de llamar acá (mismo patrón en app/admin/auditoria/page.tsx). Esta
+// capa valida el resultado YA convertido, no el input crudo del usuario.
 export const filtrosPagosSchema = z.object({
   estado: z.string().trim().min(1).max(50).optional(),
   desde: z.iso.datetime().optional(),
@@ -171,7 +176,10 @@ export interface PagoLedgerRow {
 export interface ListarPagosResultado {
   pagos: PagoLedgerRow[];
   nextCursor: string | null;
-  totalSinAplicar: number;
+  /** `null` en páginas con cursor (VGRP-54 punto 7: no se recalcula) — nunca
+   * un `0` ambiguo con "de verdad no hay pagos sin aplicar". El caller decide
+   * qué mostrar según si es la primera página, no según el valor. */
+  totalSinAplicar: number | null;
 }
 
 interface LedgerDbRow {
@@ -235,10 +243,16 @@ export async function listarPagos(
   const keyset = decodeCursor(cursor);
   if (keyset) query = query.or(keysetFilter(keyset));
 
-  // El listado y el conteo global de `sin_aplicar` son independientes: en paralelo.
+  // VGRP-54 punto 7 — contarPagosSinAplicar() es cara: `sin_aplicar` es una
+  // columna calculada con dos NOT EXISTS correlacionados (ver el comentario de
+  // la vista), así que el count materializa la vista entera. El número que se
+  // muestra no cambia (es el mismo total en cualquier página), pero no hace
+  // falta recalcularlo en cada página siguiente del mismo listado — sólo en
+  // la primera (sin cursor). El listado y el conteo, cuando corre, van en
+  // paralelo (son independientes entre sí).
   const [{ data, error }, totalSinAplicar] = await Promise.all([
     query.returns<LedgerDbRow[]>(),
-    contarPagosSinAplicar(admin),
+    keyset ? Promise.resolve(null) : contarPagosSinAplicar(admin),
   ]);
   if (error) throw error;
 

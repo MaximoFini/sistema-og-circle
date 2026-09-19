@@ -91,7 +91,9 @@ async function ResultadosPagos({
       <p className={styles.lede}>
         Ledger completo. Los aprobados que no quedaron aplicados están marcados{" "}
         <span className={styles.badgeSinAplicar}>sin aplicar</span>.
-        {totalSinAplicar > 0 ? ` Hay ${totalSinAplicar} en total.` : null}
+        {totalSinAplicar !== null && totalSinAplicar > 0
+          ? ` Hay ${totalSinAplicar} en total.`
+          : null}
       </p>
 
       <PagosFiltros estado={estado} desde={desde} hasta={hasta} proveedorRef={ref} />
