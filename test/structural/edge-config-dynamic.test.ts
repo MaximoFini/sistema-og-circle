@@ -64,22 +64,22 @@ function rel(p: string): string {
 
 describe("toda page.tsx que lee Edge Config es dinámica (VGRP-55 punto 3)", () => {
   const pages = encontrarPages(APP_DIR);
+  // Leído y limpiado de comentarios UNA vez por archivo — los tres `it` de
+  // abajo reusan esto en vez de volver a leer/parsear cada page.tsx por test.
+  const codigos = pages.map((p) => sinComentarios(readFileSync(p, "utf8")));
 
   it("recorrido de archivos real (ancla — si esto es bajo, el walker está roto y el resto no prueba nada)", () => {
     expect(pages.length).toBeGreaterThan(5);
   });
 
   it("al menos una page.tsx real lee Edge Config (ancla — si esto es 0, la regex de arriba dejó de matchear y el test de abajo no prueba nada)", () => {
-    const encontrado = pages.filter((p) => leeEdgeConfig(sinComentarios(readFileSync(p, "utf8"))));
+    const encontrado = codigos.filter(leeEdgeConfig);
     expect(encontrado.length).toBeGreaterThan(0);
   });
 
   it("cada page.tsx que lee Edge Config es dinámica por alguna razón real", () => {
     const violaciones = pages
-      .filter((p) => {
-        const codigo = sinComentarios(readFileSync(p, "utf8"));
-        return leeEdgeConfig(codigo) && !esDinamica(codigo);
-      })
+      .filter((_, i) => leeEdgeConfig(codigos[i]) && !esDinamica(codigos[i]))
       .map(rel);
 
     expect(

@@ -2,6 +2,7 @@ import "server-only";
 
 import { get } from "@vercel/edge-config";
 import { unstable_cache } from "next/cache";
+import { leerConFallback } from "../data/cache-fallback";
 import type { Config } from "./schema";
 import { configSchema } from "./schema";
 
@@ -101,14 +102,7 @@ const getLinksCached = unstable_cache(leerLinks, ["config-links"], {
 });
 
 export async function getLinks(): Promise<Config["links"]> {
-  try {
-    return await getLinksCached();
-  } catch {
-    // `unstable_cache` exige el runtime real de Next — ver el comentario
-    // extenso en lib/data/agentes.ts (mismo fallback, mismo motivo: tests que
-    // llaman este código sin un server de Next arriba).
-    return leerLinks();
-  }
+  return leerConFallback(getLinksCached, leerLinks, "getLinks");
 }
 
 // Punto de entrada principal: resuelve las tres secciones de configuración en paralelo,

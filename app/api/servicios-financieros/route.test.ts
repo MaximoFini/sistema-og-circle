@@ -22,36 +22,9 @@ vi.mock("@/lib/auth/server", () => ({
 // VGRP-55 punto 1 — lib/data/servicios.ts ahora usa unstable_cache de verdad,
 // así que este mock ya no puede limitarse a revalidateTag: necesita simular
 // el comportamiento real (cachea por key+args, invalida por tag) para que el
-// test de "revalidateTag" de más abajo pruebe algo real, no un no-op. No es
-// una reimplementación completa de Next: alcanza para lo que este archivo
-// necesita (una entrada por combinación de key+args, invalidación por tag).
-vi.mock("next/cache", () => {
-  const store = new Map<string, unknown>();
-  const porTag = new Map<string, Set<string>>();
-
-  return {
-    unstable_cache: <A extends unknown[], R>(
-      fn: (...args: A) => Promise<R>,
-      keyParts: string[],
-      options?: { tags?: string[] },
-    ) => {
-      return async (...args: A): Promise<R> => {
-        const key = `${JSON.stringify(keyParts)}:${JSON.stringify(args)}`;
-        if (store.has(key)) return store.get(key) as R;
-        const resultado = await fn(...args);
-        store.set(key, resultado);
-        for (const tag of options?.tags ?? []) {
-          if (!porTag.has(tag)) porTag.set(tag, new Set());
-          porTag.get(tag)?.add(key);
-        }
-        return resultado;
-      };
-    },
-    revalidateTag: (tag: string) => {
-      for (const key of porTag.get(tag) ?? []) store.delete(key);
-    },
-  };
-});
+// test de "revalidateTag" de más abajo pruebe algo real, no un no-op. Mock
+// compartido — ver test/helpers/fake-next-cache.ts.
+vi.mock("next/cache", () => import("../../../test/helpers/fake-next-cache"));
 
 const admin = createTestAdminClient();
 const idsCreados: string[] = [];

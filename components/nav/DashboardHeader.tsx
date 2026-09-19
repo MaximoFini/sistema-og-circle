@@ -39,8 +39,15 @@ export function DashboardHeader() {
   const [cargandoPerfil, setCargandoPerfil] = useState(true);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
+  // Un solo prefetch por montaje alcanza — sin este guard, cada hover/focus
+  // repetido del botón (alguien pasando el mouse de un lado a otro, o
+  // tabulando de ida y vuelta) volvía a llamar router.prefetch() para los
+  // mismos 2 destinos, sin ningún beneficio después del primero.
+  const yaPrefetcheado = useRef(false);
 
   function prefetchDestinos() {
+    if (yaPrefetcheado.current) return;
+    yaPrefetcheado.current = true;
     for (const href of DESTINOS_PREFETCHEABLES) router.prefetch(href);
   }
 

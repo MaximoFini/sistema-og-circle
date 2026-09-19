@@ -64,9 +64,14 @@ Reglas de los puntos que sí se implementaron (2, 4, 5, 6, 7, 8, 9):
 
 ## VGRP-55 — caché persistente, revalidación y prefetch
 
-Todos los puntos implementados salvo el 2 (no hizo falta código) y el 8
-(sólo medición, requiere logs reales de Vercel en producción — no disponible
-desde esta sesión).
+Todos los puntos implementados salvo el 2 (no hizo falta código) y el 8, que
+queda sin medir de verdad — requiere logs reales de Vercel en producción, no
+disponibles desde esta sesión. Sí se agregó una validación parcial y barata:
+`middleware.test.ts` ("matcher — el middleware no corre sobre assets
+estáticos") fija por test que el `matcher` siga excluyendo `_next`/favicon/
+robots/sitemap/extensiones de imagen — la palanca más grande sobre el costo
+agregado del middleware (que corra sólo donde tiene algo que proteger) — sin
+necesitar la medición de latencia en sí.
 
 1. **La lectura de filas se cachea; el gating por claims se aplica SIEMPRE
    afuera, nunca dentro del `unstable_cache`.** `lib/data/agentes.ts`,

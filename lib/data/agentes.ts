@@ -22,6 +22,7 @@ import type { AppMetadataClaims, NivelAcceso } from "../auth/claims";
 import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { TAG_POR_ENTIDAD } from "./admin/contenido";
+import { leerConFallback } from "./cache-fallback";
 import { resolverSecreto } from "./secretos";
 
 type AdminClient = SupabaseClient<Database>;
@@ -94,17 +95,10 @@ export async function obtenerAgentes(
 export async function obtenerAgentesCacheados(
   claims: AppMetadataClaims | null,
 ): Promise<AgentePublico[]> {
-  let filas: AgenteFila[];
-  try {
-    filas = await obtenerFilasAgentesCached();
-  } catch {
-    // `unstable_cache` exige el `incrementalCache` que sólo existe dentro del
-    // runtime real de Next — un test que invoca este Route Handler directo
-    // (sin un server de Next arriba, ver test/integration/agentes-route.test.ts)
-    // no lo tiene y tira "Invariant: incrementalCache missing". Cae a la
-    // lectura sin cachear en vez de romper: en producción esto nunca pasa (el
-    // runtime siempre está), así que el fallback es puro seguro de tests.
-    filas = await obtenerFilasAgentes(createServiceRoleClient());
-  }
+  const filas = await leerConFallback(
+    obtenerFilasAgentesCached,
+    () => obtenerFilasAgentes(createServiceRoleClient()),
+    "obtenerAgentesCacheados",
+  );
   return resolverAgentes(filas, claims);
 }

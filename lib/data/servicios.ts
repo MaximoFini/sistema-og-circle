@@ -19,6 +19,7 @@ import type { AppMetadataClaims, NivelAcceso } from "../auth/claims";
 import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { TAG_POR_ENTIDAD } from "./admin/contenido";
+import { leerConFallback } from "./cache-fallback";
 import { resolverSecreto } from "./secretos";
 
 type AdminClient = SupabaseClient<Database>;
@@ -85,13 +86,10 @@ export async function obtenerServiciosFinancieros(
 export async function obtenerServiciosFinancierosCacheados(
   claims: AppMetadataClaims | null,
 ): Promise<ServicioFinancieroPublico[]> {
-  let filas: ServicioFila[];
-  try {
-    filas = await obtenerFilasServiciosCached();
-  } catch {
-    // Ver el comentario extenso en lib/data/agentes.ts (misma clase de
-    // fallback): `unstable_cache` necesita el runtime real de Next.
-    filas = await obtenerFilasServicios(createServiceRoleClient());
-  }
+  const filas = await leerConFallback(
+    obtenerFilasServiciosCached,
+    () => obtenerFilasServicios(createServiceRoleClient()),
+    "obtenerServiciosFinancierosCacheados",
+  );
   return resolverServicios(filas, claims);
 }
