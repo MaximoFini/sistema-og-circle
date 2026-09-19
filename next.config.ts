@@ -18,6 +18,22 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_APP_ENV: process.env.VERCEL_ENV ?? "local",
   },
 
+  // VGRP-56 punto 7 — avif primero (más chico que webp a igual calidad en la
+  // mayoría de fotos/thumbnails), webp como fallback para navegadores sin
+  // soporte avif. Afecta al pipeline de optimización de next/image, no a los
+  // <img> nativos de components/video (esos son thumbnails externos de
+  // YouTube, fuera del alcance de este optimizador).
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
+
+  // VGRP-56 punto 7 — `experimental.optimizePackageImports` para
+  // @sentry/nextjs y zod SE PROBÓ y se descartó: First Load JS compartido
+  // idéntico (186 kB) antes/después, y ninguna ruta bajó (dos rutas incluso
+  // subieron ~1kB, dentro del ruido de hasheo de chunks). Ambos paquetes ya
+  // son ESM con exports nombrados — no tienen el problema de barril que este
+  // flag resuelve. Detalle en docs/RENDIMIENTO.md.
+
   // VGRP-55 punto 7 — cero headers de cache en todo el repo (grep de
   // Cache-Control/s-maxage/stale-while-revalidate: sin resultados). Next ya
   // se ocupa de /_next/static; `public/` no.
