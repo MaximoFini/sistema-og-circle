@@ -1,17 +1,19 @@
 # Rendimiento
 
-Reglas que salen del Bloque 10 (VGRP-54/55/56), la auditoría de rendimiento
-sobre el sistema ya integrado. Este documento las junta a medida que cada
-ticket del bloque las va escribiendo — VGRP-54 lo crea, VGRP-55 y VGRP-56 le
-suman su sección cuando se implementen.
+Documento único de reglas de rendimiento del proyecto: rendering/caching
+(VGRP-54), caché persistente/revalidación/prefetch (VGRP-55) y bundle de
+cliente + presupuesto en CI (VGRP-56) — el Bloque 10, auditoría de
+rendimiento sobre el sistema ya integrado. Enlazado desde `STACK.md` §8 y
+desde la checklist de `CLAUDE.md`.
 
 ## Qué se mide y qué rompe el build
 
 Ninguna optimización de este bloque se acepta sin medir antes/después con el
 mismo método. Si un cambio no mueve la aguja, se revierte — complejidad que
-no compra nada es deuda. Hoy nada de esto rompe el build automáticamente
-(es responsabilidad de code review); VGRP-56 evalúa un presupuesto de
-First Load JS en CI para la parte de bundle de cliente.
+no compra nada es deuda. La única parte que rompe el build automáticamente
+hoy es el presupuesto de First Load JS de VGRP-56
+(`scripts/check-bundle-budget.mjs`, en CI después del `Build`); el resto de
+las reglas de este documento son responsabilidad de code review.
 
 ## VGRP-54 — un solo viaje de datos por pantalla
 
@@ -100,6 +102,118 @@ necesitar la medición de latencia en sí.
    (`next.config.ts`, `headers()`) — Next sólo se ocupa de `/_next/static`.
    Los endpoints por-usuario declaran `private, no-store` explícito, aunque
    ya sean dinámicos por otra razón.
+
+## VGRP-56 — bundle de cliente y presupuesto en CI
+
+Línea de base (punto 0, `next build` sin `ANALYZE`, ya con VGRP-54/55
+aplicados): First Load JS compartido 186 kB; rutas más pesadas eran
+`/comprar/pendiente` (255 kB) y `/login`/`/perfil`/`/recuperar`/
+`/recuperar/nueva`/`/registro` (207 kB, mismo `_schemas.ts` con `zod` a
+nivel de módulo).
+
+Delta medido por punto — a propósito no hay un total agregado (esconde cuál
+cambio sirvió y cuál no):
+
+| Punto | Cambio | Delta medido |
+|---|---|---|
+| 1 | `zod` fuera de `INITIAL_ACTION_STATE` (`_action-state.ts` sin dependencias) | `/login`, `/perfil`, `/recuperar`, `/recuperar/nueva`, `/registro`: 207 kB → 190 kB (**-17 kB** cada una) |
+| 2 | `DashboardHeader` → Server Component, `MenuToggle` como hoja cliente | Sin baja medible en `next build` (el header ya vivía en el chunk compartido de `(app)`, no por-ruta) — el beneficio es un boundary de cliente más chico e hidratación más liviana, no bytes descargados |
+| 3 | `TextFieldBase` sin `useId()` en los 3 filtros de admin | Sin baja medible (el chunk de `TextField` ya era chico y compartido) — mismo tipo de beneficio que el punto 2 |
+| 4 | Partir el barril `components/ui` | **Revertido antes de tocar nada.** `ANALYZE=true` + parseo del stats JSON: `Checkbox.tsx` pesa 376 B gzip y aparece en 23 chunks (~8.6 kB total repartidos en toda la app). Tocar 30 archivos para eso es deuda, no optimización — queda anotado, no implementado |
+| 5 | Logo: `width`/`height` al tamaño pintado (98×95, no 630×612), sin `priority` | No es una métrica de JS — el ahorro es de bytes de imagen (deja de bajar la variante de ~640px para pintar 98px) |
+| 6 | Thumbnail de YouTube: `mqdefault.jpg` (320×180) en vez de `hqdefault.jpg` (480×360) | No es una métrica de JS — ~1/3 del peso por thumbnail, ~12 por carga de Inicio |
+| 7a | `images.formats: ["image/avif", "image/webp"]` | No medible por bundle analyzer (afecta al pipeline de `next/image`, no al JS que baja el browser) |
+| 7b | `experimental.optimizePackageImports` para `zod`/`@sentry/nextjs` | **Revertido.** Medido con `ANALYZE=true`: First Load JS compartido idéntico (186 kB) antes/después; ninguna ruta bajó. Ambos paquetes ya son ESM con exports nombrados, sin el problema de barril que este flag resuelve |
+| 9 | Presupuesto de First Load JS en CI (`scripts/check-bundle-budget.mjs`) | No aplica — es el mecanismo de medición, no una optimización |
+
+Estado final (`next build`, todos los puntos aplicados): shared 186 kB sin
+cambio respecto a la línea de base; ninguna ruta por encima de lo medido en
+el punto 1.
+
+### Fuentes — el plan para el día que se carguen (punto 8, sin implementar)
+
+`app/tokens.css` declara 4 familias (Helvetica Now Var, Montserrat, Inter,
+Cormorant Garamond) y hoy no carga ninguna: cero `next/font`, cero
+`@font-face`, cero `<link>`. Cae al stack de sistema — sin FOUT ni CLS por
+fuentes porque no hay fuentes. Cargarlas es un cambio visual y este bloque
+no toca UI, así que esto es sólo el plan escrito para no repetir el camino
+caro que hoy describe `DESIGN.md` (que documenta la landing pública, un
+deploy distinto — ver nota al principio de ese archivo).
+
+Pesos que alguna regla CSS de **este** repo realmente usa hoy (no el rango
+completo que carga la landing):
+
+- **Montserrat** (`--font-heading`): 300 (`nav.module.css`, wordmark), 700
+  (`video.module.css`, título de paso), 800/900 (`tokens.css`,
+  `--text-h2-weight`/`--text-h1-weight`).
+- **Helvetica Now Var** (`--font-body`): peso por defecto (texto general),
+  600 (`video.module.css`).
+- **Inter** (`--font-body-alt`) y **Cormorant Garamond**
+  (`--font-serif-display`): declaradas en `tokens.css` pero **ninguna regla
+  CSS de este repo las usa hoy** (grep sobre los 18 módulos: cero) — no
+  cargarlas hasta que un componente real las consuma.
+
+Receta cuando se implemente:
+
+1. **Montserrat** — `next/font/google` con `weight: ["300", "700", "800", "900"]`
+   y `display: "swap"`. No el rango `300-900` + itálica que carga la landing.
+2. **Helvetica Now Var** — hoy viaja desde un CDN de terceros
+   (`db.onlinewebfonts.com`); es una fuente variable, así que
+   `next/font/local` con el woff2 auto-hospedado cubre los pesos que hagan
+   falta con un solo archivo (no uno por peso, a diferencia de Montserrat) y
+   saca el DNS+TLS extra a un tercero del camino crítico.
+3. **Inter / Cormorant Garamond** — no cargar todavía. Mismo criterio de
+   "no sin medir" del resto del ticket, aplicado a fuentes: no hay
+   FOUT/CLS que evitar en una familia que ningún componente pinta.
+
+### Presupuesto de First Load JS en CI
+
+`scripts/check-bundle-budget.mjs`, invocado desde `.github/workflows/ci.yml`
+después del `Build`, parsea la tabla que `next build` ya imprime (no
+reinventa el cálculo leyendo manifests a mano) y **rompe el build** si:
+
+- el shared chunk (`First Load JS shared by all`) supera 195 kB, o
+- alguna ruta supera su presupuesto: 200 kB por default, con dos
+  excepciones ya medidas y justificadas — `/admin/config` (215 kB, panel
+  con varios formularios) y `/comprar/pendiente` (265 kB, arrastra
+  `@supabase/ssr` + `supabase-js` para el polling con `refreshSession()`
+  en el browser, anotado como fuera de alcance de este bloque).
+
+Verificado rompiendo a propósito (presupuesto bajado a 100 kB sobre el log
+real de `next build`): el check falla con exit code 1 y un mensaje que
+nombra cada ruta y el exceso exacto en kB. Subir un presupuesto es una
+decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
+
+### Reglas que quedan escritas (VGRP-56)
+
+1. **`"use client"` va en la hoja, nunca en un layout ni en una page.** Si
+   un archivo tiene `"use client"` y además renderiza markup estático, está
+   mal ubicado — se parte (caso testigo: punto 2).
+2. **Un módulo que importa una librería pesada a nivel de módulo no se
+   importa desde un Client Component.** Constantes y tipos compartidos van
+   en un archivo sin dependencias (caso testigo: `zod` viajando al browser
+   para transportar un `{}`, punto 1).
+3. **No importar desde el barril `@/components/ui` en Server Components —
+   import directo al archivo, cuando la medición lo justifique.** Hoy
+   (punto 4) el costo medido es 376 B gzip en 23 chunks — no justifica
+   partir 30 archivos, así que queda como preferencia, no como bloqueo. Si
+   el barril crece con componentes más pesados, medir de nuevo.
+4. **`priority` en `next/image` es para el LCP y nada más: uno por página
+   como máximo, y nunca en una imagen decorativa.** `width`/`height` van
+   con el tamaño **pintado**, no con el del archivo fuente (punto 5).
+5. **Toda `<img>` nativa lleva `width`, `height`, `loading="lazy"` y
+   `decoding="async"`**, y se le pide al proveedor la resolución más chica
+   que cubra el slot (punto 6).
+6. **Fuentes: `next/font` siempre, sólo los pesos que alguna regla CSS
+   nombra.** Ninguna familia se carga sin que algún componente la use
+   (Inter/Cormorant Garamond, arriba). Un `<link>` a un CDN de fuentes de
+   terceros necesita justificación escrita.
+7. **`server-only` en todo módulo que toque base, secretos o SDK de
+   backend.** Se cumple al 100% hoy — no se afloja, y menos en un PR de
+   rendimiento.
+8. **Ninguna dependencia nueva entra sin medirla**, y ningún PR que toque
+   `package.json` o un Client Component se mergea sin el reporte del
+   analyzer. El presupuesto en CI (arriba) lo hace cumplir solo.
 
 ## Migraciones de este bloque pendientes de verificar en el proyecto real
 

@@ -132,6 +132,8 @@ Si en algún momento el equipo quiere Tailwind, la vía sana es Tailwind v4 con 
 
 Alerta mínima obligatoria: **fallo del webhook de MP**. Es el peor bug posible del sistema — alguien pagó y no tiene acceso.
 
+Reglas de rendimiento del proyecto (rendering/caching, bundle de cliente, qué rompe el build): [`docs/RENDIMIENTO.md`](docs/RENDIMIENTO.md).
+
 ---
 
 ## 9. Calidad y tooling

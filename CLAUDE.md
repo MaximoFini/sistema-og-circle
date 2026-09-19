@@ -9,6 +9,7 @@ Este archivo se carga automático en cada sesión de Claude Code. Sirve como red
 3. **¿Tocaste componentes visuales compartidos (botones, inputs, cards, etc.)?** → correr `/design-system` para mantener consistencia.
 4. **Antes de abrir PR** → correr `/simplify` sobre el código nuevo (limpieza de reuse/eficiencia; no reemplaza el code-review automático del commit, es un pase extra de calidad).
 5. **Si el proyecto cambia de forma significativa (nuevo módulo grande, nueva convención)** → actualizar este CLAUDE.md con `/init` o a mano.
+6. **¿Tocaste rendering/caching, bundle de cliente o algo que el CI mide en `docs/RENDIMIENTO.md`?** → seguir las reglas de ahí (qué rompe el build, qué se mide antes de aceptar una optimización).
 
 ## MCP servers
 
