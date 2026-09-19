@@ -1,4 +1,5 @@
-import { Button, TextField } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { TextFieldBase } from "@/components/ui/TextFieldBase";
 import styles from "../admin.module.css";
 
 // VGRP-35 — filtros de la pantalla de auditoría. Form nativo `method="get"`:
@@ -16,7 +17,8 @@ export function AuditoriaFiltros({
 }) {
   return (
     <form method="get" className={styles.filtros}>
-      <TextField
+      <TextFieldBase
+        id="actor"
         name="actor"
         label="Actor (email)"
         placeholder="buscar por email"

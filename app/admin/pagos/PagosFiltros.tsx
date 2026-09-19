@@ -1,4 +1,5 @@
-import { Button, TextField } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { TextFieldBase } from "@/components/ui/TextFieldBase";
 import styles from "../admin.module.css";
 
 // VGRP-37 — filtros del ledger de pagos. Form nativo `method="get"`: al enviar
@@ -44,7 +45,8 @@ export function PagosFiltros({
         <span className={styles.filtroLabel}>Hasta</span>
         <input type="date" name="hasta" defaultValue={hasta ?? ""} className={styles.filtroInput} />
       </label>
-      <TextField
+      <TextFieldBase
+        id="ref"
         name="ref"
         label="Referencia del proveedor"
         placeholder="buscar por proveedor_ref"
