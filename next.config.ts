@@ -16,6 +16,28 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_ENV: process.env.VERCEL_ENV ?? "local",
   },
+
+  // VGRP-55 punto 7 — cero headers de cache en todo el repo (grep de
+  // Cache-Control/s-maxage/stale-while-revalidate: sin resultados). Next ya
+  // se ocupa de /_next/static; `public/` no.
+  async headers() {
+    return [
+      {
+        // Los assets de public/ se sirven en la RAÍZ de la URL (no bajo
+        // /public) — matchea por extensión, no por carpeta, para cubrir
+        // cualquier archivo nuevo sin volver a tocar esto.
+        source: "/:path*.(png|jpe?g|svg|ico|webp|woff2?)",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        // Los 4 endpoints del dashboard son por-usuario (gateados por nivel,
+        // VGRP-30) y no admiten caché compartida — declararlo explícito es
+        // barato y evita que un proxy intermedio decida por su cuenta.
+        source: "/api/(agentes|profesionales|servicios-financieros|perfil)",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+    ];
+  },
 };
 
 // VGRP-41 — envuelve el config para que el build suba source maps a Sentry.
