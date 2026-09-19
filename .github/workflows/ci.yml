@@ -40,7 +40,14 @@ jobs:
         run: pnpm test
 
       - name: Build
-        run: pnpm build
+        run: pnpm build 2>&1 | tee build-output.log
+
+      # VGRP-56 punto 9 — cierra el Bloque 10: sin esto, todo lo que el
+      # bloque optimizó se degrada solo en unos meses de features (15 kB acá,
+      # 15 kB allá) y nadie se entera. Presupuestos y justificación de cada
+      # uno en scripts/check-bundle-budget.mjs / docs/RENDIMIENTO.md.
+      - name: Presupuesto de First Load JS
+        run: node scripts/check-bundle-budget.mjs build-output.log
 
       # E2E (VGRP-43): decisión de entorno del ticket — no hay proyecto de
       # test separado (por costo, mientras no haya ingresos), así que esto
