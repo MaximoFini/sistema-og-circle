@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { sembrarAgenteViaAdmin } from "../test/helpers/admin-content-seed";
 import { createAuthenticatedUser } from "../test/helpers/auth";
 import { cleanupUser } from "../test/helpers/cleanup";
 import { createTestAdminClient } from "../test/helpers/db-client";
@@ -33,29 +34,29 @@ async function loginComo(page: import("@playwright/test").Page, email: string): 
   await page.waitForURL("**/dashboard");
 }
 
-async function sembrarAgenteCanario(contacto: string): Promise<string> {
-  const { data, error } = await admin
-    .from("agentes")
-    .insert({
-      nombre: `Agente canario VGRP-50 ${randomUUID()}`,
-      especialidad: "Test de fuga de datos entre niveles",
-      nivel_requerido: "avanzado",
-      contacto,
-      activo: true,
-      orden: 9999,
-    })
-    .select()
-    .single();
-  if (error || !data) throw error ?? new Error("insert de agente canario sin datos");
-  return data.id as string;
+// VGRP-55 punto 1 — sembrado vía la API real de admin (no un insert directo):
+// lib/data/agentes.ts ahora cachea la lectura de filas (unstable_cache + tag)
+// y sólo se invalidan cuando el Route Handler llama a revalidateTag() en una
+// escritura real. Un insert directo a la tabla no dispara eso — el próximo
+// GET /api/agentes podía seguir sirviendo la lista vieja desde caché. Ver
+// test/helpers/admin-content-seed.ts.
+async function sembrarAgenteCanario(browser: import("@playwright/test").Browser, contacto: string) {
+  const agente = await sembrarAgenteViaAdmin(browser, {
+    nombre: `Agente canario VGRP-50 ${randomUUID()}`,
+    especialidad: "Test de fuga de datos entre niveles",
+    nivel_requerido: "avanzado",
+    contacto,
+  });
+  return agente.id;
 }
 
 test.describe("canario de fuga entre niveles — agente 'avanzado' (VGRP-30/50)", () => {
   test("un usuario 'principiante' nunca ve el contacto del canario — ni en el HTML, ni en el cuerpo de ninguna respuesta de red de la navegación", async ({
     page,
+    browser,
   }) => {
     const contacto = `CANARIO-${randomUUID()}`;
-    const agenteId = await sembrarAgenteCanario(contacto);
+    const agenteId = await sembrarAgenteCanario(browser, contacto);
     const created = await createAuthenticatedUser("principiante");
 
     const cuerpos: Promise<string>[] = [];
@@ -98,9 +99,10 @@ test.describe("canario de fuga entre niveles — agente 'avanzado' (VGRP-30/50)"
 
   test("el mismo recorrido como 'avanzado': el contacto del canario SÍ aparece", async ({
     page,
+    browser,
   }) => {
     const contacto = `CANARIO-${randomUUID()}`;
-    const agenteId = await sembrarAgenteCanario(contacto);
+    const agenteId = await sembrarAgenteCanario(browser, contacto);
     const created = await createAuthenticatedUser("avanzado");
 
     try {

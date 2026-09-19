@@ -6,16 +6,22 @@
 // `import "server-only"` de entrada: es el único lugar donde se lee `agentes.contacto`
 // de la base y se decide si se resuelve al caller o se oculta.
 //
-// A diferencia de `lib/data/videos.ts` (VGRP-29), esto SÍ gatea por nivel por fila
-// (`nivel_requerido` varía por agente) y por eso NO se cachea/estatiza: se llama siempre
-// desde un Route Handler dinámico con los claims REALES de la request, nunca desde el
-// render de una ruta estática — mismo motivo documentado en lib/data/secretos.ts.
+// VGRP-55 punto 1 — la LECTURA de filas se cachea (unstable_cache, mismo patrón que
+// lib/data/videos.ts), pero el gating por nivel (`resolverSecreto()`) se sigue aplicando
+// SIEMPRE afuera de esa caché, con los claims REALES de cada request: `AgenteFila.contacto`
+// (lo que se cachea) es el valor CRUDO de la base, nunca el ya resuelto por nivel. Si
+// `resolverSecreto()` entrara al `unstable_cache`, el contacto de un agente 'avanzado'
+// quedaría en una entrada de caché que puede servirle a un 'principiante' — exactamente
+// el modo de falla que el canario de VGRP-50 existe para detectar. Ver lib/data/secretos.ts.
 
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import type { AppMetadataClaims, NivelAcceso } from "../auth/claims";
 import type { Database } from "../database.types";
+import { createServiceRoleClient } from "../supabase/service-role";
+import { TAG_POR_ENTIDAD } from "./admin/contenido";
 import { resolverSecreto } from "./secretos";
 
 type AdminClient = SupabaseClient<Database>;
@@ -31,18 +37,37 @@ export interface AgentePublico {
   contacto: string | null;
 }
 
-export async function obtenerAgentes(
-  admin: AdminClient,
-  claims: AppMetadataClaims | null,
-): Promise<AgentePublico[]> {
+interface AgenteFila {
+  id: string;
+  nombre: string;
+  especialidad: string;
+  nivel_requerido: NivelAcceso;
+  /** CRUDO, sin resolver por nivel — sólo se cachea esto, nunca el resultado
+   *  de `resolverSecreto()`. */
+  contacto: string | null;
+}
+
+async function obtenerFilasAgentes(admin: AdminClient): Promise<AgenteFila[]> {
   const { data, error } = await admin
     .from("agentes")
     .select("id, nombre, especialidad, nivel_requerido, contacto")
     .eq("activo", true)
     .order("orden", { ascending: true });
   if (error) throw error;
+  return data ?? [];
+}
 
-  return (data ?? []).map((fila) => ({
+// unstable_cache no puede recibir el cliente (no serializable) — mismo criterio que
+// lib/data/videos.ts: cada invocación crea el suyo, barato sin estado de sesión que
+// compartir. Tag ya disparado por el panel de contenido (lib/data/admin/contenido.ts).
+const obtenerFilasAgentesCached = unstable_cache(
+  () => obtenerFilasAgentes(createServiceRoleClient()),
+  ["agentes-filas"],
+  { tags: [TAG_POR_ENTIDAD.agentes] },
+);
+
+function resolverAgentes(filas: AgenteFila[], claims: AppMetadataClaims | null): AgentePublico[] {
+  return filas.map((fila) => ({
     id: fila.id,
     publicMeta: {
       nombre: fila.nombre,
@@ -51,4 +76,35 @@ export async function obtenerAgentes(
     },
     contacto: resolverSecreto(claims, fila.nivel_requerido, fila.contacto),
   }));
+}
+
+/** Núcleo testable, sin caché (cliente inyectado) — lo siguen usando los tests de
+ *  integración existentes contra un `admin` real, sin pasar por `unstable_cache`. */
+export async function obtenerAgentes(
+  admin: AdminClient,
+  claims: AppMetadataClaims | null,
+): Promise<AgentePublico[]> {
+  const filas = await obtenerFilasAgentes(admin);
+  return resolverAgentes(filas, claims);
+}
+
+/** Variante cacheada — la usa el Route Handler (`app/api/agentes/route.ts`). El
+ *  gating sigue corriendo acá, después de leer la caché, con los claims reales
+ *  de ESTA request. */
+export async function obtenerAgentesCacheados(
+  claims: AppMetadataClaims | null,
+): Promise<AgentePublico[]> {
+  let filas: AgenteFila[];
+  try {
+    filas = await obtenerFilasAgentesCached();
+  } catch {
+    // `unstable_cache` exige el `incrementalCache` que sólo existe dentro del
+    // runtime real de Next — un test que invoca este Route Handler directo
+    // (sin un server de Next arriba, ver test/integration/agentes-route.test.ts)
+    // no lo tiene y tira "Invariant: incrementalCache missing". Cae a la
+    // lectura sin cachear en vez de romper: en producción esto nunca pasa (el
+    // runtime siempre está), así que el fallback es puro seguro de tests.
+    filas = await obtenerFilasAgentes(createServiceRoleClient());
+  }
+  return resolverAgentes(filas, claims);
 }

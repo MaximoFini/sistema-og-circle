@@ -8,20 +8,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetVerifiedClaims = vi.fn();
-const mockObtenerAgentes = vi.fn();
-const mockCreateServiceRoleClient = vi.fn();
+const mockObtenerAgentesCacheados = vi.fn();
 const mockCaptureException = vi.fn();
 
 vi.mock("@/lib/auth/server", () => ({
   getVerifiedClaims: () => mockGetVerifiedClaims(),
 }));
 
+// VGRP-55 punto 1 — la ruta ahora llama a obtenerAgentesCacheados(claims), no
+// a obtenerAgentes(admin, claims): ya no arma su propio admin client (la
+// versión cacheada crea el suyo adentro, ver lib/data/agentes.ts).
 vi.mock("@/lib/data/agentes", () => ({
-  obtenerAgentes: (...args: unknown[]) => mockObtenerAgentes(...args),
-}));
-
-vi.mock("@/lib/supabase/service-role", () => ({
-  createServiceRoleClient: () => mockCreateServiceRoleClient(),
+  obtenerAgentesCacheados: (...args: unknown[]) => mockObtenerAgentesCacheados(...args),
 }));
 
 vi.mock("@sentry/nextjs", () => ({
@@ -37,41 +35,37 @@ describe("GET /api/agentes", () => {
   beforeEach(() => {
     vi.resetModules();
     mockGetVerifiedClaims.mockReset();
-    mockObtenerAgentes.mockReset();
-    mockCreateServiceRoleClient.mockReset();
+    mockObtenerAgentesCacheados.mockReset();
     mockCaptureException.mockReset();
-
-    mockCreateServiceRoleClient.mockReturnValue({ marker: "admin-client" });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("nivelActual sale de getNivel(claims) — el mismo claims que se le pasa a obtenerAgentes, nunca de otro lado", async () => {
+  it("nivelActual sale de getNivel(claims) — el mismo claims que se le pasa a obtenerAgentesCacheados, nunca de otro lado", async () => {
     mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "principiante" } });
-    mockObtenerAgentes.mockResolvedValue([]);
+    mockObtenerAgentesCacheados.mockResolvedValue([]);
 
     const res = await call();
     const body = await res.json();
 
     expect(body.nivelActual).toBe("principiante");
-    expect(mockObtenerAgentes).toHaveBeenCalledWith(
-      { marker: "admin-client" },
-      { app_metadata: { nivel: "principiante" } },
-    );
+    expect(mockObtenerAgentesCacheados).toHaveBeenCalledWith({
+      app_metadata: { nivel: "principiante" },
+    });
   });
 
-  it("sin sesión (claims=null): nivelActual='ninguno' y obtenerAgentes se llama con claims=null (nunca lanza)", async () => {
+  it("sin sesión (claims=null): nivelActual='ninguno' y obtenerAgentesCacheados se llama con claims=null (nunca lanza)", async () => {
     mockGetVerifiedClaims.mockResolvedValue(null);
-    mockObtenerAgentes.mockResolvedValue([]);
+    mockObtenerAgentesCacheados.mockResolvedValue([]);
 
     const res = await call();
     const body = await res.json();
 
     expect(res.status).toBe(200);
     expect(body.nivelActual).toBe("ninguno");
-    expect(mockObtenerAgentes).toHaveBeenCalledWith({ marker: "admin-client" }, null);
+    expect(mockObtenerAgentesCacheados).toHaveBeenCalledWith(null);
   });
 
   it("GET() no declara parámetros: no existe ningún query param/header/body que pueda alcanzar el cálculo de nivel — la única fuente es getVerifiedClaims()", async () => {
@@ -80,7 +74,7 @@ describe("GET /api/agentes", () => {
     // los declara, así que en runtime se ignoran por completo. Lo único que
     // decide la respuesta es lo que devuelve el mock de getVerifiedClaims.
     mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "principiante" } });
-    mockObtenerAgentes.mockResolvedValue([
+    mockObtenerAgentesCacheados.mockResolvedValue([
       {
         id: "a1",
         publicMeta: { nombre: "x", especialidad: "y", nivelRequerido: "avanzado" },
@@ -101,12 +95,12 @@ describe("GET /api/agentes", () => {
     expect(body.agentes[0].contacto).toBeNull();
   });
 
-  it("si obtenerAgentes tira (Postgres real o cualquier otra falla), la respuesta es 500 genérica y NUNCA el mensaje crudo de la excepción", async () => {
+  it("si obtenerAgentesCacheados tira (Postgres real o cualquier otra falla), la respuesta es 500 genérica y NUNCA el mensaje crudo de la excepción", async () => {
     mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
     const errorCrudoDePostgres = new Error(
       'column "contacto_secreto_interno" does not exist — detalle interno de schema',
     );
-    mockObtenerAgentes.mockRejectedValue(errorCrudoDePostgres);
+    mockObtenerAgentesCacheados.mockRejectedValue(errorCrudoDePostgres);
 
     const res = await call();
     const body = await res.json();

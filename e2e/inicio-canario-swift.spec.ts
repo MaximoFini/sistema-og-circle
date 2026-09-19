@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { sembrarServicioViaAdmin } from "../test/helpers/admin-content-seed";
 import { createAuthenticatedUser } from "../test/helpers/auth";
 import { cleanupUser } from "../test/helpers/cleanup";
 import { createTestAdminClient } from "../test/helpers/db-client";
@@ -34,20 +35,21 @@ async function loginComo(page: import("@playwright/test").Page, email: string): 
   await page.waitForURL("**/dashboard");
 }
 
-async function crearServicioCanario(titulo: string, descripcion: string): Promise<string> {
-  const { data, error } = await admin
-    .from("servicios_financieros")
-    .insert({
-      titulo,
-      descripcion,
-      nivel_requerido: "avanzado",
-      activo: true,
-      orden: 0,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data.id;
+// VGRP-55 punto 1 — sembrado vía la API real de admin (no un insert directo):
+// lib/data/servicios.ts ahora cachea la lectura de filas (unstable_cache +
+// tag), que sólo se invalida cuando el Route Handler llama a revalidateTag()
+// en una escritura real. Ver test/helpers/admin-content-seed.ts.
+async function crearServicioCanario(
+  browser: import("@playwright/test").Browser,
+  titulo: string,
+  descripcion: string,
+): Promise<string> {
+  const servicio = await sembrarServicioViaAdmin(browser, {
+    titulo,
+    descripcion,
+    nivel_requerido: "avanzado",
+  });
+  return servicio.id;
 }
 
 test.describe("canario SWIFT — VGRP-52", () => {
@@ -57,8 +59,8 @@ test.describe("canario SWIFT — VGRP-52", () => {
   let principiante: Awaited<ReturnType<typeof createAuthenticatedUser>>;
   let avanzado: Awaited<ReturnType<typeof createAuthenticatedUser>>;
 
-  test.beforeAll(async () => {
-    servicioId = await crearServicioCanario(titulo, canario);
+  test.beforeAll(async ({ browser }) => {
+    servicioId = await crearServicioCanario(browser, titulo, canario);
     principiante = await createAuthenticatedUser("principiante");
     avanzado = await createAuthenticatedUser("avanzado");
   });

@@ -1,7 +1,7 @@
 // VGRP-52 — tests de integración de GET /api/servicios-financieros contra el proyecto
-// real de Supabase (docs/TESTING.md). Mismo criterio que
-// app/api/profesionales/route.test.ts: sólo se mockea `getVerifiedClaims`, el resto
-// (createServiceRoleClient, obtenerServiciosFinancieros) es 100% real.
+// real de Supabase (docs/TESTING.md). Se mockea `getVerifiedClaims` y (desde VGRP-55
+// punto 1) `next/cache` (ver más abajo, por qué); el resto (createServiceRoleClient,
+// obtenerServiciosFinancieros) es 100% real.
 //
 // `lib/data/servicios.test.ts` (VGRP-32) ya cubre la lógica de gating de
 // `obtenerServiciosFinancieros()` en sí — acá el foco es el contrato HTTP de la ruta, y
@@ -19,13 +19,39 @@ vi.mock("@/lib/auth/server", () => ({
   getVerifiedClaims: () => mockGetVerifiedClaims(),
 }));
 
-// No lo usa esta ruta (sólo la de admin/contenido la llama) — se mockea igual para el
-// test de "revalidateTag es un no-op real" de más abajo, que lo invoca a propósito para
-// dejar constancia de que da igual si se llama o no.
-const mockRevalidateTag = vi.fn();
-vi.mock("next/cache", () => ({
-  revalidateTag: (...args: unknown[]) => mockRevalidateTag(...args),
-}));
+// VGRP-55 punto 1 — lib/data/servicios.ts ahora usa unstable_cache de verdad,
+// así que este mock ya no puede limitarse a revalidateTag: necesita simular
+// el comportamiento real (cachea por key+args, invalida por tag) para que el
+// test de "revalidateTag" de más abajo pruebe algo real, no un no-op. No es
+// una reimplementación completa de Next: alcanza para lo que este archivo
+// necesita (una entrada por combinación de key+args, invalidación por tag).
+vi.mock("next/cache", () => {
+  const store = new Map<string, unknown>();
+  const porTag = new Map<string, Set<string>>();
+
+  return {
+    unstable_cache: <A extends unknown[], R>(
+      fn: (...args: A) => Promise<R>,
+      keyParts: string[],
+      options?: { tags?: string[] },
+    ) => {
+      return async (...args: A): Promise<R> => {
+        const key = `${JSON.stringify(keyParts)}:${JSON.stringify(args)}`;
+        if (store.has(key)) return store.get(key) as R;
+        const resultado = await fn(...args);
+        store.set(key, resultado);
+        for (const tag of options?.tags ?? []) {
+          if (!porTag.has(tag)) porTag.set(tag, new Set());
+          porTag.get(tag)?.add(key);
+        }
+        return resultado;
+      };
+    },
+    revalidateTag: (tag: string) => {
+      for (const key of porTag.get(tag) ?? []) store.delete(key);
+    },
+  };
+});
 
 const admin = createTestAdminClient();
 const idsCreados: string[] = [];
@@ -59,10 +85,16 @@ interface ServicioRespuesta {
 }
 
 describe("GET /api/servicios-financieros", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     mockGetVerifiedClaims.mockReset();
-    mockRevalidateTag.mockReset();
+    // El mock de next/cache de arriba vive en el closure del factory de
+    // vi.mock, que Vitest NO re-ejecuta en cada resetModules() — el `store`
+    // sobrevive entre tests de este archivo. Se invalida a mano acá para que
+    // cada test arranque con caché fría, en vez de heredar filas de un test
+    // anterior (ya borradas de la base por su propio afterEach).
+    const { revalidateTag } = await import("next/cache");
+    revalidateTag(TAG_POR_ENTIDAD.servicios_financieros);
   });
 
   afterEach(async () => {
@@ -149,32 +181,54 @@ describe("GET /api/servicios-financieros", () => {
     expect(item?.descripcion).toBeNull();
   });
 
-  it("revalidateTag es un NO-OP real para esta entidad: el próximo GET ya ve el cambio del panel sin depender de él", async () => {
+  // VGRP-55 punto 1 — antes de este ticket, lib/data/servicios.ts no cacheaba
+  // nada: este test confirmaba que revalidateTag() era un no-op real acá.
+  // Ahora SÍ cachea (unstable_cache + TAG_POR_ENTIDAD.servicios_financieros),
+  // así que el test pasa a probar lo contrario: un update directo a la tabla
+  // (sin pasar por el panel) queda SERVIDO STALE hasta que algo invalide el
+  // tag — y que revalidateTag() (lo que el panel real llama después de
+  // escribir) es lo que lo hace fresco de nuevo.
+  it("un update directo queda cacheado (stale) hasta que revalidateTag invalida el tag de la entidad", async () => {
     const servicio = await crearServicioTest({
       titulo: "Título viejo VGRP-52",
       nivel_requerido: "ninguno",
     });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
+
+    const { GET } = await import("./route");
+
+    // Primer GET: puebla la caché con el título viejo.
+    const resInicial = await GET();
+    const bodyInicial = (await resInicial.json()) as { servicios: ServicioRespuesta[] };
+    expect(bodyInicial.servicios.find((s) => s.id === servicio.id)?.publicMeta.titulo).toBe(
+      "Título viejo VGRP-52",
+    );
 
     // Simula lo que escribe el panel admin (PATCH
-    // /api/admin/contenido/servicios_financieros/:id -> actualizarContenido()), sin
-    // pasar por esa ruta HTTP completa.
+    // /api/admin/contenido/servicios_financieros/:id -> actualizarContenido()),
+    // sin pasar por esa ruta HTTP completa (que es quien llama a
+    // revalidateTag() después de escribir).
     const { error } = await admin
       .from("servicios_financieros")
       .update({ titulo: "Título nuevo del panel VGRP-52" })
       .eq("id", servicio.id);
     expect(error).toBeNull();
 
-    // El panel real llama a esto DESPUÉS de escribir (route.ts de admin/contenido) — lo
-    // invocamos nosotros para dejar constancia de que, se llame o no, no tiene ningún
-    // efecto acá: lib/data/servicios.ts no usa unstable_cache.
-    mockRevalidateTag(TAG_POR_ENTIDAD.servicios_financieros);
-    expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-servicios");
+    // Sin invalidar todavía: el próximo GET sigue viendo el título viejo
+    // desde caché — esto es lo que antes de VGRP-55 punto 1 NO pasaba.
+    const resStale = await GET();
+    const bodyStale = (await resStale.json()) as { servicios: ServicioRespuesta[] };
+    expect(bodyStale.servicios.find((s) => s.id === servicio.id)?.publicMeta.titulo).toBe(
+      "Título viejo VGRP-52",
+    );
 
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
-    const { GET } = await import("./route");
-    const res = await GET();
-    const body = (await res.json()) as { servicios: ServicioRespuesta[] };
-    const item = body.servicios.find((s) => s.id === servicio.id);
-    expect(item?.publicMeta.titulo).toBe("Título nuevo del panel VGRP-52");
+    const { revalidateTag } = await import("next/cache");
+    revalidateTag(TAG_POR_ENTIDAD.servicios_financieros);
+
+    const resFresco = await GET();
+    const bodyFresco = (await resFresco.json()) as { servicios: ServicioRespuesta[] };
+    expect(bodyFresco.servicios.find((s) => s.id === servicio.id)?.publicMeta.titulo).toBe(
+      "Título nuevo del panel VGRP-52",
+    );
   });
 });
