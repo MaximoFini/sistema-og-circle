@@ -19,33 +19,29 @@ import { findSeedUser, SEED_ADMIN_USER } from "../helpers/seed-users";
 import { withAuthRetry } from "../helpers/with-auth-retry";
 
 /**
- * Decodifica (sin verificar firma) la segunda parte de un JWT. A propósito
- * sin librería nueva (jwt-decode, etc.) — el ticket pide hacerlo a mano con
- * `Buffer.from(part, "base64url")`, que alcanza para inspeccionar el
- * payload en estos tests.
+ * Decodifica (sin verificar firma) una parte de un JWT por índice (0 =
+ * header, 1 = payload). A propósito sin librería nueva (jwt-decode, etc.) —
+ * el ticket pide hacerlo a mano con `Buffer.from(part, "base64url")`, que
+ * alcanza para inspeccionar header/payload en estos tests.
  */
-function decodeJwtPayload(token: string): Record<string, unknown> {
+function decodeJwtPart(token: string, index: 0 | 1): Record<string, unknown> {
   const parts = token.split(".");
   if (parts.length !== 3) {
     throw new Error(
       `Token con forma inesperada (${parts.length} partes, se esperaban 3): ${token}`,
     );
   }
-  const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
-  return JSON.parse(payloadJson) as Record<string, unknown>;
+  const json = Buffer.from(parts[index], "base64url").toString("utf-8");
+  return JSON.parse(json) as Record<string, unknown>;
 }
 
-/** Igual que `decodeJwtPayload()` pero para la PRIMERA parte del JWT (el
- * header, `{alg, typ, kid?}`) — VGRP-54 punto 3. */
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  return decodeJwtPart(token, 1);
+}
+
+/** El header del JWT (`{alg, typ, kid?}`) — VGRP-54 punto 3. */
 function decodeJwtHeader(token: string): Record<string, unknown> {
-  const parts = token.split(".");
-  if (parts.length !== 3) {
-    throw new Error(
-      `Token con forma inesperada (${parts.length} partes, se esperaban 3): ${token}`,
-    );
-  }
-  const headerJson = Buffer.from(parts[0], "base64url").toString("utf-8");
-  return JSON.parse(headerJson) as Record<string, unknown>;
+  return decodeJwtPart(token, 0);
 }
 
 function appMetadataDe(payload: Record<string, unknown>): Record<string, unknown> {

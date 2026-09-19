@@ -29,6 +29,15 @@ type AdminClient = SupabaseClient<Database>;
 
 export type PagoRow = Tables<"pagos">;
 
+// VGRP-54 punto 9 — única fuente de verdad de "las columnas de `pagos` que
+// son seguras para un listado" (todo salvo `payload_raw`: JSON crudo de
+// Mercado Pago, varios KB por fila). La usa tanto `obtenerPago()` de este
+// archivo como `obtenerUsuario()` de `./usuarios.ts` para su mini-ledger —
+// un solo lugar para actualizar si `pagos` gana o pierde una columna.
+export const PAGOS_COLUMNAS_RESUMEN =
+  "created_at, estado, id, monto_ars, nivel_comprado, proveedor, proveedor_ref, user_id" as const;
+export type PagoResumen = Omit<PagoRow, "payload_raw">;
+
 /** El `:id` es un uuid pero no corresponde a ninguna fila de `pagos`. El
  *  handler la mapea a `404` SIN escribir audit log (requirements.md US-6). */
 export class PagoNoEncontrado extends Error {

@@ -45,6 +45,9 @@ async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
     <>
       <p className={styles.lede}>{items.length} ítem(s), ordenados por "orden".</p>
 
+      {/* VGRP-54 punto 4 — "+ Crear nuevo" no depende de `items`, pero queda
+          adentro del mismo Suspense que el lede (que sí depende) para no
+          invertir el orden visual actual (hoy el lede va antes del botón). */}
       <div className={styles.formAcciones}>
         <TextLink href={`/admin/contenido/${entidad}/nuevo`} className={`${styles.card}`}>
           + Crear nuevo

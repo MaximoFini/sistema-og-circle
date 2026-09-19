@@ -26,14 +26,11 @@ import {
 } from "../../database.types";
 import { proyectarNivel } from "../pagos";
 import { decodeCursor, encodeCursor, escaparLike, keysetFilter } from "./keyset";
+import { PAGOS_COLUMNAS_RESUMEN, type PagoResumen } from "./pagos";
 
 type AdminClient = SupabaseClient<Database>;
 
 export type Profile = Tables<"profiles">;
-export type PagoRow = Tables<"pagos">;
-/** VGRP-54 punto 9 — la ficha de usuario no muestra `payload_raw` (JSON crudo
- * de Mercado Pago, varios KB por fila): se pide sin esa columna. */
-export type PagoResumen = Omit<PagoRow, "payload_raw">;
 export type NivelOverride = Tables<"nivel_overrides">;
 
 // Fuente de verdad única de los valores del enum `nivel_acceso` — generada por
@@ -146,14 +143,13 @@ export async function obtenerUsuario(
   // existe): en paralelo.
   const [nivelRes, pagosRes, overridesRes] = await Promise.all([
     admin.rpc("nivel_vigente", { p_user_id: id }),
-    // VGRP-54 punto 9 — sin `payload_raw` (JSON crudo de Mercado Pago, varios
-    // KB por fila; la ficha no lo muestra) y con .limit(50): esto es un
-    // ledger append-only, un usuario activo puede acumular filas sin techo.
+    // VGRP-54 punto 9 — PAGOS_COLUMNAS_RESUMEN excluye `payload_raw` (JSON
+    // crudo de Mercado Pago, varios KB por fila; la ficha no lo muestra).
+    // `.limit(50)`: esto es un ledger append-only, un usuario activo puede
+    // acumular filas sin techo.
     admin
       .from("pagos")
-      .select(
-        "created_at, estado, id, monto_ars, nivel_comprado, proveedor, proveedor_ref, user_id",
-      )
+      .select(PAGOS_COLUMNAS_RESUMEN)
       .eq("user_id", id)
       .order("created_at", { ascending: false })
       .limit(50),

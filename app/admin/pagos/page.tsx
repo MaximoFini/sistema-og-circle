@@ -87,7 +87,13 @@ async function ResultadosPagos({
       {/* El total de "sin aplicar" depende de la misma consulta que la lista
           (VGRP-54 punto 7: se calcula una sola vez, sin cursor) — por eso el
           lede vive ACÁ adentro y no junto al <h1>, a diferencia de
-          auditoria/usuarios (lede estático, sin datos). */}
+          auditoria/usuarios (lede estático, sin datos). PagosFiltros también
+          queda adentro (a diferencia de esas dos páginas, donde sí sale
+          inmediato): sacarlo de acá para que pinte antes que el lede
+          invertiría el orden visual actual (filtros antes que el lede, hoy
+          es al revés) o exigiría un segundo <Suspense> propio que dispare
+          una consulta aparte sólo para el conteo — ninguna de las dos vale
+          la pena por lo poco que tarda hoy este query. */}
       <p className={styles.lede}>
         Ledger completo. Los aprobados que no quedaron aplicados están marcados{" "}
         <span className={styles.badgeSinAplicar}>sin aplicar</span>.
