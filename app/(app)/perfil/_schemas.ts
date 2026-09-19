@@ -4,16 +4,11 @@
 //
 // Reglas de nombre/teléfono IDÉNTICAS a `registroSchema` (app/(auth)/_schemas.ts) — no
 // se reinventan validaciones para el mismo dato en dos lugares del código.
+//
+// `ActionState`/`INITIAL_ACTION_STATE` viven en `./_action-state.ts` (VGRP-56
+// punto 1) — así PerfilForm.tsx no arrastra Zod al bundle sólo para leer un `{}`.
 
 import { z } from "zod";
-
-export interface ActionState {
-  error?: string;
-  fieldErrors?: Partial<Record<string, string[]>>;
-  mensaje?: string;
-}
-
-export const INITIAL_ACTION_STATE: ActionState = {};
 
 export const perfilSchema = z.object({
   nombre: z.string().trim().min(1, "Ingresá tu nombre.").max(120, "El nombre es demasiado largo."),

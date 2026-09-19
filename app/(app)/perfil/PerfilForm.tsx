@@ -6,8 +6,8 @@
 
 import { useActionState } from "react";
 import { Button, FormError, TextField } from "@/components/ui";
+import { INITIAL_ACTION_STATE } from "./_action-state";
 import { actualizarPerfil } from "./_actions";
-import { INITIAL_ACTION_STATE } from "./_schemas";
 import styles from "./perfil.module.css";
 
 export function PerfilForm({
