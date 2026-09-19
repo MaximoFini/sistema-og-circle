@@ -271,20 +271,19 @@ export interface PagoDetalle {
  * ninguna fila -> `null` (la página hace `notFound()` — US-5: 404).
  */
 export async function obtenerPago(admin: AdminClient, id: string): Promise<PagoDetalle | null> {
-  const { data: pago, error: pagoError } = await admin
-    .from("pagos")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  // VGRP-54 punto 6 — las dos consultas son por el mismo `id` y ninguna
+  // depende del resultado de la otra: el `if (!pago) return null` de abajo es
+  // sólo para el 404 (US-5), así que se puede chequear DESPUÉS del
+  // Promise.all. En el caso 404 se descarta el resultado de `ledger`, pero es
+  // más barato que pagar los dos viajes en serie en el caso común (existe).
+  const [{ data: pago, error: pagoError }, { data: ledger, error: ledgerError }] =
+    await Promise.all([
+      admin.from("pagos").select("*").eq("id", id).maybeSingle(),
+      admin.from("admin_pagos_ledger").select("sin_aplicar, user_email").eq("id", id).maybeSingle(),
+    ]);
   if (pagoError) throw pagoError;
-  if (!pago) return null;
-
-  const { data: ledger, error: ledgerError } = await admin
-    .from("admin_pagos_ledger")
-    .select("sin_aplicar, user_email")
-    .eq("id", id)
-    .maybeSingle();
   if (ledgerError) throw ledgerError;
+  if (!pago) return null;
 
   return {
     pago,

@@ -112,16 +112,16 @@ export async function proyectarNivel(
   admin: SupabaseClient<Database>,
   userId: string,
 ): Promise<NivelAcceso> {
-  const { data: nivel, error: rpcError } = await admin.rpc("nivel_vigente", {
-    p_user_id: userId,
-  });
+  // VGRP-54 punto 6 — el RPC y la lectura de `rol` son independientes (ninguno
+  // usa el resultado del otro): en paralelo. El `update` y el
+  // `updateUserById` de abajo sí dependen de estos dos resultados (`nivel` y
+  // `profile.rol`), así que esos siguen en serie.
+  const [{ data: nivel, error: rpcError }, { data: profile, error: profileReadError }] =
+    await Promise.all([
+      admin.rpc("nivel_vigente", { p_user_id: userId }),
+      admin.from("profiles").select("rol").eq("id", userId).single(),
+    ]);
   if (rpcError) throw rpcError;
-
-  const { data: profile, error: profileReadError } = await admin
-    .from("profiles")
-    .select("rol")
-    .eq("id", userId)
-    .single();
   if (profileReadError) throw profileReadError;
 
   const { error: profileUpdateError } = await admin
