@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Button, FormError, TextField } from "@/components/ui";
-import { INITIAL_ACTION_STATE } from "../_action-state";
+import { INITIAL_ACTION_STATE } from "@/lib/forms/action-state";
 import { iniciarSesion } from "../_actions";
 import styles from "../auth.module.css";
 

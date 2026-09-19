@@ -14,7 +14,7 @@
 import { revalidatePath } from "next/cache";
 import { flattenError } from "zod";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
-import type { ActionState } from "./_action-state";
+import type { ActionState } from "@/lib/forms/action-state";
 import { perfilSchema } from "./_schemas";
 
 export async function actualizarPerfil(

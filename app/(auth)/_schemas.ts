@@ -5,8 +5,8 @@
 // si los datos entran es siempre `_actions.ts` volviendo a correr
 // `.safeParse()` sobre el `FormData` crudo.
 //
-// `ActionState`/`INITIAL_ACTION_STATE` viven en `./_action-state.ts`, no acá
-// (VGRP-56 punto 1) — ese archivo no importa Zod, así que los Client
+// `ActionState`/`INITIAL_ACTION_STATE` viven en `lib/forms/action-state.ts`,
+// no acá (VGRP-56 punto 1) — ese archivo no importa Zod, así que los Client
 // Components que sólo necesitan el estado inicial no arrastran Zod entero al
 // bundle. Ver el comentario de ese archivo.
 

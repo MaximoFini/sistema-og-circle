@@ -54,7 +54,7 @@ beforeEach(() => {
 // Import DESPUÉS de los `vi.mock` de arriba (hoisted igual, ver el mismo comentario en
 // auth-actions.test.ts).
 const { actualizarPerfil } = await import("../../app/(app)/perfil/_actions");
-const { INITIAL_ACTION_STATE } = await import("../../app/(app)/perfil/_action-state");
+const { INITIAL_ACTION_STATE } = await import("../../lib/forms/action-state");
 
 const admin = createTestAdminClient();
 

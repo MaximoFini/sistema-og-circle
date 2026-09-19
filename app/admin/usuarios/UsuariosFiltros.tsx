@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui";
-import { TextFieldBase } from "@/components/ui/TextFieldBase";
+import { Button, TextFieldBase } from "@/components/ui";
 import { Constants } from "@/lib/database.types";
 import styles from "../admin.module.css";
 

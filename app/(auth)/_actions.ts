@@ -13,13 +13,13 @@ import { flattenError } from "zod";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { createSupabaseServerClient } from "@/lib/auth/server";
 import { getFlags } from "@/lib/config";
+import type { ActionState } from "@/lib/forms/action-state";
 import { terminosAceptadosFields } from "@/lib/legal/aceptacion";
-import type { ActionState } from "./_action-state";
 import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
 
-// `ActionState`/`INITIAL_ACTION_STATE` viven en `_action-state.ts`, no acá:
-// este archivo es `"use server"` y Next exige que TODO export suyo sea una
-// función async (`Error: A "use server" file can only export async
+// `ActionState`/`INITIAL_ACTION_STATE` viven en `lib/forms/action-state.ts`,
+// no acá: este archivo es `"use server"` y Next exige que TODO export suyo
+// sea una función async (`Error: A "use server" file can only export async
 // functions, found object` — bug real encontrado probando /login). Sólo se
 // reimporta el *tipo* (se borra en build, no cuenta como export de runtime).
 
