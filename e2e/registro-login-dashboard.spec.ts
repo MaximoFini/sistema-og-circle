@@ -73,7 +73,9 @@ test.describe("registro → login → dashboard", () => {
       // busca por el email único recién usado, mismo patrón que ya usa
       // `test/integration/auth-actions.test.ts` ("housekeeping") para
       // ubicar usuarios ad hoc por su dominio de test.
-      const { data, error } = await withAuthRetry(() => admin.auth.admin.listUsers({ perPage: 1000 }));
+      const { data, error } = await withAuthRetry(() =>
+        admin.auth.admin.listUsers({ perPage: 1000 }),
+      );
       if (error) throw error;
       const created = data.users.find((u) => u.email === email);
       if (!created) throw new Error("no se encontró el usuario recién registrado para limpiarlo");
