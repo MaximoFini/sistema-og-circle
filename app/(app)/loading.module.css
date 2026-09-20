@@ -1,0 +1,9 @@
+.contenedor {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-7) var(--space-4);
+}
+
+.texto {
+  color: var(--text-secondary);
+}

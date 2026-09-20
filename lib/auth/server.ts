@@ -12,10 +12,11 @@
 import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { Database } from "../database.types";
 import { getEnv } from "../env";
 import type { AppMetadataClaims } from "./claims";
+import { CLAIMS_HEADER, decodeClaims } from "./claims-header";
 
 /**
  * Cliente Supabase de servidor para Server Components / Route Handlers,
@@ -75,6 +76,9 @@ export async function createSupabaseServerClient() {
  * `lib/auth/claims.ts` devuelven sus defaults seguros, no explotan).
  */
 export async function getVerifiedClaims(): Promise<AppMetadataClaims | null> {
+  const delMiddleware = await claimsDelMiddleware();
+  if (delMiddleware !== undefined) return delMiddleware;
+
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getClaims();
 
@@ -83,4 +87,36 @@ export async function getVerifiedClaims(): Promise<AppMetadataClaims | null> {
   }
 
   return data.claims as AppMetadataClaims;
+}
+
+/**
+ * Lee los claims que `middleware.ts` ya verificó para esta misma request
+ * (VGRP-54 punto 2) — evita repetir la verificación del JWT en cada handler.
+ *
+ * Devuelve `undefined` (no `null`) cuando el header no vino o vino corrupto:
+ * eso es lo que le dice a `getVerifiedClaims()` que tiene que caer a la
+ * verificación completa, en vez de asumir "sin sesión". El único `null` real
+ * que puede devolver este archivo es el de la rama de abajo, cuando
+ * `getClaims()` corrió de verdad y no encontró sesión — fail-closed: sin
+ * middleware corriendo delante (tests que llaman un handler directo, por
+ * ejemplo) o con el header ausente/roto, siempre se verifica de nuevo, nunca
+ * se confía a ciegas.
+ *
+ * El `try/catch` cubre además a quien llame una Server Action / Route Handler
+ * directo desde un test sin pasar por un request real de Next (varios tests
+ * de integración de este repo mockean `next/headers` sólo con `cookies`,
+ * porque hasta este ticket nada de `lib/auth/server.ts` importaba `headers`):
+ * ahí `headers()` puede no estar disponible — mismo criterio que "no vino el
+ * header", cae a la verificación completa en vez de romper la llamada.
+ */
+async function claimsDelMiddleware(): Promise<AppMetadataClaims | null | undefined> {
+  let headerList: Awaited<ReturnType<typeof headers>>;
+  try {
+    headerList = await headers();
+  } catch {
+    return undefined;
+  }
+  const raw = headerList.get(CLAIMS_HEADER);
+  if (!raw) return undefined;
+  return decodeClaims(raw) ?? undefined;
 }

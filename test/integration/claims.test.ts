@@ -19,20 +19,29 @@ import { findSeedUser, SEED_ADMIN_USER } from "../helpers/seed-users";
 import { withAuthRetry } from "../helpers/with-auth-retry";
 
 /**
- * Decodifica (sin verificar firma) la segunda parte de un JWT. A propósito
- * sin librería nueva (jwt-decode, etc.) — el ticket pide hacerlo a mano con
- * `Buffer.from(part, "base64url")`, que alcanza para inspeccionar el
- * payload en estos tests.
+ * Decodifica (sin verificar firma) una parte de un JWT por índice (0 =
+ * header, 1 = payload). A propósito sin librería nueva (jwt-decode, etc.) —
+ * el ticket pide hacerlo a mano con `Buffer.from(part, "base64url")`, que
+ * alcanza para inspeccionar header/payload en estos tests.
  */
-function decodeJwtPayload(token: string): Record<string, unknown> {
+function decodeJwtPart(token: string, index: 0 | 1): Record<string, unknown> {
   const parts = token.split(".");
   if (parts.length !== 3) {
     throw new Error(
       `Token con forma inesperada (${parts.length} partes, se esperaban 3): ${token}`,
     );
   }
-  const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
-  return JSON.parse(payloadJson) as Record<string, unknown>;
+  const json = Buffer.from(parts[index], "base64url").toString("utf-8");
+  return JSON.parse(json) as Record<string, unknown>;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  return decodeJwtPart(token, 1);
+}
+
+/** El header del JWT (`{alg, typ, kid?}`) — VGRP-54 punto 3. */
+function decodeJwtHeader(token: string): Record<string, unknown> {
+  return decodeJwtPart(token, 0);
 }
 
 function appMetadataDe(payload: Record<string, unknown>): Record<string, unknown> {
@@ -144,6 +153,25 @@ describe("Supabase rechaza un JWT inválido (VGRP-16)", () => {
     expect(response.status).toBe(403);
     const body = (await response.json()) as { error_code?: string };
     expect(body.error_code).toBe("bad_jwt");
+  });
+});
+
+// VGRP-54 punto 3 — toda la estrategia de identidad de VGRP-16 ("el nivel
+// viaja en el token, cero roundtrips") depende de que el proyecto de
+// Supabase esté en claves asimétricas (ES256): con HS256, `getClaims()` cae a
+// `getUser()` por red (@supabase/auth-js@2.112.3, ver lib/auth/server.ts). El
+// paso a ES256 es manual en el dashboard de Supabase
+// (supabase/migrations/20260822035925_auth_hook.sql:22-23) — nada en runtime
+// lo confirmaba hasta este test. Se implementa como test de integración (no
+// como assert en instrumentation.ts): un chequeo de arranque agregaría una
+// llamada de red a CADA boot del server para confirmar algo que, si se
+// rompe, ya lo delata este test en CI antes de deployar.
+describe("el proyecto usa claves de firma asimétricas ES256, no HS256 (VGRP-54 punto 3)", () => {
+  it("el header de un access_token real tiene alg='ES256'", async () => {
+    const { accessToken } = await getTokenWithClaim("avanzado");
+    const header = decodeJwtHeader(accessToken);
+
+    expect(header.alg).toBe("ES256");
   });
 });
 

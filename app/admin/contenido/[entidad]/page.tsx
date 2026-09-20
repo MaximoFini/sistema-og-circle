@@ -1,6 +1,12 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { TextLink } from "@/components/ui";
-import { campoVigencia, esEntidadValida, listarContenido } from "@/lib/data/admin/contenido";
+import {
+  campoVigencia,
+  type Entidad,
+  esEntidadValida,
+  listarContenido,
+} from "@/lib/data/admin/contenido";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../../admin.module.css";
 
@@ -30,23 +36,18 @@ function tituloItem(entidad: string, item: Record<string, unknown>): string {
   return String(item.nombre ?? "");
 }
 
-export default async function ContenidoListaPage({
-  params,
-}: {
-  params: Promise<{ entidad: string }>;
-}) {
-  const { entidad } = await params;
-  if (!esEntidadValida(entidad)) notFound();
-
+async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
   const admin = createServiceRoleClient();
   const items = await listarContenido(admin, entidad);
   const campo = campoVigencia(entidad);
 
   return (
-    <div className={styles.page}>
-      <h1 className={styles.h1}>{TITULO[entidad]}</h1>
+    <>
       <p className={styles.lede}>{items.length} ítem(s), ordenados por "orden".</p>
 
+      {/* VGRP-54 punto 4 — "+ Crear nuevo" no depende de `items`, pero queda
+          adentro del mismo Suspense que el lede (que sí depende) para no
+          invertir el orden visual actual (hoy el lede va antes del botón). */}
       <div className={styles.formAcciones}>
         <TextLink href={`/admin/contenido/${entidad}/nuevo`} className={`${styles.card}`}>
           + Crear nuevo
@@ -79,6 +80,25 @@ export default async function ContenidoListaPage({
           })}
         </ul>
       )}
+    </>
+  );
+}
+
+export default async function ContenidoListaPage({
+  params,
+}: {
+  params: Promise<{ entidad: string }>;
+}) {
+  const { entidad } = await params;
+  if (!esEntidadValida(entidad)) notFound();
+
+  return (
+    <div className={styles.page}>
+      <h1 className={styles.h1}>{TITULO[entidad]}</h1>
+
+      <Suspense fallback={<p className={styles.vacio}>Cargando contenido…</p>}>
+        <ResultadosContenido entidad={entidad} />
+      </Suspense>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
 import { listarAuditLog } from "@/lib/data/admin/audit-log";
@@ -70,30 +71,17 @@ function construirQuery(
   return qs ? `/admin/auditoria?${qs}` : "/admin/auditoria";
 }
 
-export default async function AuditoriaPage({
-  searchParams,
+async function ResultadosAuditoria({
+  actor,
+  desde,
+  hasta,
+  cursor,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  actor?: string;
+  desde?: string;
+  hasta?: string;
+  cursor?: string;
 }) {
-  const raw = await searchParams;
-  const parsed = searchSchema.safeParse({
-    actor: typeof raw.actor === "string" ? raw.actor : undefined,
-    desde: typeof raw.desde === "string" ? raw.desde : undefined,
-    hasta: typeof raw.hasta === "string" ? raw.hasta : undefined,
-    cursor: typeof raw.cursor === "string" ? raw.cursor : undefined,
-  });
-
-  if (!parsed.success) {
-    return (
-      <div className={styles.page}>
-        <h1 className={styles.h1}>Auditoría</h1>
-        <AuditoriaFiltros />
-        <p className={styles.avisoFiltro}>Filtro inválido. Revisá las fechas y volvé a intentar.</p>
-      </div>
-    );
-  }
-
-  const { actor, desde, hasta, cursor } = parsed.data;
   const admin = createServiceRoleClient();
 
   // El filtro por actor es una búsqueda parcial de email; se resuelve acá (la
@@ -124,14 +112,7 @@ export default async function AuditoriaPage({
         });
 
   return (
-    <div className={styles.page}>
-      <h1 className={styles.h1}>Auditoría</h1>
-      <p className={styles.lede}>
-        Registro inmutable de toda acción de admin, de más reciente a más antigua.
-      </p>
-
-      <AuditoriaFiltros actor={actor} desde={desde} hasta={hasta} />
-
+    <>
       {actoresResueltos.length > 1 ? (
         <p className={styles.vacio}>
           Mostrando {actoresResueltos.length} actores que coinciden con “{actor}”:{" "}
@@ -168,6 +149,47 @@ export default async function AuditoriaPage({
           Cargar más
         </TextLink>
       ) : null}
+    </>
+  );
+}
+
+export default async function AuditoriaPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const raw = await searchParams;
+  const parsed = searchSchema.safeParse({
+    actor: typeof raw.actor === "string" ? raw.actor : undefined,
+    desde: typeof raw.desde === "string" ? raw.desde : undefined,
+    hasta: typeof raw.hasta === "string" ? raw.hasta : undefined,
+    cursor: typeof raw.cursor === "string" ? raw.cursor : undefined,
+  });
+
+  if (!parsed.success) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.h1}>Auditoría</h1>
+        <AuditoriaFiltros />
+        <p className={styles.avisoFiltro}>Filtro inválido. Revisá las fechas y volvé a intentar.</p>
+      </div>
+    );
+  }
+
+  const { actor, desde, hasta, cursor } = parsed.data;
+
+  return (
+    <div className={styles.page}>
+      <h1 className={styles.h1}>Auditoría</h1>
+      <p className={styles.lede}>
+        Registro inmutable de toda acción de admin, de más reciente a más antigua.
+      </p>
+
+      <AuditoriaFiltros actor={actor} desde={desde} hasta={hasta} />
+
+      <Suspense fallback={<p className={styles.vacio}>Cargando auditoría…</p>}>
+        <ResultadosAuditoria actor={actor} desde={desde} hasta={hasta} cursor={cursor} />
+      </Suspense>
     </div>
   );
 }

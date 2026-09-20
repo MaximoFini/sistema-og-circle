@@ -29,6 +29,15 @@ type AdminClient = SupabaseClient<Database>;
 
 export type PagoRow = Tables<"pagos">;
 
+// VGRP-54 punto 9 — única fuente de verdad de "las columnas de `pagos` que
+// son seguras para un listado" (todo salvo `payload_raw`: JSON crudo de
+// Mercado Pago, varios KB por fila). La usa tanto `obtenerPago()` de este
+// archivo como `obtenerUsuario()` de `./usuarios.ts` para su mini-ledger —
+// un solo lugar para actualizar si `pagos` gana o pierde una columna.
+export const PAGOS_COLUMNAS_RESUMEN =
+  "created_at, estado, id, monto_ars, nivel_comprado, proveedor, proveedor_ref, user_id" as const;
+export type PagoResumen = Omit<PagoRow, "payload_raw">;
+
 /** El `:id` es un uuid pero no corresponde a ninguna fila de `pagos`. El
  *  handler la mapea a `404` SIN escribir audit log (requirements.md US-6). */
 export class PagoNoEncontrado extends Error {
@@ -131,6 +140,11 @@ export function sanitizarPayloadRaw(raw: Json | null | undefined): Json {
 // listarPagos — consulta la vista `admin_pagos_ledger`
 // -----------------------------------------------------------------------------
 
+// `desde`/`hasta` esperan un datetime ISO completo, NO el `z.iso.date()`
+// (yyyy-mm-dd) que valida el querystring en app/admin/pagos/page.tsx: esa
+// página convierte a `${fecha}T00:00:00.000Z` / `${fecha}T23:59:59.999Z`
+// antes de llamar acá (mismo patrón en app/admin/auditoria/page.tsx). Esta
+// capa valida el resultado YA convertido, no el input crudo del usuario.
 export const filtrosPagosSchema = z.object({
   estado: z.string().trim().min(1).max(50).optional(),
   desde: z.iso.datetime().optional(),
@@ -171,7 +185,10 @@ export interface PagoLedgerRow {
 export interface ListarPagosResultado {
   pagos: PagoLedgerRow[];
   nextCursor: string | null;
-  totalSinAplicar: number;
+  /** `null` en páginas con cursor (VGRP-54 punto 7: no se recalcula) — nunca
+   * un `0` ambiguo con "de verdad no hay pagos sin aplicar". El caller decide
+   * qué mostrar según si es la primera página, no según el valor. */
+  totalSinAplicar: number | null;
 }
 
 interface LedgerDbRow {
@@ -235,10 +252,16 @@ export async function listarPagos(
   const keyset = decodeCursor(cursor);
   if (keyset) query = query.or(keysetFilter(keyset));
 
-  // El listado y el conteo global de `sin_aplicar` son independientes: en paralelo.
+  // VGRP-54 punto 7 — contarPagosSinAplicar() es cara: `sin_aplicar` es una
+  // columna calculada con dos NOT EXISTS correlacionados (ver el comentario de
+  // la vista), así que el count materializa la vista entera. El número que se
+  // muestra no cambia (es el mismo total en cualquier página), pero no hace
+  // falta recalcularlo en cada página siguiente del mismo listado — sólo en
+  // la primera (sin cursor). El listado y el conteo, cuando corre, van en
+  // paralelo (son independientes entre sí).
   const [{ data, error }, totalSinAplicar] = await Promise.all([
     query.returns<LedgerDbRow[]>(),
-    contarPagosSinAplicar(admin),
+    keyset ? Promise.resolve(null) : contarPagosSinAplicar(admin),
   ]);
   if (error) throw error;
 
@@ -271,20 +294,19 @@ export interface PagoDetalle {
  * ninguna fila -> `null` (la página hace `notFound()` — US-5: 404).
  */
 export async function obtenerPago(admin: AdminClient, id: string): Promise<PagoDetalle | null> {
-  const { data: pago, error: pagoError } = await admin
-    .from("pagos")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  // VGRP-54 punto 6 — las dos consultas son por el mismo `id` y ninguna
+  // depende del resultado de la otra: el `if (!pago) return null` de abajo es
+  // sólo para el 404 (US-5), así que se puede chequear DESPUÉS del
+  // Promise.all. En el caso 404 se descarta el resultado de `ledger`, pero es
+  // más barato que pagar los dos viajes en serie en el caso común (existe).
+  const [{ data: pago, error: pagoError }, { data: ledger, error: ledgerError }] =
+    await Promise.all([
+      admin.from("pagos").select("*").eq("id", id).maybeSingle(),
+      admin.from("admin_pagos_ledger").select("sin_aplicar, user_email").eq("id", id).maybeSingle(),
+    ]);
   if (pagoError) throw pagoError;
-  if (!pago) return null;
-
-  const { data: ledger, error: ledgerError } = await admin
-    .from("admin_pagos_ledger")
-    .select("sin_aplicar, user_email")
-    .eq("id", id)
-    .maybeSingle();
   if (ledgerError) throw ledgerError;
+  if (!pago) return null;
 
   return {
     pago,

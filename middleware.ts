@@ -47,6 +47,7 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import type { AppMetadataClaims } from "./lib/auth/claims";
 import { getNivel, getRol } from "./lib/auth/claims";
+import { CLAIMS_HEADER, encodeClaims } from "./lib/auth/claims-header";
 import type { Database } from "./lib/database.types";
 
 /**
@@ -162,13 +163,40 @@ function getEnv(name: string): string {
   return value;
 }
 
+/**
+ * Copia los headers de la request ENTRANTE y borra `CLAIMS_HEADER` de esa
+ * copia — VGRP-54 punto 2. Se llama en cada punto donde se construye una
+ * respuesta hacia adelante (`NextResponse.next`/`.rewrite`), para que el
+ * único lugar donde ese header puede aparecer con un valor real sea el que
+ * lo vuelve a poner explícitamente más abajo, con los claims que este mismo
+ * middleware verificó — nunca uno que haya mandado el cliente.
+ */
+function requestHeadersSinClaims(source: NextRequest): Headers {
+  const headers = new Headers(source.headers);
+  headers.delete(CLAIMS_HEADER);
+  return headers;
+}
+
+/**
+ * Mismos headers de `requestHeadersSinClaims()`, pero con `CLAIMS_HEADER`
+ * puesto si `claims` no es null. Cuando `haySesion` es `true`, `getClaims()`
+ * siempre trae `claims` — el `null` es sólo el tipo defensivo de la
+ * extracción de más arriba; si alguna vez pasara, simplemente no se
+ * propaga el header y `getVerifiedClaims()` cae a verificar de nuevo.
+ */
+function requestHeadersConClaims(source: NextRequest, claims: AppMetadataClaims | null): Headers {
+  const headers = requestHeadersSinClaims(source);
+  if (claims) headers.set(CLAIMS_HEADER, encodeClaims(claims));
+  return headers;
+}
+
 export async function middleware(request: NextRequest) {
   // Respuesta "pass-through" por default. Si `setAll` de abajo se dispara
   // (Supabase necesita refrescar el access token con el refresh token), se
   // reemplaza por una nueva `NextResponse` que además lleva las cookies de
   // sesión actualizadas — así el refresh de sesión llega al browser en la
   // misma respuesta, sin request extra.
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: requestHeadersSinClaims(request) } });
 
   const supabase = createServerClient<Database>(
     getEnv("NEXT_PUBLIC_SUPABASE_URL"),
@@ -182,7 +210,7 @@ export async function middleware(request: NextRequest) {
           for (const { name, value } of cookiesToSet) {
             request.cookies.set(name, value);
           }
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeadersSinClaims(request) } });
           for (const { name, value, options } of cookiesToSet) {
             response.cookies.set(name, value, options);
           }
@@ -239,12 +267,14 @@ export async function middleware(request: NextRequest) {
     return withRefreshedCookies(NextResponse.redirect(loginUrl), response);
   }
 
-  // Acá ya sabemos que `haySesion === true`. VGRP-35 — capa de rol.
+  // Acá ya sabemos que `haySesion === true`. `data.claims`: mismo shape que
+  // consume `getVerifiedClaims()` en lib/auth/server.ts.
+  const claims = (data as { claims?: AppMetadataClaims } | undefined)?.claims ?? null;
+
+  // VGRP-35 — capa de rol.
   if (isAdminArea(pathname)) {
-    // `data.claims`: mismo shape que consume `getVerifiedClaims()` en
-    // lib/auth/server.ts. `getRol()` cae a `'user'` (default seguro) si el
-    // claim falta o no es un valor válido del enum — nunca lanza.
-    const claims = (data as { claims?: AppMetadataClaims } | undefined)?.claims ?? null;
+    // `getRol()` cae a `'user'` (default seguro) si el claim falta o no es
+    // un valor válido del enum — nunca lanza.
     if (getRol(claims) !== "admin") {
       // 404 — nunca 403, nunca revelar que la ruta existe. El 404 "pelado" de
       // acá es aceptable para el caso (un no-admin sondeando `/admin`);
@@ -262,27 +292,37 @@ export async function middleware(request: NextRequest) {
   // -----------------------------------------------------------------------
   // VGRP-27 — shell de Inicio prerenderizado según nivel.
   //
-  // `/dashboard` en sí (nivel 'ninguno') sigue siendo la página de VGRP-18,
-  // sin rewrite. Para 'principiante'/'avanzado' se reescribe hacia la
-  // variante estática correspondiente (app/(app)/dashboard/[variante]/,
-  // generateStaticParams + dynamicParams=false) — cero query nueva: usa el
-  // mismo `data.claims` que `getClaims()` ya resolvió arriba en este mismo
-  // request. La URL que ve el usuario sigue siendo `/dashboard` (rewrite, no
-  // redirect). Ver design.md: esto es una optimización de rendering, NO el
-  // mecanismo de seguridad — ese lo aporta VGRP-30 sección por sección.
+  // `/dashboard` se reescribe hacia la variante estática correspondiente
+  // (app/(app)/dashboard/[variante]/, generateStaticParams +
+  // dynamicParams=false) para los tres niveles — VGRP-54 punto 5 sumó
+  // 'ninguno' a 'principiante'/'avanzado', que ya reescribían. Cero query
+  // nueva: usa el mismo `data.claims` que `getClaims()` ya resolvió arriba en
+  // este mismo request. La URL que ve el usuario sigue siendo `/dashboard`
+  // (rewrite, no redirect). Ver design.md: esto es una optimización de
+  // rendering, NO el mecanismo de seguridad — ese lo aporta VGRP-30 sección
+  // por sección.
   // -----------------------------------------------------------------------
   if (pathname === "/dashboard") {
-    const claims = (data as { claims?: AppMetadataClaims } | undefined)?.claims ?? null;
     const nivel = getNivel(claims);
-
-    if (nivel === "principiante" || nivel === "avanzado") {
-      const url = request.nextUrl.clone();
-      url.pathname = `/dashboard/${nivel}`;
-      return withRefreshedCookies(NextResponse.rewrite(url), response);
-    }
+    const url = request.nextUrl.clone();
+    url.pathname = `/dashboard/${nivel}`;
+    return withRefreshedCookies(
+      NextResponse.rewrite(url, {
+        request: { headers: requestHeadersConClaims(request, claims) },
+      }),
+      response,
+    );
   }
 
-  return response;
+  // VGRP-54 punto 2 — propaga los claims YA verificados arriba a la request
+  // que sigue camino (Route Handlers, Server Components): evita que cada uno
+  // llame a `getClaims()` de nuevo para el mismo JWT. `getVerifiedClaims()`
+  // (lib/auth/server.ts) lee este header con fallback a la verificación
+  // completa si no viene — nunca confía en él si `middleware.ts` no corrió.
+  return withRefreshedCookies(
+    NextResponse.next({ request: { headers: requestHeadersConClaims(request, claims) } }),
+    response,
+  );
 }
 
 // El matcher es un patrón NEGATIVO: corre sobre todo salvo lo que se excluye

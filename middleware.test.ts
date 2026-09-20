@@ -49,8 +49,20 @@ const CON_SESION_ADMIN = {
   error: null,
 };
 
-function req(path: string): NextRequest {
-  return new NextRequest(new URL(path, "http://localhost:3000"));
+function req(path: string, headers?: Record<string, string>): NextRequest {
+  return new NextRequest(new URL(path, "http://localhost:3000"), { headers });
+}
+
+// VGRP-54 punto 2 — el middleware expone en la RESPUESTA los headers que le
+// va a reenviar a la request que sigue camino, con esta forma interna de
+// Next (comprobado empíricamente, no documentado): `x-middleware-override-headers`
+// lista los nombres tocados, y `x-middleware-request-<nombre>` lleva cada
+// valor. Se lee así en vez de inspeccionar `request.headers` directamente
+// porque el middleware nunca muta el objeto `NextRequest` original — arma un
+// `Headers` nuevo y se lo pasa a `NextResponse.next()`/`.rewrite()`.
+const CLAIMS_HEADER = "x-vgrp-verified-claims";
+function claimsForwardedHeader(res: Response): string | null {
+  return res.headers.get(`x-middleware-request-${CLAIMS_HEADER}`);
 }
 
 describe("middleware", () => {
@@ -262,15 +274,28 @@ describe("middleware", () => {
   // VGRP-27 — rewrite de /dashboard a la variante estática según nivel. Ver
   // design.md: NextResponse.rewrite responde 200 (no es un redirect) y deja
   // el destino en el header `x-middleware-rewrite`.
-  describe("shell de Inicio por nivel (VGRP-27)", () => {
-    it("sesión + nivel='ninguno' (o sin claim de nivel): sin rewrite, sigue a /dashboard tal cual", async () => {
+  //
+  // VGRP-54 punto 5 — cambio de comportamiento INTENCIONAL: antes, nivel
+  // 'ninguno' se quedaba en `/dashboard` sin rewrite (la única variante sin
+  // generateStaticParams, forzando esa página a leer getVerifiedClaims() y
+  // renderizar dinámico). Ahora reescribe a `/dashboard/ninguno`, que
+  // `app/(app)/dashboard/[variante]/page.tsx` ya sirve como variante estática
+  // más — es exactamente lo que este punto del ticket pide ("extender el
+  // rewrite del middleware"), no una regresión. El test viejo quedaba
+  // afirmando el comportamiento anterior a propósito: se actualiza acá en vez
+  // de dejarlo en rojo, porque el rojo es el resultado esperado de este
+  // punto, no un bug.
+  describe("shell de Inicio por nivel (VGRP-27 / VGRP-54 punto 5)", () => {
+    it("sesión + nivel='ninguno' (o sin claim de nivel): rewrite a /dashboard/ninguno", async () => {
       mockGetClaims.mockResolvedValue(CON_SESION);
       const { middleware } = await import("./middleware");
 
       const res = await middleware(req("/dashboard"));
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+      const destino = res.headers.get("x-middleware-rewrite");
+      expect(destino).not.toBeNull();
+      expect(new URL(destino as string).pathname).toBe("/dashboard/ninguno");
     });
 
     it("sesión + nivel='principiante': rewrite a /dashboard/principiante", async () => {
@@ -314,6 +339,69 @@ describe("middleware", () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+  });
+
+  // VGRP-54 punto 2 — el middleware propaga los claims YA verificados por
+  // header, para que getVerifiedClaims() (lib/auth/server.ts) no vuelva a
+  // verificar el mismo JWT en cada handler de la misma request.
+  describe("propagación de claims verificados (VGRP-54 punto 2)", () => {
+    it("ruta privada con sesión: reenvía los claims verificados, decodificables desde el header", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION_ADMIN);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/perfil"));
+
+      const forwarded = claimsForwardedHeader(res);
+      expect(forwarded).not.toBeNull();
+      expect(JSON.parse(atob(forwarded as string))).toEqual(CON_SESION_ADMIN.data.claims);
+    });
+
+    it("ruta privada sin sesión: nunca reenvía el header (no hay claims que propagar)", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/dashboard"));
+
+      expect(claimsForwardedHeader(res)).toBeNull();
+    });
+
+    it("ruta pública: nunca reenvía el header, con o sin sesión", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/login"));
+
+      expect(claimsForwardedHeader(res)).toBeNull();
+    });
+
+    it("infalsificable: un header de claims forjado por el cliente en la request entrante se descarta — el reenviado es siempre el que devolvió getClaims()", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION_USER);
+      const { middleware } = await import("./middleware");
+
+      const forjado = btoa(JSON.stringify({ sub: "atacante", app_metadata: { rol: "admin" } }));
+      const res = await middleware(req("/perfil", { [CLAIMS_HEADER]: forjado }));
+
+      const forwarded = claimsForwardedHeader(res);
+      expect(forwarded).not.toBe(forjado);
+      expect(JSON.parse(atob(forwarded as string))).toEqual(CON_SESION_USER.data.claims);
+    });
+
+    it("rewrite de /dashboard a la variante estática también reenvía los claims verificados", async () => {
+      mockGetClaims.mockResolvedValue({
+        data: { claims: { sub: "u1", app_metadata: { nivel: "avanzado" } } },
+        error: null,
+      });
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/dashboard"));
+
+      const forwarded = claimsForwardedHeader(res);
+      expect(forwarded).not.toBeNull();
+      expect(JSON.parse(atob(forwarded as string))).toEqual({
+        sub: "u1",
+        app_metadata: { nivel: "avanzado" },
+      });
     });
   });
 });
