@@ -63,13 +63,20 @@ async function ResultadosPagos({
   estado,
   desde,
   hasta,
-  ref,
+  proveedorRef,
   cursor,
 }: {
   estado?: string;
   desde?: string;
   hasta?: string;
-  ref?: string;
+  // NUNCA nombrar esto `ref`: es una prop reservada de React (referencias a
+  // elementos/componentes) — pasarla así a un Server Component tira "Refs
+  // cannot be used in Server Components, nor passed to Client Components" en
+  // vez de llegar como un string común. Bug real encontrado corriendo
+  // e2e/admin-reprocesar-pago.spec.ts (VGRP-48): la página entera crasheaba
+  // (500) al filtrar por referencia de pago, justo el único caso de uso real
+  // de este filtro.
+  proveedorRef?: string;
   cursor?: string;
 }) {
   const admin = createServiceRoleClient();
@@ -77,7 +84,7 @@ async function ResultadosPagos({
     estado,
     desde: desde ? `${desde}T00:00:00.000Z` : undefined,
     hasta: hasta ? `${hasta}T23:59:59.999Z` : undefined,
-    proveedorRef: ref,
+    proveedorRef,
     limit: 20,
     cursor,
   });
@@ -102,7 +109,7 @@ async function ResultadosPagos({
           : null}
       </p>
 
-      <PagosFiltros estado={estado} desde={desde} hasta={hasta} proveedorRef={ref} />
+      <PagosFiltros estado={estado} desde={desde} hasta={hasta} proveedorRef={proveedorRef} />
 
       {pagos.length === 0 ? (
         <p className={styles.vacio}>No hay pagos para este filtro.</p>
@@ -127,7 +134,7 @@ async function ResultadosPagos({
 
       {nextCursor ? (
         <TextLink
-          href={construirQuery({ estado, desde, hasta, ref }, nextCursor)}
+          href={construirQuery({ estado, desde, hasta, ref: proveedorRef }, nextCursor)}
           className={styles.cargarMas}
         >
           Cargar más
@@ -170,7 +177,13 @@ export default async function PagosPage({
       <h1 className={styles.h1}>Pagos</h1>
 
       <Suspense fallback={<p className={styles.vacio}>Cargando pagos…</p>}>
-        <ResultadosPagos estado={estado} desde={desde} hasta={hasta} ref={ref} cursor={cursor} />
+        <ResultadosPagos
+          estado={estado}
+          desde={desde}
+          hasta={hasta}
+          proveedorRef={ref}
+          cursor={cursor}
+        />
       </Suspense>
     </div>
   );
