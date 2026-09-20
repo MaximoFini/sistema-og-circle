@@ -12,6 +12,11 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Sin esto, getFlags() (lib/config) no puede conectar a Edge Config y cae
+      # al default fail-closed (registro_habilitado: false) — e2e/registro-
+      # login-dashboard.spec.ts nunca ve el formulario de /registro. Cargar el
+      # secret en GitHub no alcanza si no se referencia acá.
+      EDGE_CONFIG: ${{ secrets.EDGE_CONFIG }}
       # Bloque 6 (VGRP-46/48): sin esto, los tests de integración del webhook
       # (firma HMAC real) y del checkout (preferencia real) no tienen contra
       # qué correr. Cuenta de prueba de Mercado Pago dedicada a este proyecto.
