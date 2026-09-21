@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { sembrarAgenteViaAdmin } from "../test/helpers/admin-content-seed";
 import { createAuthenticatedUser } from "../test/helpers/auth";
 import { cleanupUser } from "../test/helpers/cleanup";
 import { createTestAdminClient } from "../test/helpers/db-client";
@@ -52,38 +53,33 @@ test.describe("ContenidoBloqueado en AgentesGrid — nunca oculta sin explicar (
 
   test("bloqueado=true: el contacto NO está en el HTML (no oculto por CSS), muestra el nivel que desbloquea, y el CTA es 'Mejorar mi nivel' para un usuario con nivel propio", async ({
     page,
+    browser,
   }) => {
     const sufijo = crypto.randomUUID();
     const nombreBloqueado = `${MARCADOR} bloqueado ${sufijo}`;
     const nombreDesbloqueado = `${MARCADOR} desbloqueado ${sufijo}`;
     const contactoSecreto = `contacto-secreto-e2e-${sufijo}`;
 
-    const { data: bloqueado, error: e1 } = await admin
-      .from("agentes")
-      .insert({
-        nombre: nombreBloqueado,
-        especialidad: "Especialidad test",
-        nivel_requerido: "avanzado",
-        activo: true,
-        contacto: contactoSecreto,
-      })
-      .select()
-      .single();
-    if (e1) throw e1;
+    // VGRP-55 punto 1 — sembrado vía la API real de admin (no un insert
+    // directo): lib/data/agentes.ts cachea la lectura de filas y sólo se
+    // invalida cuando el Route Handler llama a revalidateTag() en una
+    // escritura real. Un insert directo podía dejar la grilla sirviendo la
+    // lista vieja desde caché, sin este agente — ver
+    // test/helpers/admin-content-seed.ts.
+    const bloqueado = await sembrarAgenteViaAdmin(browser, {
+      nombre: nombreBloqueado,
+      especialidad: "Especialidad test",
+      nivel_requerido: "avanzado",
+      contacto: contactoSecreto,
+    });
     agenteIds.push(bloqueado.id);
 
-    const { data: desbloqueado, error: e2 } = await admin
-      .from("agentes")
-      .insert({
-        nombre: nombreDesbloqueado,
-        especialidad: "Especialidad test",
-        nivel_requerido: "principiante",
-        activo: true,
-        contacto: "contacto-visible-e2e",
-      })
-      .select()
-      .single();
-    if (e2) throw e2;
+    const desbloqueado = await sembrarAgenteViaAdmin(browser, {
+      nombre: nombreDesbloqueado,
+      especialidad: "Especialidad test",
+      nivel_requerido: "principiante",
+      contacto: "contacto-visible-e2e",
+    });
     agenteIds.push(desbloqueado.id);
 
     const creado = await createAuthenticatedUser("principiante");
