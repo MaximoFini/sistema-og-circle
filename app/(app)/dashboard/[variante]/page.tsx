@@ -41,6 +41,15 @@ export function generateStaticParams() {
 // Cualquier valor fuera de VARIANTES no es un render dinámico sorpresa: 404.
 export const dynamicParams = false;
 
+// VGRP-55 punto 5 — red de contención, no el mecanismo principal de
+// actualización (ese sigue siendo revalidateTag, que ya dispara el panel de
+// contenido en cada escritura). Sin esto era ISR infinito: si la lectura de
+// `videos` fallaba durante `next build` (lib/data/videos.ts, fallback
+// fail-open), la grilla de relleno quedaba servida desde el CDN para
+// SIEMPRE, hasta que alguien editara un video a mano. Con este piso, como
+// mucho una hora.
+export const revalidate = 3600;
+
 export default async function InicioPorNivelPage({
   params,
 }: {

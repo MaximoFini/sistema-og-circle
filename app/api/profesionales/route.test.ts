@@ -1,7 +1,7 @@
 // VGRP-52 — tests de integración de GET /api/profesionales contra el proyecto real de
-// Supabase (docs/TESTING.md). Sólo se mockea `getVerifiedClaims` (la frontera de
-// sesión) — `createServiceRoleClient()` y `obtenerProfesionales()` corren 100% reales,
-// mismo criterio que `test/integration/auth-actions.test.ts`.
+// Supabase (docs/TESTING.md). Se mockea `getVerifiedClaims` (la frontera de sesión) y,
+// desde VGRP-55 punto 1, `next/cache` (ver más abajo) — `createServiceRoleClient()` y
+// la lectura real de filas corren 100% reales.
 //
 // `lib/data/profesionales.test.ts` (VGRP-32) ya cubre la lógica de gating fila por fila
 // de `obtenerProfesionales()` en sí — acá el foco es el CONTRATO HTTP de la ruta: qué
@@ -9,6 +9,7 @@
 // el propio Request pudiera traer (la ruta ni siquiera declara un parámetro `Request`).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { TAG_POR_ENTIDAD } from "../../../lib/data/admin/contenido";
 import { createTestAdminClient } from "../../../test/helpers/db-client";
 import "../../../test/helpers/load-env";
 
@@ -16,6 +17,13 @@ const mockGetVerifiedClaims = vi.fn();
 vi.mock("@/lib/auth/server", () => ({
   getVerifiedClaims: () => mockGetVerifiedClaims(),
 }));
+
+// VGRP-55 punto 1 — lib/data/profesionales.ts ahora usa unstable_cache de
+// verdad; mismo mock que app/api/servicios-financieros/route.test.ts (cachea
+// por key+args, invalida por tag) para que el test de "revalidateTag" de más
+// abajo pruebe el mecanismo real, no sólo el fallback de incrementalCache.
+// Mock compartido — ver test/helpers/fake-next-cache.ts.
+vi.mock("next/cache", () => import("../../../test/helpers/fake-next-cache"));
 
 const admin = createTestAdminClient();
 const idsCreados: string[] = [];
@@ -49,9 +57,15 @@ interface ProfesionalRespuesta {
 }
 
 describe("GET /api/profesionales", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     mockGetVerifiedClaims.mockReset();
+    // Ver el comentario del mock de next/cache: su `store` sobrevive entre
+    // tests (Vitest no re-ejecuta el factory de vi.mock en cada
+    // resetModules()) — se invalida a mano para que cada test arranque con
+    // caché fría.
+    const { revalidateTag } = await import("next/cache");
+    revalidateTag(TAG_POR_ENTIDAD.profesionales);
   });
 
   afterEach(async () => {
@@ -109,8 +123,22 @@ describe("GET /api/profesionales", () => {
     expect(item?.contacto).toBeNull();
   });
 
-  it("revalidateTag es un NO-OP real para esta entidad: el próximo GET ya ve el cambio del panel sin depender de él", async () => {
+  // VGRP-55 punto 1 — antes de este ticket, lib/data/profesionales.ts no
+  // cacheaba nada: este test confirmaba que revalidateTag() era un no-op
+  // real acá. Ahora SÍ cachea (unstable_cache + TAG_POR_ENTIDAD.profesionales),
+  // así que pasa a probar lo contrario: un update directo queda stale hasta
+  // que algo invalide el tag.
+  it("un update directo queda cacheado (stale) hasta que revalidateTag invalida el tag de la entidad", async () => {
     const prof = await crearProfesionalTest({ nombre: "Nombre viejo VGRP-52" });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
+
+    const { GET } = await import("./route");
+
+    const resInicial = await GET();
+    const bodyInicial = (await resInicial.json()) as { profesionales: ProfesionalRespuesta[] };
+    expect(bodyInicial.profesionales.find((p) => p.id === prof.id)?.contacto).toBe(
+      "contacto-de-test",
+    );
 
     // Simula lo que escribe el panel admin (PATCH /api/admin/contenido/profesionales/:id
     // -> actualizarContenido()) sin pasar por esa ruta HTTP completa — esa ruta es quien
@@ -121,14 +149,19 @@ describe("GET /api/profesionales", () => {
       .eq("id", prof.id);
     expect(error).toBeNull();
 
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
-    const { GET } = await import("./route");
-    const res = await GET();
-    const body = (await res.json()) as { profesionales: ProfesionalRespuesta[] };
-    const item = body.profesionales.find((p) => p.id === prof.id);
-    // Sin haber llamado a revalidateTag en ningún lado de este test: el Route Handler
-    // es dinámico y lib/data/profesionales.ts no usa unstable_cache, así que no hay
-    // nada que invalidar para ver el dato fresco.
-    expect(item?.contacto).toBe("contacto-actualizado-por-el-panel");
+    const resStale = await GET();
+    const bodyStale = (await resStale.json()) as { profesionales: ProfesionalRespuesta[] };
+    expect(bodyStale.profesionales.find((p) => p.id === prof.id)?.contacto).toBe(
+      "contacto-de-test",
+    );
+
+    const { revalidateTag } = await import("next/cache");
+    revalidateTag(TAG_POR_ENTIDAD.profesionales);
+
+    const resFresco = await GET();
+    const bodyFresco = (await resFresco.json()) as { profesionales: ProfesionalRespuesta[] };
+    expect(bodyFresco.profesionales.find((p) => p.id === prof.id)?.contacto).toBe(
+      "contacto-actualizado-por-el-panel",
+    );
   });
 });

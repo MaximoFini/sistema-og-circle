@@ -17,7 +17,17 @@ import styles from "./comprar.module.css";
 // deshabilita explícitamente con un estado de error ("Checkout no
 // disponible"). No hay recuperación automática acá: es la misma regla fail-
 // closed de `lib/config/index.ts`, aplicada a la UI.
+//
+// VGRP-55 punto 3 — `force-dynamic` es necesario acá: esta página no usa
+// ninguna API dinámica de Next (no lee cookies ni searchParams; ComprarButton
+// es Client Component), así que sin esto Next la prerenderiza como estática
+// en build time — congelando el PRECIO de ESE momento para siempre, hasta el
+// próximo deploy. El equipo ya encontró y arregló este mismo bug en
+// app/(auth)/registro/page.tsx (mismo patrón exacto); acá se había repetido,
+// y encima sobre el número que cobra: cambiar un precio en Edge Config no
+// tenía ningún efecto hasta el próximo deploy.
 // =============================================================================
+export const dynamic = "force-dynamic";
 
 const NIVELES_COMPRABLES: readonly NivelComprable[] = ["principiante", "avanzado"];
 

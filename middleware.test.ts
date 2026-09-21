@@ -18,6 +18,7 @@
 
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { config as middlewareConfig } from "./middleware";
 
 const mockGetClaims = vi.fn();
 
@@ -403,5 +404,37 @@ describe("middleware", () => {
         app_metadata: { nivel: "avanzado" },
       });
     });
+  });
+
+  // VGRP-55 punto 8 — el middleware corre en el Edge, en cualquier PoP del
+  // mundo (ver STACK.md): medir su latencia real necesita logs de producción
+  // que esta sesión no tiene. Lo que SÍ se puede validar sin eso es la palanca
+  // más grande sobre su costo agregado — que siga corriendo SÓLO donde tiene
+  // algo que proteger, no en cada asset estático. Guarda contra una futura
+  // ampliación accidental del matcher (p. ej. aflojar el `[^/]*\.(...)$` a
+  // `.*\.(...)$`, exactamente el bypass que el comentario de middleware.ts ya
+  // advierte a mano).
+  describe("matcher — el middleware no corre sobre assets estáticos (VGRP-55 punto 8)", () => {
+    const [patron] = middlewareConfig.matcher;
+    const regex = new RegExp(`^${patron}$`);
+
+    it.each([
+      "/_next/static/chunk.js",
+      "/_next/image",
+      "/favicon.ico",
+      "/robots.txt",
+      "/sitemap.xml",
+      "/logo-og-circle.png",
+      "/hero-poster.jpg",
+    ])("%s queda EXCLUIDO del matcher (el middleware no corre ahí)", (path) => {
+      expect(regex.test(path)).toBe(false);
+    });
+
+    it.each(["/dashboard", "/api/agentes", "/admin", "/_nextcosa", "/robots.txt.algo"])(
+      "%s SÍ entra al matcher (el middleware corre — fail-closed, ver el comentario de middleware.ts)",
+      (path) => {
+        expect(regex.test(path)).toBe(true);
+      },
+    );
   });
 });

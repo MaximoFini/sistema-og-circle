@@ -1,6 +1,8 @@
 import "server-only";
 
 import { get } from "@vercel/edge-config";
+import { unstable_cache } from "next/cache";
+import { leerConFallback } from "../data/cache-fallback";
 import type { Config } from "./schema";
 import { configSchema } from "./schema";
 
@@ -76,10 +78,31 @@ export async function getFlags(): Promise<Config["flags"]> {
   return parsed.success ? parsed.data : DEFAULT_FLAGS;
 }
 
-export async function getLinks(): Promise<Config["links"]> {
+async function leerLinks(): Promise<Config["links"]> {
   const raw = await readKey("links");
   const parsed = configSchema.shape.links.safeParse(raw);
   return parsed.success ? parsed.data : DEFAULT_LINKS;
+}
+
+// VGRP-55 punto 4 — antes, `getLinks()` sólo se volvía "fresco" cuando
+// InicioShell.tsx (components/inicio/) refrescaba por el tag de `videos` en
+// el que viaja de polizón dentro del mismo Promise.all — un valor mutable sin
+// su propio mecanismo de invalidación. Tag propio + un `revalidate` corto de
+// red como piso: hoy no hay una escritura de `links` en el panel de admin
+// (`app/api/admin/config/route.ts` sólo escribe `precios`/`flags` — `links`
+// se sigue editando directo en el dashboard de Edge Config), así que no hay
+// un lugar de este repo que llame `revalidateTag(TAG_CONFIG_LINKS)`; el
+// `revalidate` de red es lo único que impide que un cambio hecho ahí quede
+// pegado hasta el próximo deploy o una edición de video no relacionada.
+export const TAG_CONFIG_LINKS = "config-links";
+
+const getLinksCached = unstable_cache(leerLinks, ["config-links"], {
+  tags: [TAG_CONFIG_LINKS],
+  revalidate: 3600,
+});
+
+export async function getLinks(): Promise<Config["links"]> {
+  return leerConFallback(getLinksCached, leerLinks, "getLinks");
 }
 
 // Punto de entrada principal: resuelve las tres secciones de configuración en paralelo,

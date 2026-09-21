@@ -62,6 +62,45 @@ Reglas de los puntos que sí se implementaron (2, 4, 5, 6, 7, 8, 9):
    (p. ej. el valor anterior/nuevo de un audit log) — nunca sobre una tabla
    con una columna JSONB pesada que la pantalla ni siquiera muestra.
 
+## VGRP-55 — caché persistente, revalidación y prefetch
+
+Todos los puntos implementados salvo el 2 (no hizo falta código) y el 8, que
+queda sin medir de verdad — requiere logs reales de Vercel en producción, no
+disponibles desde esta sesión. Sí se agregó una validación parcial y barata:
+`middleware.test.ts` ("matcher — el middleware no corre sobre assets
+estáticos") fija por test que el `matcher` siga excluyendo `_next`/favicon/
+robots/sitemap/extensiones de imagen — la palanca más grande sobre el costo
+agregado del middleware (que corra sólo donde tiene algo que proteger) — sin
+necesitar la medición de latencia en sí.
+
+1. **La lectura de filas se cachea; el gating por claims se aplica SIEMPRE
+   afuera, nunca dentro del `unstable_cache`.** `lib/data/agentes.ts`,
+   `profesionales.ts` y `servicios.ts` cachean el valor CRUDO de la base
+   (incluido el secreto sin resolver); `resolverSecreto()`/el chequeo de
+   sesión corren después, con los claims reales de cada request. Si algún
+   día alguien cachea el resultado YA resuelto, es el mismo bug que el
+   canario de VGRP-50 existe para detectar.
+2. **`unstable_cache` no corre fuera del runtime real de Next** (tira
+   `Invariant: incrementalCache missing`) — cualquier variante cacheada de
+   una función necesita un fallback a la lectura sin caché para no romper
+   tests que invocan un Route Handler directo (patrón repetido en
+   `lib/data/agentes.ts`, `profesionales.ts`, `servicios.ts`,
+   `lib/config/index.ts`).
+3. **Sembrar datos de test con un insert directo a la tabla ya no alcanza**
+   para nada que pase por una lectura cacheada — el insert no dispara
+   `revalidateTag`. Los tests (e2e o unitarios) tienen que sembrar por el
+   mismo camino que un escritor real (la API de admin), o simular
+   `revalidateTag` a mano si mockean `next/cache`. Ver
+   `test/helpers/admin-content-seed.ts`.
+4. **Un `<Link>` que no está montado no se prefetchea.** Si un destino de
+   navegación vive detrás de un `return null` (un drawer cerrado, un tab
+   inactivo), prefetchealo por otra vía (`router.prefetch()` al hover/focus
+   del trigger) en vez de asumir que Next lo hace solo.
+5. **Todo asset de `public/` lleva su header de cache explícito**
+   (`next.config.ts`, `headers()`) — Next sólo se ocupa de `/_next/static`.
+   Los endpoints por-usuario declaran `private, no-store` explícito, aunque
+   ya sean dinámicos por otra razón.
+
 ## Migraciones de este bloque, estado contra el proyecto real
 
 - `20260918210000_pagos_aprobados_indice_parcial.sql` — aplicada por Ramiro
