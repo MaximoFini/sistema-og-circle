@@ -2,8 +2,8 @@
 
 import { useActionState } from "react";
 import { Button, Checkbox, FormError, TextField } from "@/components/ui";
+import { INITIAL_ACTION_STATE } from "@/lib/forms/action-state";
 import { registrarse } from "../_actions";
-import { INITIAL_ACTION_STATE } from "../_schemas";
 import styles from "../auth.module.css";
 
 export function RegistroForm() {

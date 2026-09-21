@@ -1,22 +1,19 @@
 "use client";
 
-// Cliente porque usa `useId()` (hook) para generar los ids que enlazan
-// `<label for>`, el input y sus mensajes. Los cuatro formularios del Bloque 2
-// (login, registro, recuperar, nueva contraseña) son client components de
-// todos modos.
+// Cliente porque usa `useId()` (hook) para generar el id cuando el caller no
+// pasa uno explícito. Los cuatro formularios del Bloque 2 (login, registro,
+// recuperar, nueva contraseña) son Client Components de todos modos.
+//
+// VGRP-56 punto 3 — el render en sí vive en `TextFieldBase` (sin hooks, sin
+// "use client"): un Server Component que puede dar un id fijo lo usa directo
+// y no necesita este wrapper. Mismo markup en los dos casos.
 
-import type { ComponentPropsWithoutRef } from "react";
 import { useId } from "react";
-import styles from "./TextField.module.css";
+import { TextFieldBase, type TextFieldBaseProps } from "./TextFieldBase";
 
-export interface TextFieldProps
-  extends Omit<ComponentPropsWithoutRef<"input">, "aria-invalid" | "aria-describedby"> {
-  /** Texto del `<label>`. Obligatorio: no hay campo sin label en este sistema. */
-  label: string;
-  /** Mensaje de error del campo. Si viene, el input queda `aria-invalid`. */
-  error?: string | null;
-  /** Ayuda opcional bajo el campo (formato esperado, requisitos, etc.). */
-  hint?: string;
+export interface TextFieldProps extends Omit<TextFieldBaseProps, "id"> {
+  /** Opcional acá (a diferencia de `TextFieldBase`): sin uno, se genera con `useId()`. */
+  id?: string;
 }
 
 /**
@@ -29,45 +26,9 @@ export interface TextFieldProps
  * - El error se anuncia con `role="alert"`.
  * - Foco visible propio (`:focus-visible`), nunca `outline: none` a secas.
  */
-export function TextField({ label, error, hint, className, ...inputProps }: TextFieldProps) {
-  // Los tres ids derivan del MISMO base: si el caller pasa un `id` propio,
-  // la ayuda y el error cuelgan de ese id, no del generado. Derivarlos por
-  // separado haría que dos campos con el mismo `id` explícito terminaran
-  // apuntando al mensaje del otro.
+export function TextField({ id, ...props }: TextFieldProps) {
+  // Si el caller pasa un `id` propio, se usa ese — nunca el generado. Ver el
+  // comentario de TextFieldBase sobre por qué el id tiene que ser estable.
   const autoId = useId();
-  const inputId = inputProps.id ?? autoId;
-  const hintId = `${inputId}-hint`;
-  const errorId = `${inputId}-error`;
-
-  const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ");
-
-  return (
-    <div className={styles.field}>
-      <label className={styles.label} htmlFor={inputId}>
-        {label}
-      </label>
-
-      <input
-        {...inputProps}
-        id={inputId}
-        className={[styles.input, error ? styles.inputError : null, className]
-          .filter(Boolean)
-          .join(" ")}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy || undefined}
-      />
-
-      {hint ? (
-        <p className={styles.hint} id={hintId}>
-          {hint}
-        </p>
-      ) : null}
-
-      {error ? (
-        <p className={styles.error} id={errorId} role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
+  return <TextFieldBase id={id ?? autoId} {...props} />;
 }

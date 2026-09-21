@@ -92,7 +92,7 @@ beforeEach(() => {
 const { iniciarSesion, registrarse, solicitarReset, definirNuevaPassword } = await import(
   "../../app/(auth)/_actions"
 );
-const { INITIAL_ACTION_STATE } = await import("../../app/(auth)/_schemas");
+const { INITIAL_ACTION_STATE } = await import("../../lib/forms/action-state");
 
 const admin = createTestAdminClient();
 

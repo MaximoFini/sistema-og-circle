@@ -1,4 +1,4 @@
-import { Button, TextField } from "@/components/ui";
+import { Button, TextFieldBase } from "@/components/ui";
 import { Constants } from "@/lib/database.types";
 import styles from "../admin.module.css";
 
@@ -12,7 +12,8 @@ const NIVELES = Constants.public.Enums.nivel_acceso;
 export function UsuariosFiltros({ q, nivel }: { q?: string; nivel?: string }) {
   return (
     <form method="get" className={styles.filtros}>
-      <TextField
+      <TextFieldBase
+        id="q"
         name="q"
         label="Email"
         placeholder="buscar por email"

@@ -4,41 +4,13 @@
 // mismos esquemas para dar feedback inmediato, pero quien de verdad decide
 // si los datos entran es siempre `_actions.ts` volviendo a correr
 // `.safeParse()` sobre el `FormData` crudo.
+//
+// `ActionState`/`INITIAL_ACTION_STATE` viven en `lib/forms/action-state.ts`,
+// no acá (VGRP-56 punto 1) — ese archivo no importa Zod, así que los Client
+// Components que sólo necesitan el estado inicial no arrastran Zod entero al
+// bundle. Ver el comentario de ese archivo.
 
 import { z } from "zod";
-
-// Estado compartido de las Server Actions de `_actions.ts`, usado con
-// `useActionState` en los Client Components de formulario.
-//
-// Vive ACÁ y no en `_actions.ts` a propósito: ese archivo tiene `"use server"`
-// a nivel de módulo, y Next.js valida en build/dev que TODO export de un
-// archivo así sea una función async — un `const INITIAL_ACTION_STATE = {}`
-// exportado desde ahí revienta con
-// `Error: A "use server" file can only export async functions, found object`
-// apenas algún Client Component lo importa (bug real, encontrado probando
-// /login: https://nextjs.org/docs/messages/invalid-use-server-value). Los
-// *tipos* sí pueden vivir en un archivo "use server" (se borran en build),
-// pero un valor de runtime no.
-export interface ActionState {
-  /** Error a nivel formulario (credenciales inválidas, cuenta no creada, etc.). */
-  error?: string;
-  /**
-   * Errores por campo, keyeados por nombre de input. Forma de
-   * `flattenError().fieldErrors` de Zod: un array por campo (puede haber más
-   * de un mensaje por campo), el form sólo muestra el primero.
-   */
-  fieldErrors?: Partial<Record<string, string[]>>;
-  /**
-   * Mensaje de éxito a nivel formulario. Hoy sólo lo usa `solicitarReset`:
-   * el form de "olvidaste tu contraseña" no redirige a otra pantalla al
-   * terminar (no hay a dónde ir todavía — el usuario sigue esperando el
-   * mail), así que necesita mostrar la confirmación en el lugar. Ningún otro
-   * action de este archivo lo usa: todos redirigen en el camino feliz.
-   */
-  mensaje?: string;
-}
-
-export const INITIAL_ACTION_STATE: ActionState = {};
 
 // Sin límite de longitud de password "fuerte" (mayúsculas/símbolos/etc.):
 // NIST 800-63B recomienda longitud mínima sobre reglas de composición, que

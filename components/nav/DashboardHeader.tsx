@@ -1,78 +1,21 @@
-"use client";
-
 // VGRP-27 — header persistente de `(app)`. El shell en sí (5 destinos del
 // drawer, logo) no depende de datos por-usuario — eso es lo que mantiene
 // `app/(app)/layout.tsx` prerenderizado, sin `cookies()`/`getVerifiedClaims()`
-// ahí. El nombre del pie del drawer SÍ es por-usuario: se resuelve con un
-// fetch de CLIENTE (después de la hidratación) a `/api/perfil`, exactamente
-// el patrón ya documentado en ese layout ("Client Component chico... fetch a
-// un Route Handler") — nunca leyendo la sesión en el Server Component del
-// shell.
+// ahí.
+//
+// VGRP-56 punto 2 — Server Component desde este ticket: el logo/wordmark de
+// acá abajo son 100% estáticos y no necesitan cliente. Lo único que sí lo
+// necesita (el `useState` del botón, el fetch de `/api/perfil` por-usuario,
+// el prefetch de navegación) vive en la hoja `<MenuToggle>` — mismo criterio
+// que documenta `app/(app)/layout.tsx` ("Client Component chico... montado
+// dentro de un Suspense/hoja, no todo el shell").
 
 import Image from "next/image";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { DESTINOS_NAV } from "./destinos";
-import { NavDrawer } from "./NavDrawer";
+import { MenuToggle } from "./MenuToggle";
 import styles from "./nav.module.css";
-import type { PerfilResumen } from "./UserFooter";
-
-// VGRP-55 punto 6 — NavDrawer hace `if (!abierto) return null` (accesibilidad:
-// nunca se dejan sus <NextLink> montados-pero-ocultos en el orden de
-// tabulación, ver el comentario de ese archivo), así que Next nunca los
-// prefetchea con el drawer cerrado — toda navegación desde el header arranca
-// fría. Se prefetchean al hover/focus del botón de menú en vez de cambiar el
-// mount del drawer: no toca nada de lo que e2e/dashboard-shell.spec.ts ya
-// prueba (foco atrapado, Escape, "Próximamente" no navegable).
-//
-// Sólo los destinos INTERNOS y no "próximamente" son prefetcheables — la
-// Calculadora es una URL externa (Next no la toca) y Comunidad/Tracking no
-// tienen página real todavía.
-const DESTINOS_PREFETCHEABLES = DESTINOS_NAV.filter(
-  (destino) => destino.href.startsWith("/") && !destino.proximamente,
-).map((destino) => destino.href);
 
 export function DashboardHeader() {
-  const [abierto, setAbierto] = useState(false);
-  const [perfil, setPerfil] = useState<PerfilResumen | null>(null);
-  const [cargandoPerfil, setCargandoPerfil] = useState(true);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const router = useRouter();
-  // Un solo prefetch por montaje alcanza — sin este guard, cada hover/focus
-  // repetido del botón (alguien pasando el mouse de un lado a otro, o
-  // tabulando de ida y vuelta) volvía a llamar router.prefetch() para los
-  // mismos 2 destinos, sin ningún beneficio después del primero.
-  const yaPrefetcheado = useRef(false);
-
-  function prefetchDestinos() {
-    if (yaPrefetcheado.current) return;
-    yaPrefetcheado.current = true;
-    for (const href of DESTINOS_PREFETCHEABLES) router.prefetch(href);
-  }
-
-  useEffect(() => {
-    let cancelado = false;
-
-    fetch("/api/perfil")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: PerfilResumen | null) => {
-        if (!cancelado) setPerfil(data);
-      })
-      .catch(() => {
-        // Fallo silencioso: el pie del drawer cae a "Tu cuenta" (ver
-        // UserFooter) — no es contenido crítico, no amerita reintento ni
-        // mensaje de error.
-      })
-      .finally(() => {
-        if (!cancelado) setCargandoPerfil(false);
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
-
   return (
     <header className={styles.header}>
       <NextLink href="/dashboard" className={styles.marca} aria-label="OG Circle — Inicio">
@@ -82,52 +25,26 @@ export function DashboardHeader() {
             wordmark ya lo pone el <span> de al lado en una tipografía más
             fina — mostrar los dos "CIRCLE" juntos sería redundante. */}
         <span className={styles.logoMark}>
+          {/* VGRP-56 punto 5 — width/height al tamaño PINTADO (.logoFull en
+              nav.module.css: 98×95), no al del archivo fuente (630×612): con
+              width={630} y sin `sizes`, el browser bajaba la variante de
+              ~640px (1280px en pantallas 2x) para terminar pintando 98px.
+              Sin `priority`: es un logo decorativo (alt=""), y el LCP real de
+              estas pantallas es el <h1>/contenido, no el logo — el preload
+              con fetchpriority=high le robaba ancho de banda al recurso que
+              sí define esa métrica. */}
           <Image
             src="/logo-og-circle.png"
             alt=""
-            width={630}
-            height={612}
-            priority
+            width={98}
+            height={95}
             className={styles.logoFull}
           />
         </span>
         <span className={styles.wordmark}>OG CIRCLE</span>
       </NextLink>
 
-      <button
-        ref={triggerRef}
-        type="button"
-        className={styles.abrir}
-        aria-label={abierto ? "Cerrar menú" : "Abrir menú"}
-        aria-haspopup="dialog"
-        aria-expanded={abierto}
-        onClick={() => setAbierto((valor) => !valor)}
-        onMouseEnter={prefetchDestinos}
-        onFocus={prefetchDestinos}
-      >
-        <IconoHamburguesa abierto={abierto} />
-      </button>
-
-      <NavDrawer
-        abierto={abierto}
-        onCerrar={() => setAbierto(false)}
-        triggerRef={triggerRef}
-        perfil={perfil}
-        cargandoPerfil={cargandoPerfil}
-      />
+      <MenuToggle />
     </header>
-  );
-}
-
-// Hamburguesa que se transforma en X: 3 barras, las de arriba/abajo rotan 45°
-// hasta superponerse (la X) y la del medio se desvanece. `aria-hidden` porque
-// el estado ya lo comunica `aria-expanded` del botón, no el ícono en sí.
-function IconoHamburguesa({ abierto }: { abierto: boolean }) {
-  return (
-    <span className={styles.hamburguesa} data-abierto={abierto} aria-hidden="true">
-      <span className={styles.barra} />
-      <span className={styles.barra} />
-      <span className={styles.barra} />
-    </span>
   );
 }
