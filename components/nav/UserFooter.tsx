@@ -1,10 +1,8 @@
-// VGRP-27 — pie del drawer: identidad del usuario + cerrar sesión.
-// Presentacional puro (recibe los datos ya resueltos por DashboardHeader,
-// que es quien hace el único fetch a /api/perfil) — así este archivo no
-// necesita saber nada de loading/fetch, sólo renderizar.
+// VGRP-27 — identidad del usuario en el menú (arriba, como la tarjeta de
+// cuenta de Ajustes en iOS). Presentacional puro: recibe los datos ya
+// resueltos por MenuToggle, que hace el único fetch a /api/perfil. El
+// "Cerrar sesión" vive al final del menú (NavDrawer.tsx), no acá.
 
-import { Button } from "@/components/ui";
-import { cerrarSesion } from "@/lib/auth/actions";
 import styles from "./nav.module.css";
 
 export interface PerfilResumen {
@@ -22,28 +20,23 @@ export function UserFooter({ perfil, cargando }: UserFooterProps) {
   const inicial = (nombreMostrado ?? "?").charAt(0).toUpperCase();
 
   return (
-    <div className={styles.userFooter}>
-      <div className={styles.userInfo}>
-        <span className={styles.avatar} aria-hidden="true">
-          {cargando ? "" : inicial}
-        </span>
-        <div className={styles.userTexto}>
-          {cargando ? (
-            <span className={styles.userSkeleton} />
-          ) : (
-            <>
-              <span className={styles.userNombre}>{nombreMostrado ?? "Tu cuenta"}</span>
-              {perfil?.nombre ? <span className={styles.userEmail}>{perfil.email}</span> : null}
-            </>
-          )}
-        </div>
+    <div className={styles.cuenta}>
+      <span className={styles.avatar} aria-hidden="true">
+        {cargando ? "" : inicial}
+      </span>
+      <div className={styles.cuentaTexto}>
+        {cargando ? (
+          <>
+            <span className={styles.skeleton} />
+            <span className={styles.skeleton} style={{ width: 100 }} />
+          </>
+        ) : (
+          <>
+            <span className={styles.cuentaNombre}>{nombreMostrado ?? "Tu cuenta"}</span>
+            {perfil?.nombre ? <span className={styles.cuentaEmail}>{perfil.email}</span> : null}
+          </>
+        )}
       </div>
-
-      <form action={cerrarSesion}>
-        <Button type="submit" variant="ghost" fullWidth>
-          Cerrar sesión
-        </Button>
-      </form>
     </div>
   );
 }

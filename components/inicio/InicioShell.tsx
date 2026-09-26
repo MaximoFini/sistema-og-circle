@@ -15,7 +15,7 @@
 // VGRP-31: suma el CTA de la calculadora (link desde Edge Config, lib/config) y el
 // video explicativo del directorio de agentes (stage 3, mismo mecanismo de VGRP-29).
 
-import { TextLink } from "@/components/ui";
+import { Icon } from "@/components/ui/Icon";
 import { ProgresoVideosProvider } from "@/components/video/ProgresoVideosProvider";
 import { StatsVideos } from "@/components/video/StatsVideos";
 import { VideoGrid } from "@/components/video/VideoGrid";
@@ -48,8 +48,16 @@ export async function InicioShell({ variante }: InicioShellProps) {
     <ProgresoVideosProvider totalVideos={TOTAL_VIDEOS}>
       <div className={styles.shell}>
         <header className={styles.saludo}>
-          <p className={styles.eyebrowNivel}>Tu cuenta</p>
-          <h1 className={styles.tituloPrincipal}>Nivel {variante}</h1>
+          <div className={styles.heroTexto}>
+            <p className={styles.eyebrowNivel}>Tu cuenta</p>
+            <h1 className={styles.tituloPrincipal}>
+              Nivel <span className={styles.nivelPalabra}>{variante}</span>
+            </h1>
+            <p className={styles.lede}>
+              Tu camino para importar: formación paso a paso, herramientas y la red de contactos del
+              círculo.
+            </p>
+          </div>
           <div className={styles.statsRow}>
             <StatsVideos />
             {/* VGRP-28 — sin módulo de envíos en Fase 2 (roadmap: Fase 3). Estado
@@ -59,70 +67,88 @@ export async function InicioShell({ variante }: InicioShellProps) {
           </div>
         </header>
 
-        <SeccionSlot
-          eyebrow="Stage 1"
-          titulo="Formación: importaciones"
-          descripcion="8 videos que te llevan de cero a tu primera importación."
-        >
-          <VideoGrid videos={stage1} />
-        </SeccionSlot>
+        <div className={styles.grilla}>
+          {/* Bloque propio para Stage 1 + columna lateral: acota el `sticky` de la
+              columna a este bloque (sin él, se deslizaría sobre el resto de la grilla). */}
+          <div className={styles.bentoPrincipal}>
+            <SeccionSlot
+              eyebrow="Stage 1"
+              titulo="Formación: importaciones"
+              ancho="amplio"
+              descripcion="8 videos que te llevan de cero a tu primera importación."
+            >
+              <VideoGrid videos={stage1} />
+            </SeccionSlot>
 
-        <SeccionSlot
-          eyebrow="Herramienta"
-          titulo="Calculadora de costos"
-          descripcion="Cuánto te sale realmente importar, en dos minutos."
-          variante="banner"
-        >
-          <TextLink
-            href={links.calculadora}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.ctaBanner}
+            {/* Columna lateral de la grilla bento (desde 1024px): calculadora + Stage 2,
+              al lado del camino largo de Stage 1. En mobile es un bloque más. */}
+            <div className={styles.columnaLateral}>
+              <SeccionSlot
+                eyebrow="Herramienta"
+                titulo="Calculadora de costos"
+                descripcion="Cuánto te sale realmente importar, en dos minutos."
+                variante="banner"
+                icono="calculadora"
+              >
+                {/* <a> y no <TextLink>: es una URL externa con look de botón primario, y
+              TextLink le sumaría su propio estilo de link de texto encima. */}
+                <a
+                  href={links.calculadora}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.ctaBanner}
+                >
+                  Abrir calculadora
+                  <Icon name="externo" size={16} />
+                </a>
+              </SeccionSlot>
+
+              <SeccionSlot
+                eyebrow="Stage 2"
+                titulo="Formación: armá tu tienda"
+                descripcion="3 videos para vender lo que importaste (Tienda Nube, Shopify)."
+              >
+                <VideoGrid videos={stage2} />
+              </SeccionSlot>
+            </div>
+          </div>
+
+          <SeccionSlot
+            eyebrow="Infraestructura"
+            titulo="Agentes de compra en China"
+            descripcion="6 agentes verificados con los que ya opera Jota."
           >
-            Abrir calculadora
-          </TextLink>
-        </SeccionSlot>
+            <VideoGrid videos={stage3} />
+            <AgentesGrid />
+          </SeccionSlot>
 
-        <SeccionSlot
-          eyebrow="Stage 2"
-          titulo="Formación: armá tu tienda"
-          descripcion="3 videos para vender lo que importaste (Tienda Nube, Shopify)."
-        >
-          <VideoGrid videos={stage2} />
-        </SeccionSlot>
+          <SeccionSlot
+            eyebrow="Comunidad"
+            titulo="Hablá con otros importadores"
+            descripcion="Un espacio para compartir dudas y avances con el resto del círculo."
+            variante="banner"
+            icono="comunidad"
+            proximamente
+          />
 
-        <SeccionSlot
-          eyebrow="Infraestructura"
-          titulo="Agentes de compra en China"
-          descripcion="6 agentes verificados con los que ya opera Jota."
-        >
-          <VideoGrid videos={stage3} />
-          <AgentesGrid />
-        </SeccionSlot>
+          <SeccionSlot
+            eyebrow="Infraestructura"
+            titulo="Profesionales al servicio"
+            ancho="mitad"
+            descripcion="Contable, automatizaciones, agencia de marketing y UGC, listos para tu operación."
+          >
+            <ProfesionalesGrid />
+          </SeccionSlot>
 
-        <SeccionSlot
-          eyebrow="Comunidad"
-          titulo="Hablá con otros importadores"
-          descripcion="Un espacio para compartir dudas y avances con el resto del círculo."
-          variante="banner"
-          proximamente
-        />
-
-        <SeccionSlot
-          eyebrow="Infraestructura"
-          titulo="Profesionales al servicio"
-          descripcion="Contable, automatizaciones, agencia de marketing y UGC, listos para tu operación."
-        >
-          <ProfesionalesGrid />
-        </SeccionSlot>
-
-        <SeccionSlot
-          eyebrow="Infraestructura"
-          titulo="Servicios financieros"
-          descripcion="Pagos al exterior y gestión financiera para tu importación."
-        >
-          <ServiciosFinancierosGrid />
-        </SeccionSlot>
+          <SeccionSlot
+            eyebrow="Infraestructura"
+            titulo="Servicios financieros"
+            ancho="mitad"
+            descripcion="Pagos al exterior y gestión financiera para tu importación."
+          >
+            <ServiciosFinancierosGrid />
+          </SeccionSlot>
+        </div>
       </div>
     </ProgresoVideosProvider>
   );

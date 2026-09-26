@@ -11,6 +11,7 @@
 // el orden), es sólo la lectura visual del progreso.
 
 import { useState } from "react";
+import { Icon } from "@/components/ui/Icon";
 import type { VideoGridItem } from "@/lib/data/videos";
 import { useProgresoVideos } from "./ProgresoVideosProvider";
 import styles from "./video.module.css";
@@ -43,12 +44,19 @@ export function VideoCard({
       disabled={visto}
       onClick={() => marcarVisto(video.id as string)}
     >
-      {visto ? "Visto" : "Marcar como visto"}
+      {visto ? (
+        <>
+          <Icon name="check" size={14} />
+          Visto
+        </>
+      ) : (
+        "Marcar como visto"
+      )}
     </button>
   ) : null;
 
   return (
-    <div className={styles.fila}>
+    <div className={styles.fila} data-disponible={disponible}>
       <div className={styles.riel}>
         <div className={`${styles.nodo} ${claseNodo}`} aria-hidden="true">
           {visto ? "✓" : numero}
@@ -81,37 +89,39 @@ export function VideoCard({
             {botonVisto}
           </>
         ) : (
-          <>
-            <div className={styles.filaMedia}>
-              <button
-                type="button"
-                className={styles.thumbBtn}
-                onClick={() => setExpandido(true)}
-                aria-label={`Reproducir ${video.titulo}`}
-              >
-                {video.thumbnailUrl ? (
-                  // <img> nativo a propósito: thumbnail externo de YouTube, no un
-                  // asset local que next/image pueda optimizar/servir desde este
-                  // dominio. width/height = el tamaño pintado (.thumbBtn en
-                  // video.module.css, 96×60) — evita CLS. loading="lazy" +
-                  // decoding="async": son ~12 imágenes de terceros por carga de
-                  // Inicio, ninguna crítica para el primer render (VGRP-56 punto 6).
-                  <img
-                    className={styles.thumbnailChica}
-                    src={video.thumbnailUrl}
-                    alt=""
-                    width={96}
-                    height={60}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : null}
-              </button>
+          <div className={styles.filaMedia}>
+            <button
+              type="button"
+              className={styles.thumbBtn}
+              onClick={() => setExpandido(true)}
+              aria-label={`Reproducir ${video.titulo}`}
+            >
+              {video.thumbnailUrl ? (
+                // <img> nativo a propósito: thumbnail externo de YouTube, no un
+                // asset local que next/image pueda optimizar/servir desde este
+                // dominio. width/height = el tamaño pintado (.thumbBtn en
+                // video.module.css, 112×63) — evita CLS. loading="lazy" +
+                // decoding="async": son ~12 imágenes de terceros por carga de
+                // Inicio, ninguna crítica para el primer render (VGRP-56 punto 6).
+                <img
+                  className={styles.thumbnailChica}
+                  src={video.thumbnailUrl}
+                  alt=""
+                  width={112}
+                  height={63}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : null}
+              <span className={styles.play}>
+                <Icon name="play" size={14} />
+              </span>
+            </button>
+            <div className={styles.textoPaso}>
               <p className={styles.tituloPaso}>{video.titulo}</p>
+              {botonVisto}
             </div>
-
-            {botonVisto}
-          </>
+          </div>
         )}
       </div>
     </div>

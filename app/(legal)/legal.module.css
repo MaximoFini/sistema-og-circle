@@ -1,67 +1,58 @@
 /* `.title` y `.updated` los usa `LegalDocPage.tsx` (compartido por
-   /terminos, /privacidad, /reembolsos) y también /legales — importado desde
-   ahí junto a su propio módulo `legales.module.css`, en vez de redeclarar el
-   mismo estilo de encabezado dos veces. El link "← Volver a legales" ya no
-   vive acá: es `components/ui/TextLink.tsx`, compartido con el footer de
-   `(app)`. */
+   /terminos, /privacidad, /reembolsos) y también /legales. */
 
 .title {
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--text-primary);
-  margin: var(--space-2) 0 0;
+  composes: largeTitle from "../../components/ui/type.module.css";
+  --t-size: clamp(32px, 4.4vw, 44px);
 }
 
 .updated {
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--text-muted);
-  margin: var(--space-2) 0 0;
+  composes: footnote from "../../components/ui/type.module.css";
+  --t-margin: 10px 0 0;
 }
 
+/* Aviso de placeholder: franja teñida de ámbar, sin borde duro. */
 .placeholder {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  background: var(--accent-05);
-  border: 1px solid var(--accent-40);
-  border-radius: var(--radius-surface);
+  gap: 8px;
+  padding: 16px 18px;
+  background: rgba(245, 184, 19, 0.08);
+  border-radius: var(--radius-row);
+  box-shadow: inset 0 0 0 1px rgba(245, 184, 19, 0.18);
 }
 
 .placeholder p {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: var(--fs-callout);
+  line-height: 1.55;
   color: var(--text-secondary);
 }
 
 .placeholder strong {
-  color: var(--champagne);
+  color: var(--accent-soft);
+  font-weight: 600;
 }
 
-/* Prosa: ancho de lectura acotado, jerarquía simple. Todo el contenido real
-   de acá es placeholder (ver el bloque .placeholder arriba de cada página) —
-   la estructura (h2/p/ul) es la que va a recibir el texto final de Jota. */
+/* Prosa: medida de lectura cómoda (~66ch), interlineado generoso. */
 .prose {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  max-width: 65ch;
-  font-family: var(--font-body);
-  font-size: 15px;
+  gap: 14px;
+  max-width: 66ch;
+  font-size: 16px;
   line-height: 1.7;
+  letter-spacing: -0.008em;
   color: var(--text-secondary);
 }
 
 .prose h2 {
-  font-family: var(--font-heading);
-  font-size: 17px;
-  font-weight: 700;
+  margin: 20px 0 0;
+  font-size: var(--fs-title3);
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
   color: var(--text-primary);
-  margin: var(--space-2) 0 0;
 }
 
 .prose p {
@@ -70,8 +61,12 @@
 
 .prose ul {
   margin: 0;
-  padding-left: var(--space-5);
+  padding-left: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
+}
+
+.prose li::marker {
+  color: var(--text-muted);
 }

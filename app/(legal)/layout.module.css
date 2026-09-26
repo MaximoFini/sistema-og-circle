@@ -1,34 +1,69 @@
+/* Shell de (legal): columna de lectura dentro de una hoja de vidrio. */
+
 .shell {
   min-height: 100dvh;
-  background: var(--bg);
+  padding: clamp(24px, 6vw, 64px) var(--layout-wrap-padding-inline) 64px;
 }
 
 .wrap {
-  max-width: 720px;
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-panel);
+  max-width: 760px;
   margin: 0 auto;
-  padding: var(--space-6) var(--space-4) var(--space-7);
+  padding: 28px 24px 40px;
+  animation: entrar 0.5s var(--ease-out) backwards;
+}
+
+@media (min-width: 640px) {
+  .wrap {
+    padding: 40px 56px 56px;
+  }
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 .header {
-  padding-bottom: var(--space-6);
-  margin-bottom: var(--space-6);
-  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 20px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--separator);
 }
 
 .brand {
-  font-family: var(--font-heading);
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  text-decoration: none;
+  color: var(--text-primary);
+  border-radius: 4px;
+  transition: opacity var(--duration-fast) linear;
 }
 
 .brand:hover {
-  color: var(--champagne);
+  opacity: 0.75;
+}
+
+.brand:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .main {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.main > * {
+  width: 100%;
+}
+
+.main > a {
+  width: auto;
 }

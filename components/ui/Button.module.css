@@ -1,99 +1,139 @@
+/*
+ * Botón del sistema: cápsula (como los botones de iOS/macOS), plano.
+ *
+ * `primary` — ámbar sólido de la marca. Sin brillo, sin halo, sin reflejos:
+ *   el color ya es la señal. Texto oscuro (regla dura: nunca blanco).
+ * `ghost`   — vidrio: relleno translúcido + reflejo sutil del borde.
+ *
+ * Única microinteracción: se comprime levemente al presionar (resorte).
+ */
+
 .button {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  /* 48px de alto mínimo: objetivo de toque cómodo en mobile. */
+  gap: 8px;
+  /* 48px: objetivo de toque cómodo en mobile. */
   min-height: 48px;
-  padding: var(--space-3) var(--space-5);
-  font-family: var(--font-heading);
+  padding: 0 24px;
+  font-family: var(--font-sans);
   font-size: 15px;
-  font-weight: 700;
-  border: 1px solid transparent;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 0;
   border-radius: var(--radius-pill);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   transition:
-    transform var(--duration-fast) linear,
-    border-color var(--duration-base) var(--ease-out-expo),
-    background-color var(--duration-base) var(--ease-out-expo),
-    opacity var(--duration-base) var(--ease-out-expo);
+    transform var(--duration-base) var(--ease-spring),
+    background-color var(--duration-fast) linear,
+    filter var(--duration-fast) linear,
+    opacity var(--duration-fast) linear;
 }
 
 .fullWidth {
   width: 100%;
 }
 
+/* Tamaño compacto: acciones dentro de filas o tarjetas chicas. */
+.small {
+  min-height: 34px;
+  padding: 0 15px;
+  font-size: 13.5px;
+  gap: 6px;
+}
+
 .button:focus-visible {
-  outline: 2px solid var(--accent-40);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 0.08s;
 }
 
 .button:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* DESIGN.md §1, regla dura: el ámbar como fondo pleno nunca lleva texto
-   blanco encima; el texto pasa a `--bg`. */
 .primary {
-  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
-  color: var(--bg);
+  color: var(--on-accent);
+  background: var(--accent-fill);
 }
 
-.primary:hover:not(:disabled) {
-  /* DESIGN.md §3: `.btn-gradient` se levanta 1px en hover. */
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .primary:hover:not(:disabled) {
+    filter: brightness(1.07);
+  }
 }
 
 .ghost {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
   color: var(--text-primary);
+  background: var(--fill);
+  -webkit-backdrop-filter: var(--glass-blur-thin);
+  backdrop-filter: var(--glass-blur-thin);
 }
 
-.ghost:hover:not(:disabled) {
-  border-color: var(--glass-border-active);
+.ghost::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(255, 255, 255, 0.08)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .ghost:hover:not(:disabled) {
+    background-color: var(--fill-hover);
+  }
 }
 
 .label {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* El botón en carga ya está `disabled` (y por lo tanto atenuado); esto sólo
-   cambia el cursor: "esperá", no "no se puede". */
-/* `.button.loading` y no `.loading` a secas: hace falta empatar la
-   especificidad de `.button:disabled` (que fija `not-allowed`) y ganar por
-   orden, porque el botón en carga también está deshabilitado. */
+/* El botón en carga ya está `disabled`; esto sólo cambia el cursor.
+   `.button.loading` empata la especificidad de `.button:disabled` y gana por
+   orden. */
 .button.loading {
   cursor: progress;
 }
 
+/* Indicador de actividad estilo Apple: anillo fino que gira. */
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: var(--radius-pill);
-  animation: spin 0.7s linear infinite;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 25%, currentColor);
+  -webkit-mask: radial-gradient(circle, transparent 5.5px, #000 6px);
+  mask: radial-gradient(circle, transparent 5.5px, #000 6px);
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-/* DESIGN.md §4: nada se mueve bajo `prefers-reduced-motion`. El spinner se
-   queda quieto pero visible — sigue comunicando "en curso" junto a
-   `aria-busy`. */
-@media (prefers-reduced-motion: reduce) {
-  .button,
-  .spinner {
-    transition: none;
-    animation: none;
-  }
-
-  .primary:hover:not(:disabled) {
-    transform: none;
   }
 }

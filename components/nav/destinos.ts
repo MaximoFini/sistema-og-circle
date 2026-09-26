@@ -3,9 +3,12 @@
 // otro lugar que necesite la misma lista (footer, breadcrumb futuro) importa
 // de acá en vez de duplicarla.
 
+import type { IconName } from "@/components/ui/Icon";
+
 export interface DestinoNav {
   href: string;
   label: string;
+  icono: IconName;
   /**
    * Destino de una fase futura (Comunidad = Fase 4, Tracking = Fase 3 —
    * CONTEXT.md, Roadmap). Se muestra visible con badge "Próximamente", nunca
@@ -21,9 +24,9 @@ export interface DestinoNav {
 // navega a un 404 real de Next hasta que su propio ticket la construya; no se
 // agrega acá un "próximamente" que el ticket no pidió (evitar scope creep).
 export const DESTINOS_NAV: readonly DestinoNav[] = [
-  { href: "/dashboard", label: "Inicio" },
-  { href: "https://vegroup.vercel.app/calculadora", label: "Calculadora" },
-  { href: "/comunidad", label: "Comunidad", proximamente: true },
-  { href: "/tracking", label: "Tracking", proximamente: true },
-  { href: "/perfil", label: "Perfil" },
+  { href: "/dashboard", label: "Inicio", icono: "inicio" },
+  { href: "https://vegroup.vercel.app/calculadora", label: "Calculadora", icono: "calculadora" },
+  { href: "/comunidad", label: "Comunidad", icono: "comunidad", proximamente: true },
+  { href: "/tracking", label: "Tracking", icono: "tracking", proximamente: true },
+  { href: "/perfil", label: "Perfil", icono: "perfil" },
 ] as const;

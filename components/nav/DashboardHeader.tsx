@@ -1,50 +1,48 @@
-// VGRP-27 — header persistente de `(app)`. El shell en sí (5 destinos del
-// drawer, logo) no depende de datos por-usuario — eso es lo que mantiene
+// VGRP-27 — header persistente de `(app)`. El shell en sí (destinos, logo)
+// no depende de datos por-usuario — eso es lo que mantiene
 // `app/(app)/layout.tsx` prerenderizado, sin `cookies()`/`getVerifiedClaims()`
 // ahí.
 //
-// VGRP-56 punto 2 — Server Component desde este ticket: el logo/wordmark de
-// acá abajo son 100% estáticos y no necesitan cliente. Lo único que sí lo
-// necesita (el `useState` del botón, el fetch de `/api/perfil` por-usuario,
-// el prefetch de navegación) vive en la hoja `<MenuToggle>` — mismo criterio
-// que documenta `app/(app)/layout.tsx` ("Client Component chico... montado
-// dentro de un Suspense/hoja, no todo el shell").
+// VGRP-56 punto 2 — Server Component: el logo/wordmark son 100% estáticos.
+// Lo que necesita cliente vive en hojas chicas: `<RapidaNav>` (ruta activa,
+// indicador deslizante) y `<MenuToggle>` (estado del menú, fetch de
+// `/api/perfil`, prefetch de navegación).
 
 import Image from "next/image";
 import NextLink from "next/link";
 import { MenuToggle } from "./MenuToggle";
 import styles from "./nav.module.css";
+import { RapidaNav } from "./RapidaNav";
 
 export function DashboardHeader() {
   return (
-    <header className={styles.header}>
-      <NextLink href="/dashboard" className={styles.marca} aria-label="OG Circle — Inicio">
-        {/* El archivo fuente (public/logo-og-circle.png) trae el ícono +
-            "CIRCLE" apilado verticalmente. Acá sólo se muestra el ícono
-            (recortado por CSS, sin generar un segundo asset) porque el
-            wordmark ya lo pone el <span> de al lado en una tipografía más
-            fina — mostrar los dos "CIRCLE" juntos sería redundante. */}
-        <span className={styles.logoMark}>
-          {/* VGRP-56 punto 5 — width/height al tamaño PINTADO (.logoFull en
-              nav.module.css: 98×95), no al del archivo fuente (630×612): con
-              width={630} y sin `sizes`, el browser bajaba la variante de
-              ~640px (1280px en pantallas 2x) para terminar pintando 98px.
-              Sin `priority`: es un logo decorativo (alt=""), y el LCP real de
-              estas pantallas es el <h1>/contenido, no el logo — el preload
-              con fetchpriority=high le robaba ancho de banda al recurso que
-              sí define esa métrica. */}
-          <Image
-            src="/logo-og-circle.png"
-            alt=""
-            width={98}
-            height={95}
-            className={styles.logoFull}
-          />
-        </span>
-        <span className={styles.wordmark}>OG CIRCLE</span>
-      </NextLink>
+    <div className={styles.headerWrap}>
+      <header className={styles.header}>
+        <NextLink href="/dashboard" className={styles.marca} aria-label="OG Circle — Inicio">
+          {/* El archivo fuente (public/logo-og-circle.png) trae el ícono +
+              "CIRCLE" apilado. Acá sólo se muestra el ícono, recortado por CSS
+              (sin un segundo asset); el wordmark lo pone el <span> de al lado. */}
+          <span className={styles.logoTile}>
+            <span className={styles.logoMark}>
+              {/* VGRP-56 punto 5 — width/height al tamaño PINTADO (.logoFull en
+                  nav.module.css), no al del archivo fuente (630×612): si no, el
+                  browser baja una variante enorme para pintar 46px. Sin
+                  `priority`: es decorativo (alt=""), no es el LCP. */}
+              <Image
+                src="/logo-og-circle.png"
+                alt=""
+                width={47}
+                height={45}
+                className={styles.logoFull}
+              />
+            </span>
+          </span>
+          <span className={styles.wordmark}>OG Circle</span>
+        </NextLink>
 
-      <MenuToggle />
-    </header>
+        <RapidaNav />
+        <MenuToggle />
+      </header>
+    </div>
   );
 }

@@ -1,46 +1,61 @@
-/* `.title` no vive acá: `page.tsx` reusa `legal.module.css` (compartido con
-   `LegalDocPage.tsx`) en vez de redeclarar el mismo encabezado. */
+/* `.title` no vive acá: `page.tsx` reusa `legal.module.css`. */
 
 .subtitle {
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: var(--space-2) 0 0;
-  max-width: 60ch;
+  composes: lede from "../../../components/ui/type.module.css";
+  --t-margin: 10px 0 0;
 }
 
+/* Índice de documentos: lista agrupada (una tarjeta, filas separadas). */
 .list {
+  composes: inset from "../../../components/ui/glass.module.css";
+  --g-radius: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  padding: 4px;
 }
 
 .item {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
-  transition:
-    border-color var(--duration-base) var(--ease-out-expo),
-    background-color var(--duration-base) var(--ease-out-expo);
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 12px 0 16px;
+  border-radius: 16px;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) linear;
 }
 
-.item:hover {
-  border-color: var(--glass-border-active);
-  background: var(--surface-1-hover);
+.item + .item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--separator);
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .itemLabel {
-  font-family: var(--font-heading);
-  font-size: 15px;
-  font-weight: 600;
+  flex: 1;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  letter-spacing: -0.012em;
   color: var(--text-primary);
 }
 
 .itemArrow {
-  color: var(--text-muted);
+  flex-shrink: 0;
+  color: var(--text-faint);
 }

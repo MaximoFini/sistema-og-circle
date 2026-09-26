@@ -56,11 +56,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className={styles.content}>{children}</div>
 
       <footer className={styles.footer}>
-        {FOOTER_LINKS.map(({ href, label }) => (
-          <TextLink key={href} href={href}>
-            {label}
-          </TextLink>
-        ))}
+        <p className={styles.footerMarca}>© OG Circle</p>
+        <nav className={styles.footerLinks} aria-label="Legales">
+          {FOOTER_LINKS.map(({ href, label }) => (
+            <TextLink key={href} href={href}>
+              {label}
+            </TextLink>
+          ))}
+        </nav>
       </footer>
     </div>
   );

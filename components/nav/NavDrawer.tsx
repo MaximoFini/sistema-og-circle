@@ -8,8 +8,11 @@
 // prácticas ya validadas en el sistema de diseño, sin librería nueva.
 
 import NextLink from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { Icon } from "@/components/ui/Icon";
+import { cerrarSesion } from "@/lib/auth/actions";
 import { DESTINOS_NAV } from "./destinos";
 import styles from "./nav.module.css";
 import { type PerfilResumen, UserFooter } from "./UserFooter";
@@ -33,6 +36,7 @@ export function NavDrawer({
   cargandoPerfil,
 }: NavDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   // Foco al primer elemento del drawer al abrir.
   useEffect(() => {
@@ -105,20 +109,40 @@ export function NavDrawer({
         className={styles.panel}
         onKeyDown={onKeyDown}
       >
+        {/* Cuenta arriba (no focuseable: el foco inicial va al primer
+            destino, "Inicio" — e2e/dashboard-shell.spec.ts). */}
+        <UserFooter perfil={perfil} cargando={cargandoPerfil} />
+
         <nav aria-label="Navegación principal" className={styles.nav}>
           <ul className={styles.lista}>
             {DESTINOS_NAV.map((destino) =>
               destino.proximamente ? (
                 <li key={destino.href} className={styles.item}>
                   <span className={styles.destinoProximamente}>
-                    {destino.label}
+                    <span className={styles.iconTile}>
+                      <Icon name={destino.icono} size={18} />
+                    </span>
+                    <span className={styles.destinoLabel}>{destino.label}</span>
                     <span className={styles.badge}>Próximamente</span>
                   </span>
                 </li>
               ) : (
                 <li key={destino.href} className={styles.item}>
-                  <NextLink href={destino.href} className={styles.destino} onClick={onCerrar}>
-                    {destino.label}
+                  <NextLink
+                    href={destino.href}
+                    className={styles.destino}
+                    onClick={onCerrar}
+                    aria-current={esActual(pathname, destino.href) ? "page" : undefined}
+                  >
+                    <span className={styles.iconTile}>
+                      <Icon name={destino.icono} size={18} />
+                    </span>
+                    <span className={styles.destinoLabel}>{destino.label}</span>
+                    <Icon
+                      name={destino.href.startsWith("/") ? "chevron" : "externo"}
+                      size={16}
+                      className={styles.chevron}
+                    />
                   </NextLink>
                 </li>
               ),
@@ -126,9 +150,21 @@ export function NavDrawer({
           </ul>
         </nav>
 
-        <UserFooter perfil={perfil} cargando={cargandoPerfil} />
+        <form action={cerrarSesion}>
+          <button type="submit" className={styles.salir}>
+            <Icon name="salir" size={18} />
+            Cerrar sesión
+          </button>
+        </form>
       </div>
     </>,
     document.body,
   );
+}
+
+// `/dashboard/principiante` también es "Inicio": un destino interno está
+// activo en su ruta exacta y en cualquier subruta.
+function esActual(pathname: string, href: string): boolean {
+  if (!href.startsWith("/")) return false;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

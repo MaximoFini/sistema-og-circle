@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
 import type { NivelAcceso } from "@/lib/auth/claims";
+import { iniciales } from "./iniciales";
 import styles from "./inicio.module.css";
 
 interface AgenteRespuesta {
@@ -47,11 +48,11 @@ export function AgentesGrid() {
   }, []);
 
   if (!agentes) {
-    return <p className={styles.descripcion}>Cargando agentes…</p>;
+    return <p className={styles.estado}>Cargando agentes…</p>;
   }
 
   if (agentes.length === 0) {
-    return <p className={styles.descripcion}>Todavía no hay agentes cargados.</p>;
+    return <p className={styles.estado}>Todavía no hay agentes cargados.</p>;
   }
 
   return (
@@ -63,14 +64,23 @@ export function AgentesGrid() {
         // la card entera (como en un intento anterior) tapaba también el
         // nombre, que no tiene nada de secreto.
         <div key={agente.id} className={styles.agenteCard}>
-          <strong>{agente.publicMeta.nombre}</strong>
-          <p className={styles.descripcion}>{agente.publicMeta.especialidad}</p>
+          {/* <span>, no <div>: e2e/gating-contenido.spec.ts toma el ÚLTIMO div que
+              contiene el nombre y espera que sea la tarjeta entera (con el CTA). */}
+          <span className={styles.agenteCabecera}>
+            <span className={styles.iniciales} aria-hidden="true">
+              {iniciales(agente.publicMeta.nombre)}
+            </span>
+            <span className={styles.agenteNombre}>
+              <strong>{agente.publicMeta.nombre}</strong>
+              <span className={styles.meta}>{agente.publicMeta.especialidad}</span>
+            </span>
+          </span>
           <ContenidoBloqueado
             bloqueado={agente.contacto === null}
             nivelRequerido={agente.publicMeta.nivelRequerido}
             nivelActual={nivelActual}
           >
-            <p className={styles.descripcion}>{agente.contacto}</p>
+            <p className={styles.contacto}>{agente.contacto}</p>
           </ContenidoBloqueado>
         </div>
       ))}

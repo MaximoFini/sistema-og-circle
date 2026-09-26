@@ -1,0 +1,100 @@
+/*
+ * Tipografía por rol — escala de Apple (Large Title, Title 1–3, Headline,
+ * Body, Subhead, Footnote). Una sola familia (Inter con tamaño óptico); la
+ * jerarquía sale de tamaño, peso, tracking y opacidad.
+ *
+ * Misma REGLA que glass.module.css: quien compone no redeclara propiedades
+ * de la primitiva. Ajustes: --t-size (font-size), --t-margin, --t-color.
+ */
+
+/* Rótulo sobre un título ("Tu cuenta", "Formación"): sentence case, en
+   champán. Nada de mayúsculas espaciadas. */
+.eyebrow {
+  margin: var(--t-margin, 0);
+  font-size: var(--t-size, var(--fs-subhead));
+  font-weight: 600;
+  letter-spacing: -0.003em;
+  line-height: 1.3;
+  color: var(--t-color, var(--champagne));
+}
+
+.largeTitle {
+  margin: var(--t-margin, 0);
+  font-size: var(--t-size, var(--fs-large-title));
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -0.032em;
+  color: var(--t-color, var(--text-primary));
+}
+
+.title1 {
+  margin: var(--t-margin, 0);
+  font-size: var(--t-size, var(--fs-title1));
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.026em;
+  color: var(--t-color, var(--text-primary));
+}
+
+.title2 {
+  margin: var(--t-margin, 0);
+  font-size: var(--t-size, var(--fs-title2));
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--t-color, var(--text-primary));
+}
+
+.headline {
+  margin: var(--t-margin, 0);
+  font-size: var(--t-size, var(--fs-headline));
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+  color: var(--t-color, var(--text-primary));
+}
+
+.lede {
+  margin: var(--t-margin, 0);
+  max-width: var(--text-lede-max-width);
+  font-size: var(--t-size, var(--text-lede-size));
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--t-color, var(--text-secondary));
+}
+
+.body {
+  margin: var(--t-margin, 0);
+  font-size: var(--t-size, var(--fs-callout));
+  line-height: 1.5;
+  color: var(--t-color, var(--text-secondary));
+}
+
+.footnote {
+  margin: var(--t-margin, 0);
+  font-size: var(--t-size, var(--fs-footnote));
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-color, var(--text-muted));
+}
+
+/* Alias de nombres previos (los usan módulos que no cambian de rol). */
+.display {
+  composes: title1;
+}
+
+.displayLarge {
+  composes: largeTitle;
+}
+
+.sectionTitle {
+  composes: title2;
+}
+
+.cardTitle {
+  composes: headline;
+}
+
+.data {
+  composes: footnote;
+}

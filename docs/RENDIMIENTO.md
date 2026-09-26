@@ -130,7 +130,19 @@ Estado final (`next build`, todos los puntos aplicados): shared 186 kB sin
 cambio respecto a la línea de base; ninguna ruta por encima de lo medido en
 el punto 1.
 
-### Fuentes — el plan para el día que se carguen (punto 8, sin implementar)
+### Fuentes — implementado en el rediseño "Liquid Glass" (ver DESIGN.md)
+
+Una sola familia: **Inter** variable con eje `opsz`, con `next/font/google` en
+`app/layout.tsx` — auto-hospedada, `display: "swap"`, sin `<link>` a terceros
+(regla 6). Un archivo cubre todos los pesos y tamaños ópticos. Helvetica Now
+Var (la de la landing) no se usa: es comercial (Monotype) y no hay licencia
+verificada para este producto. Medido con `next build`: shared 186 kB (sin
+cambio) y todas las rutas dentro del presupuesto de
+`scripts/check-bundle-budget.mjs`.
+
+El plan original de abajo queda como historial.
+
+### Fuentes — el plan original (punto 8)
 
 `app/tokens.css` declara 4 familias (Helvetica Now Var, Montserrat, Inter,
 Cormorant Garamond) y hoy no carga ninguna: cero `next/font`, cero

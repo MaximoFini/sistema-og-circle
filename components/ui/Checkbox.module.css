@@ -1,64 +1,108 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 8px;
   width: 100%;
 }
 
 .row {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-3);
+  gap: 12px;
 }
 
+/* Checkbox dibujado (appearance: none): círculo como en las listas de
+   Apple, se llena de ámbar al marcarse. */
 .checkbox {
-  /* Toque cómodo en mobile (mismo criterio que TextField .input), sin que
-     el cuadrado en sí se vea gigante: el área de toque real la da .row con
-     su gap, no el tamaño visual del control. */
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  margin-top: 2px;
-  accent-color: var(--accent-to);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) linear,
+    border-color var(--duration-fast) linear,
+    transform var(--duration-base) var(--ease-spring);
 }
 
-.checkbox:hover:not(:disabled) {
-  border-color: var(--glass-border-active);
+.checkbox::after {
+  content: "";
+  position: absolute;
+  left: 6.5px;
+  top: 3px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--on-accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0.5);
+  opacity: 0;
+  transition:
+    transform var(--duration-base) var(--ease-spring),
+    opacity var(--duration-fast) linear;
+}
+
+.checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.checkbox:checked::after {
+  opacity: 1;
+  transform: rotate(45deg) scale(1);
+}
+
+.checkbox:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+@media (hover: hover) {
+  .checkbox:hover:not(:disabled):not(:checked) {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
 }
 
 .checkbox:focus-visible {
-  outline: 2px solid var(--accent-40);
-  outline-offset: 2px;
-  border-color: var(--accent-from);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.checkbox[aria-invalid="true"]:not(:checked) {
+  border-color: var(--danger);
 }
 
 .checkbox:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .label {
-  font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--fs-callout);
   line-height: 1.5;
   color: var(--text-secondary);
+  cursor: pointer;
 }
 
 .label a {
   color: var(--text-primary);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) linear;
 }
 
 .label a:hover {
-  color: var(--accent-to);
+  text-decoration-color: currentColor;
 }
 
 .error {
   margin: 0;
-  font-size: 13px;
+  padding-left: 34px;
+  font-size: var(--fs-footnote);
   color: var(--danger);
 }

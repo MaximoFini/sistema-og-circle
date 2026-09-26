@@ -95,13 +95,11 @@ export function MenuToggle() {
   );
 }
 
-// Hamburguesa que se transforma en X: 3 barras, las de arriba/abajo rotan 45°
-// hasta superponerse (la X) y la del medio se desvanece. `aria-hidden` porque
+// Dos barras que se cruzan en una X. `aria-hidden` porque
 // el estado ya lo comunica `aria-expanded` del botón, no el ícono en sí.
 function IconoHamburguesa({ abierto }: { abierto: boolean }) {
   return (
     <span className={styles.hamburguesa} data-abierto={abierto} aria-hidden="true">
-      <span className={styles.barra} />
       <span className={styles.barra} />
       <span className={styles.barra} />
     </span>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Button, TextLink } from "@/components/ui";
 import { cerrarSesion } from "@/lib/auth/actions";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { AdminNav } from "./AdminNav";
 import styles from "./admin.module.css";
 
 // =============================================================================
@@ -21,41 +22,29 @@ import styles from "./admin.module.css";
 // layout -> `requireAdmin()` en cada handler).
 // =============================================================================
 
-const NAV = [
-  { href: "/admin/usuarios", label: "Usuarios" },
-  { href: "/admin/pagos", label: "Pagos" },
-  { href: "/admin/auditoria", label: "Auditoría" },
-  { href: "/admin/contenido", label: "Contenido" },
-  { href: "/admin/config", label: "Config" },
-] as const;
-
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await requireAdminPage();
 
   return (
     <div className={styles.shell}>
-      <header className={styles.topbar}>
-        <div className={styles.brand}>
-          <TextLink href="/admin" className={styles.brandLink}>
-            Panel · OG Circle
-          </TextLink>
-          <span className={styles.modoAdmin}>modo admin</span>
-        </div>
-
-        <nav className={styles.nav} aria-label="Secciones del panel">
-          {NAV.map(({ href, label }) => (
-            <TextLink key={href} href={href} className={styles.navLink}>
-              {label}
+      <div className={styles.topbarWrap}>
+        <header className={styles.topbar}>
+          <div className={styles.brand}>
+            <TextLink href="/admin" className={styles.brandLink}>
+              Panel · OG Circle
             </TextLink>
-          ))}
-        </nav>
+            <span className={styles.modoAdmin}>modo admin</span>
+          </div>
 
-        <form action={cerrarSesion} className={styles.logoutForm}>
-          <Button type="submit" variant="ghost">
-            Cerrar sesión
-          </Button>
-        </form>
-      </header>
+          <AdminNav />
+
+          <form action={cerrarSesion} className={styles.logoutForm}>
+            <Button type="submit" variant="ghost" size="sm">
+              Cerrar sesión
+            </Button>
+          </form>
+        </header>
+      </div>
 
       <main className={styles.main}>{children}</main>
     </div>

@@ -1,78 +1,179 @@
-/* VGRP-27 — header + drawer de navegación. Tokens de app/tokens.css, sin
-   valores hardcodeados. Animación acotada al presupuesto de DESIGN.md §4
-   (transform/opacity, nada de scroll-jacking), apagada bajo
-   prefers-reduced-motion. */
+/* VGRP-27 — header + menú, sistema Liquid Glass.
+   Header: cápsula de vidrio thin, flotante. En desktop suma accesos rápidos
+   con un indicador que se desliza al activo.
+   Menú: popover (desktop) / hoja inferior (mobile) de vidrio thick, con
+   lista agrupada estilo Ajustes de iOS. */
 
-.header {
+/* ------------------------------------------------------------------ */
+/* Header                                                               */
+/* ------------------------------------------------------------------ */
+
+.headerWrap {
   position: sticky;
   top: 0;
-  /* Por encima del overlay/panel (z-index 100): el botón hamburguesa vive acá
-     y tiene que seguir visible (y clickeable) con el drawer abierto para que
-     se vea la animación a X y sirva como control de cierre. */
+  /* Por encima del overlay/panel (z-index 100): el botón de menú vive acá y
+     tiene que seguir visible y clickeable con el menú abierto. */
   z-index: 110;
+  padding: 12px var(--layout-wrap-padding-inline) 0;
+  pointer-events: none;
+}
+
+.header {
+  composes: thin from "../ui/glass.module.css";
+  pointer-events: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
-  background: rgba(5, 5, 5, 0.72);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--glass-border);
+  gap: 8px;
+  max-width: var(--layout-wrap-max-width);
+  height: 60px;
+  margin-inline: auto;
+  padding: 0 8px 0 10px;
 }
 
 .marca {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  border-radius: var(--radius-control);
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px 0 4px;
+  margin-right: auto;
+  border-radius: var(--radius-pill);
   text-decoration: none;
   color: inherit;
-  transition: opacity var(--duration-base) var(--ease-out-expo);
+  transition: background-color var(--duration-fast) linear;
 }
 
-.marca:hover {
-  opacity: 0.85;
+@media (hover: hover) {
+  .marca:hover {
+    background: var(--fill-quiet);
+  }
 }
 
 .marca:focus-visible {
-  outline: 2px solid var(--accent-40);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Isotipo sobre un disco oscuro (como un ícono de app en el Dock). */
+.logoTile {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #0d0d0f;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 /*
- * Recorte del ícono por CSS, sin generar un segundo archivo de imagen.
+ * Recorte del ícono por CSS, sin un segundo archivo de imagen.
  * `public/logo-og-circle.png` mide 630×612; el hexágono ocupa el recuadro
- * x:181–452 / y:125–434 dentro de ese archivo (medido una sola vez). Se
- * escala el PNG completo a un tamaño fijo y se lo desplaza dentro de un
- * contenedor `overflow: hidden` del tamaño del recorte — técnica clásica de
- * "sprite crop", evita mantener un asset duplicado del mismo logo.
+ * x:181–452 / y:125–434 (medido una vez). Se escala el PNG completo y se lo
+ * desplaza dentro de un contenedor `overflow: hidden` — "sprite crop".
  */
 .logoMark {
   position: relative;
   display: block;
-  width: 42px;
-  height: 48px;
+  width: 20px;
+  height: 21.5px;
   overflow: hidden;
-  flex-shrink: 0;
 }
 
 .logoFull {
   position: absolute;
-  top: -19px;
-  left: -28px;
-  width: 98px;
-  height: 95px;
+  top: -9.1px;
+  left: -13.3px;
+  width: 46.5px;
+  height: 45.2px;
   max-width: none;
 }
 
 .wordmark {
-  font-family: var(--font-heading);
-  font-weight: 300;
-  font-size: 19px;
-  letter-spacing: 0.14em;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-primary);
   white-space: nowrap;
 }
+
+/* --- Accesos rápidos (desktop) --- */
+
+.rapida {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .rapida {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    margin-right: 8px;
+    border-radius: var(--radius-pill);
+    background: rgba(0, 0, 0, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Indicador del activo: una píldora de vidrio que se desliza (transform +
+   width, medidos en RapidaNav.tsx). */
+.rapidaIndicador {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  width: var(--ind-w, 0);
+  transform: translateX(var(--ind-x, 0));
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+  opacity: var(--ind-o, 0);
+  transition:
+    transform var(--duration-slow) var(--ease-spring),
+    width var(--duration-slow) var(--ease-spring),
+    opacity var(--duration-base) linear;
+  pointer-events: none;
+}
+
+.rapidaLink {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--duration-fast) linear;
+}
+
+.rapidaLink:hover,
+.rapidaLink[aria-current="page"] {
+  color: var(--text-primary);
+}
+
+.rapidaLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.rapidaExterno {
+  color: var(--text-muted);
+}
+
+/* --- Botón de menú --- */
 
 .abrir {
   display: flex;
@@ -80,46 +181,57 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
+  flex-shrink: 0;
+  padding: 0;
+  background: var(--fill);
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition:
-    border-color var(--duration-base) var(--ease-out-expo),
-    background-color var(--duration-base) var(--ease-out-expo);
+    background-color var(--duration-fast) linear,
+    transform var(--duration-base) var(--ease-spring);
 }
 
-.abrir:hover {
-  border-color: var(--glass-border-active);
-  background: var(--surface-1-hover);
+@media (hover: hover) {
+  .abrir:hover {
+    background: var(--fill-hover);
+  }
+}
+
+.abrir:active {
+  transform: scale(0.92);
 }
 
 .abrir:focus-visible {
-  outline: 2px solid var(--accent-40);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
-/* Hamburguesa → X: las barras 1/3 rotan 45°/-45° hasta superponerse en el
-   centro (misma "top") y la barra 2 se desvanece. */
+.abrir[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Dos barras que se cruzan en una X. */
 .hamburguesa {
   position: relative;
-  display: inline-flex;
-  width: 20px;
-  height: 16px;
+  display: inline-block;
+  width: 16px;
+  height: 10px;
 }
 
 .barra {
   position: absolute;
   left: 0;
-  width: 20px;
-  height: 2px;
-  border-radius: var(--radius-pill);
+  width: 16px;
+  height: 1.6px;
+  border-radius: 2px;
   background: currentColor;
   transition:
-    top var(--duration-base) var(--ease-out-expo),
-    transform var(--duration-base) var(--ease-out-expo),
-    opacity var(--duration-base) var(--ease-out-expo);
+    top var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
 }
 
 .barra:nth-child(1) {
@@ -127,60 +239,151 @@
 }
 
 .barra:nth-child(2) {
-  top: 7px;
-}
-
-.barra:nth-child(3) {
-  top: 14px;
+  top: 8.4px;
 }
 
 .hamburguesa[data-abierto="true"] .barra:nth-child(1) {
-  top: 7px;
+  top: 4.2px;
   transform: rotate(45deg);
 }
 
 .hamburguesa[data-abierto="true"] .barra:nth-child(2) {
-  opacity: 0;
-}
-
-.hamburguesa[data-abierto="true"] .barra:nth-child(3) {
-  top: 7px;
+  top: 4.2px;
   transform: rotate(-45deg);
 }
 
-/* --- Drawer --- */
+/* ------------------------------------------------------------------ */
+/* Menú                                                                 */
+/* ------------------------------------------------------------------ */
 
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(6px);
-  animation: overlay-in var(--duration-base) var(--ease-out-expo);
+  background: rgba(0, 0, 0, 0.42);
+  animation: aparecer var(--duration-base) linear;
 }
 
+/* Mobile: hoja inferior. */
 .panel {
-  position: fixed;
-  inset-block: 0;
-  inset-inline-end: 0;
-  /* Overlay y panel son hermanos (ver NavDrawer.tsx) — sin esto, el panel
-     (sin z-index propio) queda por DEBAJO del overlay (z-index 100) y su
-     blur, aunque venga después en el DOM. Bug real: encontrado por el
-     usuario probando a mano ("se ve borroso y no lo puedo usar"). */
+  composes: raised from "../ui/glass.module.css";
+  --g-position: fixed;
+  --g-radius: 30px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  /* Overlay y panel son hermanos (ver NavDrawer.tsx): sin z-index propio el
+     panel quedaría debajo del overlay. */
   z-index: 101;
-  width: min(320px, 85vw);
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  /* padding-top más grande a propósito: el header (z-index 110) queda por
-     encima de este panel para que el botón hamburguesa/X siga visible y
-     clickeable con el drawer abierto — este espacio evita que el primer
-     destino quede tapado detrás de esa franja. */
-  padding: 88px var(--space-5) var(--space-5);
-  background: var(--surface-1);
-  border-left: 1px solid var(--glass-border);
-  animation: panel-in var(--duration-slow) var(--ease-out-expo);
+  gap: 20px;
+  max-height: calc(100dvh - var(--header-height) - 16px);
+  padding: 10px 12px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform-origin: bottom center;
+  animation: hoja-in var(--duration-slow) var(--ease-out-expo);
 }
+
+/* Agarradera de la hoja (sólo mobile, decorativa). */
+.panel::after {
+  content: "";
+  order: -1;
+  align-self: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Desktop: popover anclado debajo del botón de menú. */
+@media (min-width: 640px) {
+  .overlay {
+    background: rgba(0, 0, 0, 0.22);
+  }
+
+  .panel {
+    top: calc(var(--header-height) + 4px);
+    bottom: auto;
+    left: auto;
+    right: max(12px, calc((100vw - var(--layout-wrap-max-width)) / 2 + 4px));
+    width: 340px;
+    max-height: calc(100dvh - var(--header-height) - 24px);
+    padding: 12px;
+    --g-radius: 26px;
+    transform-origin: top right;
+    animation: popover-in var(--duration-base) var(--ease-out-expo);
+  }
+
+  .panel::after {
+    display: none;
+  }
+}
+
+/* --- Cuenta (arriba del menú) --- */
+
+.cuenta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 4px;
+  min-width: 0;
+}
+
+.avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  /* Gris de avatar de Apple, con un tinte cálido. */
+  background: linear-gradient(180deg, #6b6660, #4a4642);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cuentaTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cuentaNombre {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cuentaEmail {
+  font-size: var(--fs-footnote);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skeleton {
+  display: block;
+  width: 140px;
+  height: 12px;
+  margin-block: 4px;
+  border-radius: 6px;
+  background: var(--fill);
+  animation: latido 1.4s ease-in-out infinite;
+}
+
+/* --- Grupo de destinos (lista agrupada) --- */
 
 .nav {
   display: flex;
@@ -190,151 +393,164 @@
 .lista {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .item {
+  position: relative;
   display: flex;
 }
 
-.destino {
-  width: 100%;
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-control);
-  font-family: var(--font-heading);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  text-decoration: none;
-  transition: background-color var(--duration-base) var(--ease-out-expo);
+/* Separador inset (arranca después del ícono, como en iOS). */
+.item + .item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 54px;
+  right: 12px;
+  height: 1px;
+  background: var(--separator);
 }
 
-.destino:hover {
-  background: var(--glass-bg);
-}
-
-.destino:focus-visible {
-  outline: 2px solid var(--accent-40);
-  outline-offset: 2px;
-}
-
+.destino,
 .destinoProximamente {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: 12px;
   width: 100%;
-  padding: var(--space-3) var(--space-3);
-  font-family: var(--font-heading);
-  font-size: 16px;
-  font-weight: 700;
+  min-height: 48px;
+  padding: 6px 10px 6px 8px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  text-decoration: none;
+}
+
+.destino {
+  color: var(--text-primary);
+  transition: background-color var(--duration-fast) linear;
+}
+
+@media (hover: hover) {
+  .destino:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.destino:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.destino:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.destinoProximamente {
   color: var(--text-muted);
+}
+
+/* Tile del ícono (como los íconos de Ajustes). */
+.iconTile {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-primary);
+}
+
+.destino[aria-current="page"] .iconTile {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.destinoProximamente .iconTile {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.destinoLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-faint);
 }
 
 .badge {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent-to);
-  background: var(--accent-05);
-  border: 1px solid var(--accent-40);
-  border-radius: var(--radius-pill);
-  padding: 2px var(--space-2);
-  white-space: nowrap;
-}
-
-/* --- Pie del drawer: identidad + cerrar sesión --- */
-
-.userFooter {
-  /* Empuja el pie al fondo del panel sea cual sea la altura de la lista de
-     arriba — el panel ya es `display:flex; flex-direction:column`. */
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--glass-border);
-}
-
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.avatar {
   flex-shrink: 0;
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  color: var(--text-faint);
+}
+
+/* --- Cerrar sesión --- */
+
+.salir {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
-  color: var(--bg);
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 14px;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--danger);
+  background: rgba(255, 255, 255, 0.045);
+  border: 0;
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) linear;
 }
 
-.userTexto {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+@media (hover: hover) {
+  .salir:hover {
+    background: var(--danger-soft);
+  }
 }
 
-.userNombre {
-  font-family: var(--font-heading);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.salir:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
-.userEmail {
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.userSkeleton {
-  display: block;
-  width: 120px;
-  height: 14px;
-  border-radius: var(--radius-control);
-  background: var(--glass-bg);
-}
-
-@keyframes overlay-in {
+@keyframes aparecer {
   from {
     opacity: 0;
   }
 }
 
-@keyframes panel-in {
+@keyframes hoja-in {
   from {
-    transform: translateX(100%);
+    transform: translateY(24px);
+    opacity: 0;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .overlay,
-  .panel {
-    animation: none;
+@keyframes popover-in {
+  from {
+    transform: scale(0.96) translateY(-6px);
+    opacity: 0;
   }
+}
 
-  .barra {
-    transition: none;
+@keyframes latido {
+  50% {
+    opacity: 0.45;
   }
 }
