@@ -1,49 +1,51 @@
-/* Mobile primero: layout de una sola columna, centrado, sin variantes de
-   escritorio — no hace falta todavía para el estado bloqueado ni para el
-   estado "tenés acceso" (contenido real: bloques posteriores). */
+/* Dashboard sin nivel (el estado más común: registrado sin pagar). Tiene que
+   verse como un estado válido y cuidado, no como una pantalla rota: estado
+   vacío centrado al estilo Apple — ícono, título, texto, una acción. */
 
 .wrap {
-  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-5) var(--space-4);
+  min-height: calc(100dvh - var(--header-height) - 200px);
+  padding: 48px var(--layout-wrap-padding-inline);
 }
 
 .card {
+  composes: surface from "../../../components/ui/glass.module.css";
+  --g-radius: var(--radius-panel);
   width: 100%;
   max-width: 480px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-5);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
+  align-items: center;
+  gap: 12px;
+  padding: 40px 28px 32px;
+  text-align: center;
+}
+
+.icono {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  color: var(--accent);
 }
 
 .eyebrow {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  text-transform: uppercase;
-  color: var(--accent-to);
+  composes: eyebrow from "../../../components/ui/type.module.css";
 }
 
 .title {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--text-primary);
+  composes: title1 from "../../../components/ui/type.module.css";
 }
 
 .copy {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  composes: body from "../../../components/ui/type.module.css";
+  --t-margin: 0 0 16px;
+  --t-size: 15px;
+  max-width: 34ch;
 }

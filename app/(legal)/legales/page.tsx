@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 import legalStyles from "../legal.module.css";
 import styles from "./legales.module.css";
 
@@ -35,9 +36,7 @@ export default function LegalesPage() {
         {DOCUMENTOS.map(({ href, label }) => (
           <Link key={href} href={href} className={styles.item}>
             <span className={styles.itemLabel}>{label}</span>
-            <span className={styles.itemArrow} aria-hidden="true">
-              →
-            </span>
+            <Icon name="chevron" size={18} className={styles.itemArrow} />
           </Link>
         ))}
       </div>

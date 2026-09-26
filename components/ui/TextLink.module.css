@@ -1,11 +1,17 @@
 .link {
-  font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-muted);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
+  /* Sin border-radius propio: TextLink también se usa con clases de tarjeta
+     (admin) y le pisaría el radio a la superficie de vidrio. */
+  transition: color var(--duration-fast) linear;
 }
 
 .link:hover {
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }

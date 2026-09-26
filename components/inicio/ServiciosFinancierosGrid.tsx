@@ -40,24 +40,26 @@ export function ServiciosFinancierosGrid() {
   }, []);
 
   if (!servicios) {
-    return <p className={styles.descripcion}>Cargando servicios…</p>;
+    return <p className={styles.estado}>Cargando servicios…</p>;
   }
 
   if (servicios.length === 0) {
-    return <p className={styles.descripcion}>Todavía no hay servicios cargados.</p>;
+    return <p className={styles.estado}>Todavía no hay servicios cargados.</p>;
   }
 
   return (
     <div className={styles.agentesGrid}>
       {servicios.map((servicio) => (
         <div key={servicio.id} className={styles.agenteCard}>
-          <strong>{servicio.publicMeta.titulo}</strong>
+          {/* Hijo directo de la tarjeta: e2e/inicio-canario-swift.spec.ts busca el
+              bloqueo en el padre del título. */}
+          <strong className={styles.servicioTitulo}>{servicio.publicMeta.titulo}</strong>
           <ContenidoBloqueado
             bloqueado={servicio.descripcion === null}
             nivelRequerido={servicio.publicMeta.nivelRequerido}
             nivelActual={nivelActual}
           >
-            <p className={styles.descripcion}>{servicio.descripcion}</p>
+            <p className={styles.textoTarjeta}>{servicio.descripcion}</p>
           </ContenidoBloqueado>
         </div>
       ))}

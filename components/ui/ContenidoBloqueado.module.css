@@ -1,22 +1,32 @@
+/* Contenido bloqueado por nivel: se lee como "esto existe y se desbloquea",
+   no como un error. Candado + nivel requerido + acción compacta. */
 .bloqueado {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--surface-2);
-  border: 1px dashed var(--glass-border);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  padding: 10px 10px 10px 14px;
+  background: var(--fill-quiet);
   border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .mensaje {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--fs-footnote);
   color: var(--text-secondary);
 }
 
 .mensaje strong {
-  color: var(--accent-to);
-  font-weight: 700;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.candado {
+  flex-shrink: 0;
+  color: var(--text-muted);
 }

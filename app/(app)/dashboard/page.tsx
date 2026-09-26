@@ -5,6 +5,7 @@ import NextLink from "next/link";
 // anidado). Mismo look exacto, sin el elemento equivocado — ver el
 // comentario puntual sobre el CTA más abajo.
 import buttonStyles from "@/components/ui/Button.module.css";
+import { Icon } from "@/components/ui/Icon";
 import { getNivel } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
 import styles from "./dashboard.module.css";
@@ -30,6 +31,9 @@ export default async function DashboardPage() {
     return (
       <div className={styles.wrap}>
         <div className={styles.card}>
+          <span className={styles.icono}>
+            <Icon name="candado" size={26} />
+          </span>
           <p className={styles.eyebrow}>Tu cuenta</p>
           <h1 className={styles.title}>Todavía no tenés acceso a ningún nivel</h1>
           <p className={styles.copy}>

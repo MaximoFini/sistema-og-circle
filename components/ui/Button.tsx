@@ -20,12 +20,15 @@ export interface ButtonProps extends Omit<ComponentPropsWithoutRef<"button">, "a
   loading?: boolean;
   /** Ocupa todo el ancho disponible. Default en formularios de mobile. */
   fullWidth?: boolean;
+  /** `sm`: versión compacta, para acciones dentro de filas o tarjetas chicas. */
+  size?: "md" | "sm";
 }
 
 export function Button({
   variant = "primary",
   loading = false,
   fullWidth = false,
+  size = "md",
   disabled,
   className,
   children,
@@ -40,6 +43,7 @@ export function Button({
         styles.button,
         styles[variant],
         fullWidth ? styles.fullWidth : null,
+        size === "sm" ? styles.small : null,
         loading ? styles.loading : null,
         className,
       ]

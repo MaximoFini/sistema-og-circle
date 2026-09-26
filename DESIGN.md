@@ -6,6 +6,72 @@ Documenta el sistema visual realmente implementado en la landing (`app/globals.c
 
 **Ojo — esto describe la landing pública, un deploy distinto.** En el repo de *Sistema OG Circle* (este, el del dashboard/`(app)`/`admin`) no existe `app/globals.css` ni el `.bp-*` de la nota de abajo: son 137 líneas en `app/tokens.css` más ~2.400 en 18 módulos CSS de `app/`/`components/`, sin CSS muerto detectado (VGRP-56, grep de `bp-` sobre todo `.css`/`.tsx`: cero resultados). El plan de carga de fuentes de §2 (`<link>` manual + `preconnect` a tres orígenes + `preload` del woff2) tampoco aplica acá — ver `docs/RENDIMIENTO.md` para el plan de fuentes de este repo (`next/font`, sólo los pesos que el CSS de este repo realmente usa).
 
+---
+
+## Sistema de ESTE repo (dashboard / admin): "Liquid Glass"
+
+UI de `(app)`, `(auth)`, `(legal)` y `admin` (septiembre 2026, segunda versión). Referencia: el lenguaje de Apple (materiales de vidrio, listas agrupadas, tipografía por rol) con la paleta de la landing: negro `#050505`, un único acento ámbar `#d99e00`→`#f5b813`, champán para detalles. El resto de este documento (desde "Nota de historial") describe **la landing**, no esto.
+
+**Principios**
+
+1. **Contención.** Una familia tipográfica, un acento, jerarquía por tamaño/peso/opacidad. Nada de mayúsculas espaciadas, texto con gradiente, halos luminosos ni brillos decorativos.
+2. **Material, no bordes.** Las superficies son vidrio sobre un fondo cálido **estático** (tres luces difusas + viñeta + grano con la receta de `.film-grain` de la landing, en `app/tokens.css`). El fondo no se anima: obligaría a recalcular cada `backdrop-filter` en cada frame.
+3. **El ámbar significa algo:** acción principal, progreso o estado activo. Nunca de fondo detrás de texto blanco (texto sobre ámbar: `--on-accent`).
+
+**Tipografía** — Inter variable con eje de tamaño óptico (`opsz`), `font-optical-sizing: auto` (mismo principio que SF Pro Text/Display). Escala de Apple en `tokens.css` (`--fs-large-title` … `--fs-caption`) y roles en `components/ui/type.module.css`: `eyebrow` (rótulo en champán, sentence case), `largeTitle`, `title1`, `title2`, `headline`, `lede`, `body`, `footnote`. Títulos con tracking negativo (-0.02 a -0.03em), peso 650–700.
+
+> La landing usa Helvetica Now Var. Es una fuente comercial de Monotype y no hay licencia verificada para este producto: no se embebe hasta confirmarla (cambiarla es una línea en `app/layout.tsx`).
+
+**Material** (`components/ui/glass.module.css`) — tres grosores, como los materiales de Apple:
+
+| Clase | Uso | Blur |
+|---|---|---|
+| `thin` | header, controles flotantes | 20px |
+| `surface` | tarjetas y secciones | 32px |
+| `raised` | hojas y diálogos (menú, login) | 48px, más opaco |
+| `inset` | grupo/tarjeta anidada (sin blur propio: el padre ya refracta) | — |
+| `chip` / `chipAccent` | etiquetas en píldora | — |
+| `accent` | modificador: reflejo ámbar en el borde. Uno por pantalla. | — |
+
+Anatomía: relleno translúcido + brillo sutil arriba + `backdrop-filter` (blur + saturación) + reflejo especular del borde (`::before`, gradiente vertical enmascarado a 1px — la receta de `.liquid-glass` de la landing) + sombra suave.
+
+**Formas:** botones = cápsula (`--radius-pill`), planos, sin brillo ni halo. Controles 14px, filas 16px, tarjetas 22px, secciones 28px, hojas 34px.
+
+**Componentes** (`components/ui/`, se importan de `@/components/ui`)
+
+| Componente | Notas |
+|---|---|
+| `Button` | `variant`: `primary` (ámbar sólido, texto `--on-accent`) o `ghost` (vidrio). `size`: `md` (48px) o `sm` (34px, para acciones dentro de filas o tarjetas). Cápsula, plano; única microinteracción: se comprime al presionar. `loading` muestra el indicador de anillo. Un link con look de botón compone `button primary`/`ghost` de `Button.module.css`, no anida un `<button>` en un `<a>`. |
+| `TextField` / `TextFieldBase` | Relleno translúcido sin borde, label arriba en sentence case, foco con anillo ámbar. 16px como mínimo (iOS no hace zoom). |
+| `Checkbox` | Círculo dibujado con CSS; se llena de ámbar al marcarse. |
+| `FormError` | Franja teñida de rojo, sin borde duro. |
+| `TextLink` | Link de texto mudo (`--fs-footnote`). Trae su propio color y transición: ver la regla de abajo. |
+| `ContenidoBloqueado` | Fila compacta: candado + "Disponible desde nivel X" + CTA `sm`. Nunca oculta la sección (PRD §6). |
+| `Icon` | 13 íconos propios: `inicio`, `calculadora`, `comunidad`, `tracking`, `perfil`, `chevron`, `externo`, `candado`, `check`, `salir`, `mensaje`, `documento`, `play`. Un ícono nuevo se agrega en `PATHS` (grilla de 24px, trazo 1.7px) y aparece tipado en `IconName`. |
+
+**Patrones**
+
+- **Lista agrupada** (Ajustes de iOS): título de grupo por fuera, filas de ≥44px con ícono en tile de 32px, separador inset que arranca después del ícono, chevron / flecha externa / "Próximamente" a la derecha. Menú, Perfil, legales, admin.
+- **Íconos:** `components/ui/Icon.tsx`, SVG inline propios, trazo 1.7px con puntas redondeadas (familia visual de SF Symbols). Sin dependencia nueva.
+- **Header:** cápsula `thin` flotante. Desde 900px suma accesos rápidos con un **indicador deslizante** (píldora de vidrio que va al activo o al hover; `RapidaNav.tsx`, mismo mecanismo en `app/admin/AdminNav.tsx`).
+- **Menú:** hoja inferior en mobile (con agarradera), popover anclado al botón en desktop. Cuenta arriba, destinos, "Cerrar sesión" en rojo al final.
+- **Lockup de marca:** isotipo dentro de un disco oscuro (`#0d0d0f`, borde de 1px) + "OG Circle" en 650, mayúsculas con tracking 0.16em. Es el mismo en el header de la app, el admin y el login; el isotipo nunca va solo (queda huérfano). El recorte del hexágono sale del PNG con "sprite crop" (ver `nav.module.css`), sin un segundo asset.
+- **Frase de marca** ("El círculo de los que *importan*."): sólo en `(auth)`. Misma voz que un Large Title; el acento es el ámbar de las acciones (`--accent`) — sin itálica ni gradiente.
+- **Pantalla de acceso** (`app/(auth)/layout.tsx`): grilla con áreas `hero / card / pie`. El lockup va apoyado sobre la frase, como una firma: un solo bloque, nunca dos anclas separadas. Mobile: apilado y centrado, con la frase un escalón arriba del título de la tarjeta. Desde 1024px: el bloque a la izquierda, centrado verticalmente contra el formulario, con la frase a tamaño titular (64–96px) y cortes fijos "El círculo / de los que / importan." (`.linea`, sólo desktop); el pie va debajo del formulario.
+- **Tarjeta de contacto** (agentes, profesionales): avatar con iniciales (`iniciales.ts`, gris cálido como los contactos de Apple), nombre, una línea de metadata, y el dato de contacto abajo separado por una línea. Nombre y metadata van en `<span>`, no `<div>`: los E2E localizan la tarjeta por el último `div` que contiene el nombre.
+- **Progreso:** anillo (conic-gradient) que se llena con transición (`--progreso` registrado como `<percentage>`).
+- **Estados vacíos** (sin nivel, checkout no disponible, pago pendiente): centrados — ícono en disco, título, texto, una acción. Pendiente usa el indicador de actividad de rayos.
+
+**Microinteracciones** (sólo `transform`/`opacity`, todas apagadas bajo `prefers-reduced-motion` con un override global en `tokens.css`): botones que se comprimen al presionar (resorte), indicador deslizante de navegación, anillo de progreso, hover de tarjetas −2px (sólo con puntero), entrada de página (fundido + 6px, una vez), hoja/popover del menú.
+
+**Regla para componer primitivas:** `composes: surface from "../ui/glass.module.css";` y **no redeclarar** propiedades que la primitiva define — con `composes` entre archivos el orden de carga no está garantizado (pasó: el drawer quedaba `position: relative`). Se ajusta con variables registradas `inherits: false` en `tokens.css`: `--g-position`, `--g-radius`, `--g-bg`, `--rim` (vidrio) y `--t-size`, `--t-margin`, `--t-color` (tipografía). Cuando hace falta pisar una propiedad igual, usar un selector más específico (`.a.b`, `a.clase`), nunca depender del orden.
+
+**Estabilidad de layout:** `html { scrollbar-gutter: stable }` reserva el lugar de la barra de scroll, así abrir el menú (que bloquea el scroll del body) no corre la página.
+
+**`<TextLink>` + clase propia:** `TextLink` trae su `.link` (tamaño/color/transición de link de texto). Para que un link se vea como tarjeta o botón, usar `NextLink`/`<a>` directo; en el admin, `a.clase` (gana en especificidad, incluida la `transition`). `TextLink` no define `border-radius` a propósito: le pisaría el radio a una superficie de vidrio (pasó: las tarjetas del admin quedaron rectas).
+
+---
+
 **Nota de historial:** la versión anterior de este documento describía un concepto de papelería aduanera ("Despacho, no dashboard": fondo manila `#EFEBE3`, Instrument Serif, sellos rojos, tags con perforación). Ese sistema fue reemplazado por completo en el commit `044606c` ("rediseño NEXOVA — dark cinematic") y ya no queda nada de él en el código. Este documento describe lo que hay hoy.
 
 **Segunda pasada:** la revisión anterior describía un `BlueprintSteps.tsx` — un contenedor marítimo 3D (`.bp-wrapper`/`.bp-viewport`/`.bp-stage`/`.bp-rotator`/`.bp-face`) para la sección "Cómo funciona". Ese componente ya no existe en `app/components/`. Las clases `.bp-*` siguen físicamente en `globals.css` (~530 líneas) pero son CSS muerto (ver §6). Las secciones #problema y #pilares-servicio se rehicieron con `ProblemStepper.tsx` y `OGCircleFeatures.tsx`, mecanismos distintos (§3). Esta pasada incorpora además `AmbientAudio.tsx`, `WorldClocks.tsx`, `StoryCollapse.tsx` y el ticker de rutas (`.route-ticker`).

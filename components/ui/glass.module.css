@@ -1,0 +1,127 @@
+/*
+ * Liquid glass — primitivas de material. Los módulos de cada pantalla las
+ * heredan con `composes: surface from "../ui/glass.module.css";`.
+ *
+ * Tres grosores, como los materiales de Apple:
+ *   .thin     header, chips, controles flotantes (más transparente).
+ *   .surface  tarjetas y secciones (regular).
+ *   .raised   hojas y diálogos: drawer, formulario de login (thick, más
+ *             opaco — lo que está encima de todo necesita más contraste).
+ * Y dos sin blur propio (el padre ya refracta; apilar blurs es caro):
+ *   .inset    grupo/tarjeta anidada dentro de una superficie.
+ *   .chip     etiqueta en píldora.
+ *
+ * Anatomía: relleno translúcido + brillo sutil arriba + backdrop-filter
+ * (blur + saturación) + reflejo especular del borde (::before, enmascarado
+ * a 1px, receta de la landing) + sombra suave.
+ *
+ * REGLA: quien compone una primitiva NO redeclara las propiedades que la
+ * primitiva define — el orden entre CSS Modules no está garantizado. Se
+ * ajusta con variables (registradas `inherits: false` en tokens.css):
+ *   --g-position  --g-radius  --g-bg  --rim
+ */
+
+.thin,
+.surface,
+.raised,
+.inset,
+.chip {
+  position: var(--g-position, relative);
+  isolation: isolate;
+}
+
+.thin {
+  background: var(--g-bg, var(--glass-sheen), var(--glass-thin-fill));
+  -webkit-backdrop-filter: var(--glass-blur-thin);
+  backdrop-filter: var(--glass-blur-thin);
+  border-radius: var(--g-radius, var(--radius-pill));
+  box-shadow: var(--glass-shadow);
+}
+
+.surface {
+  background: var(--g-bg, var(--glass-sheen), var(--glass-regular-fill));
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--g-radius, var(--radius-surface));
+  box-shadow: var(--glass-shadow);
+}
+
+.raised {
+  background: var(--g-bg, var(--glass-sheen), var(--glass-thick-fill));
+  -webkit-backdrop-filter: var(--glass-blur-thick);
+  backdrop-filter: var(--glass-blur-thick);
+  border-radius: var(--g-radius, var(--radius-panel));
+  box-shadow: var(--glass-shadow-thick);
+}
+
+.inset {
+  background: var(--g-bg, var(--fill-quiet));
+  border-radius: var(--g-radius, var(--radius-card));
+  --rim: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.03) 40%,
+    rgba(255, 255, 255, 0.05)
+  );
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--g-bg, var(--fill));
+  border-radius: var(--g-radius, var(--radius-pill));
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.005em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  --rim: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+}
+
+/* Reflejo especular del borde. */
+.thin::before,
+.surface::before,
+.raised::before,
+.inset::before,
+.chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--rim, var(--glass-rim));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Modificador: reflejo ámbar en el borde. Para lo único destacado de una
+   pantalla (una tarjeta, no varias). */
+.accent {
+  --rim: var(--glass-rim-accent);
+}
+
+/* Chip en tono ámbar (estado activo / nivel). */
+.chipAccent {
+  composes: chip;
+  color: var(--accent-soft);
+  --g-bg: rgba(245, 184, 19, 0.12);
+  --rim: linear-gradient(180deg, rgba(255, 214, 107, 0.45), rgba(245, 184, 19, 0.12));
+}
+
+/* Sin soporte de backdrop-filter: el vidrio cae a un relleno más opaco para
+   no perder contraste. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .thin,
+  .surface,
+  .raised {
+    --g-bg: #18181b;
+  }
+}

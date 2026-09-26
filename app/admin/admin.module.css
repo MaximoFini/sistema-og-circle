@@ -1,95 +1,194 @@
-/* VGRP-35 — estilos del área de admin. Tokens de DESIGN.md (NEXOVA dark
-   cinematic), CSS Modules, sin Tailwind. Mobile-first: la audiencia real del
-   panel son 1-3 personas, muchas veces desde el celular. */
+/* VGRP-35 — área de admin. Mismo sistema que la app (tokens + primitivas de
+   components/ui), con más densidad: es una herramienta de trabajo. Tablas y
+   listas como listas agrupadas de Apple; controles nativos estilados.
+   Mobile-first: la audiencia real son 1-3 personas, muchas veces desde el
+   celular.
+
+   Nota: varias clases de acá van sobre <TextLink>, que trae su propio `.link`
+   (tamaño/color de link de texto). Para esas se usa `a.clase`, que le gana en
+   especificidad sin depender del orden de carga de los CSS Modules. */
 
 .shell {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
   color: var(--text-primary);
 }
 
 /* --- Topbar ---------------------------------------------------------------- */
+
+.topbarWrap {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 12px var(--layout-wrap-padding-inline) 0;
+}
+
 .topbar {
+  composes: thin from "../../components/ui/glass.module.css";
+  --g-radius: 26px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3) var(--space-5);
-  padding: var(--space-4) var(--layout-wrap-padding-inline);
-  border-bottom: 1px solid var(--glass-border);
-  background: var(--surface-1);
+  gap: 8px 16px;
+  max-width: var(--layout-wrap-max-width);
+  margin-inline: auto;
+  padding: 8px 8px 8px 20px;
+}
+
+@media (min-width: 900px) {
+  .topbar {
+    --g-radius: var(--radius-pill);
+    flex-wrap: nowrap;
+    height: 60px;
+    padding-block: 0;
+  }
 }
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
+  align-items: center;
+  gap: 10px;
 }
 
-.brandLink {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: -0.01em;
+a.brandLink {
+  font-size: 14.5px;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+  color: var(--text-primary);
 }
 
 .modoAdmin {
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  color: var(--text-muted);
+  composes: chipAccent from "../../components/ui/glass.module.css";
 }
 
+/* Secciones: control segmentado con indicador deslizante (AdminNav.tsx).
+   Mobile: segunda línea, scroll horizontal. */
 .nav {
+  position: relative;
+  order: 3;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin-right: auto;
+  flex-wrap: nowrap;
+  gap: 2px;
+  width: calc(100% + 12px);
+  margin-left: -12px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .nav {
+    order: 0;
+    width: auto;
+    margin: 0 auto;
+  }
+}
+
+.navIndicador {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  width: var(--ind-w, 0);
+  transform: translateX(var(--ind-x, 0));
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+  opacity: var(--ind-o, 0);
+  transition:
+    transform var(--duration-slow) var(--ease-spring),
+    width var(--duration-slow) var(--ease-spring),
+    opacity var(--duration-base) linear;
+  pointer-events: none;
 }
 
 .navLink {
-  font-size: 14px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--duration-fast) linear;
+}
+
+.navLink:hover,
+.navLink[aria-current="page"] {
+  color: var(--text-primary);
+}
+
+.navLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .logoutForm {
   display: flex;
+  margin-left: auto;
+}
+
+@media (min-width: 900px) {
+  .logoutForm {
+    margin-left: 0;
+  }
 }
 
 /* --- Contenido ----------------------------------------------------------- */
+
 .main {
   flex: 1;
   width: 100%;
   max-width: var(--layout-wrap-max-width);
   margin-inline: auto;
-  padding: var(--space-6) var(--layout-wrap-padding-inline) var(--space-7);
+  padding: 40px var(--layout-wrap-padding-inline) 64px;
+  animation: entrar 0.5s var(--ease-out) backwards;
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 16px;
 }
 
 .h1 {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: clamp(24px, 4vw, 34px);
-  margin: 0;
+  composes: largeTitle from "../../components/ui/type.module.css";
+  --t-size: clamp(30px, 3.8vw, 40px);
 }
 
 .lede {
-  color: var(--text-secondary);
-  max-width: var(--text-lede-max-width);
-  margin: 0;
+  composes: lede from "../../components/ui/type.module.css";
 }
 
 /* --- Cards del índice --------------------------------------------------- */
+
 .cards {
   display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
+  gap: 12px;
+  margin-top: 8px;
 }
 
 @media (min-width: 720px) {
@@ -99,160 +198,255 @@
 }
 
 .card {
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-5);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
-  background: var(--surface-1);
-  transition:
-    border-color var(--duration-base),
-    background var(--duration-base);
+  gap: 6px;
+  padding: 20px 22px;
+  text-decoration: none;
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
-.card:hover {
-  border-color: var(--glass-border-active);
-  background: var(--surface-1-hover);
+a.card {
+  font-size: var(--fs-callout);
+  color: var(--text-primary);
+  /* Le gana al `transition: color` de TextLink. */
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) {
+  a.card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+a.card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .cardTitle {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--fs-headline);
+  font-weight: 650;
+  letter-spacing: -0.014em;
   color: var(--text-primary);
 }
 
+/* Chevron dibujado con bordes (sin asset). */
+.cardTitle::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border: solid var(--text-faint);
+  border-width: 1.6px 1.6px 0 0;
+  transform: rotate(45deg);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+a.card:hover .cardTitle::after {
+  transform: translateX(2px) rotate(45deg);
+}
+
 .cardDesc {
-  font-size: 14px;
+  font-size: var(--fs-subhead);
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 
 /* --- 404 del área ------------------------------------------------------- */
+
 .notFound {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-7) var(--layout-wrap-padding-inline);
+  gap: 10px;
+  padding: 96px var(--layout-wrap-padding-inline);
   text-align: center;
 }
 
 .notFoundCode {
-  font-family: var(--font-heading);
-  font-weight: 900;
-  font-size: clamp(48px, 12vw, 96px);
-  line-height: 1;
   margin: 0;
-  /* Fallback visible si `background-clip: text` no aplica. */
-  color: var(--accent-from);
-  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: clamp(72px, 14vw, 120px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
 }
 
 .notFoundTitle {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: clamp(20px, 3vw, 28px);
-  margin: 0;
+  composes: title2 from "../../components/ui/type.module.css";
 }
 
 .notFoundCopy {
-  color: var(--text-secondary);
   margin: 0;
+  color: var(--text-secondary);
 }
 
-.notFoundLink {
-  margin-top: var(--space-2);
+a.notFoundLink {
+  margin-top: 8px;
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  color: var(--accent);
 }
 
-/* --- Pantalla de auditoría -------------------------------------------- */
+/* --- Filtros ------------------------------------------------------------ */
+
 .filtros {
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--space-3);
-  margin: var(--space-4) 0;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 16px;
 }
 
-.filtroCampo {
+.filtroCampo,
+.formCampo {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 6px;
   min-width: 0;
 }
 
-.filtroLabel {
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  color: var(--text-muted);
+.filtroLabel,
+.formLabel {
+  padding-inline: 4px;
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.filtroInput {
+/* Controles nativos del panel (VGRP-36/38): mismo relleno translúcido que
+   components/ui/TextField, más compactos. Decisión previa: nativos estilados
+   localmente, no primitivas de components/ui. */
+.filtroInput,
+.selectNativo,
+.textareaNativo,
+.inputNativo {
   appearance: none;
   /* El date picker nativo respeta el modo del control: sin esto, en varios
      navegadores el calendario y el ícono se dibujan en tema claro. */
   color-scheme: dark;
-  background: var(--surface-2);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
+  min-height: 42px;
+  padding: 0 14px;
   font: inherit;
-  font-size: 14px;
-  min-height: 40px;
-  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-callout);
+  color: var(--text-primary);
+  background: var(--fill);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition:
+    background-color var(--duration-fast) linear,
+    box-shadow var(--duration-base) var(--ease-out);
 }
 
-.filtroInput:focus-visible {
+.selectNativo,
+.textareaNativo,
+.inputNativo {
+  width: 100%;
+}
+
+.selectNativo {
+  padding-right: 36px;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M8 10l4 4 4-4'/></svg>")
+    right 12px center / 16px no-repeat,
+    var(--fill);
+}
+
+.selectNativo option {
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+.textareaNativo {
+  min-height: 96px;
+  padding-block: 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+@media (hover: hover) {
+  .filtroInput:hover:not(:focus),
+  .textareaNativo:hover:not(:focus),
+  .inputNativo:hover:not(:focus) {
+    background-color: var(--fill-hover);
+  }
+}
+
+.filtroInput:focus-visible,
+.selectNativo:focus-visible,
+.textareaNativo:focus-visible,
+.inputNativo:focus-visible {
   outline: none;
-  border-color: var(--accent-40);
+  box-shadow:
+    inset 0 0 0 1px rgba(245, 184, 19, 0.6),
+    0 0 0 4px rgba(245, 184, 19, 0.16);
 }
 
 .avisoFiltro {
+  margin: 8px 0;
+  font-size: var(--fs-callout);
   color: var(--danger);
-  font-size: 14px;
-  margin: var(--space-3) 0;
 }
 
 .vacio {
-  color: var(--text-secondary);
-  padding: var(--space-5) 0;
+  padding: 40px 0;
+  text-align: center;
+  font-size: var(--fs-callout);
+  color: var(--text-muted);
 }
 
+/* --- Listas / tablas (lista agrupada) ----------------------------------- */
+
 .lista {
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
+  padding: 4px 0;
   overflow: hidden;
 }
 
 .fila {
+  position: relative;
   display: grid;
-  gap: var(--space-1) var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--glass-border);
-  font-size: 14px;
+  gap: 2px 16px;
+  padding: 14px 20px;
+  font-size: var(--fs-callout);
 }
 
-.fila:last-child {
-  border-bottom: none;
+.fila + .fila::before,
+.userRow + .userRow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 0;
+  height: 1px;
+  background: var(--separator);
 }
 
 @media (min-width: 720px) {
   .fila {
-    grid-template-columns: 160px 1.2fr 1.4fr 1fr;
+    grid-template-columns: 170px 1.2fr 1.4fr 1fr;
     align-items: baseline;
   }
 }
 
 .filaFecha {
+  font-size: var(--fs-footnote);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -262,6 +456,7 @@
 }
 
 .filaAccion {
+  font-weight: 500;
   color: var(--text-primary);
 }
 
@@ -270,84 +465,74 @@
 }
 
 .filaCambio strong {
-  color: var(--champagne);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .cargarMas {
-  display: inline-flex;
-  margin-top: var(--space-4);
+  composes: button ghost small from "../../components/ui/Button.module.css";
+  align-self: flex-start;
+  margin-top: 16px;
 }
 
-/* --- Select / textarea nativos del panel (VGRP-36) --------------------- */
-/* Decisión del diseño: nativos estilados localmente, no primitivas de
-   components/ui — el panel es herramienta interna. Ver design.md §UI y
-   /design-critique de VGRP-36. */
-.selectNativo,
-.textareaNativo {
-  appearance: none;
-  color-scheme: dark;
-  background: var(--surface-2);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
+a.cargarMas {
+  font-size: 13.5px;
   color: var(--text-primary);
-  font: inherit;
-  font-size: 14px;
-  padding: var(--space-2) var(--space-3);
-  min-height: 40px;
-  width: 100%;
+  transition:
+    transform var(--duration-base) var(--ease-spring),
+    background-color var(--duration-fast) linear;
 }
 
-.textareaNativo {
-  min-height: 84px;
-  resize: vertical;
-}
+/* --- Usuarios / pagos (VGRP-36/37) --------------------------------------- */
 
-.selectNativo:focus-visible,
-.textareaNativo:focus-visible {
-  outline: none;
-  border-color: var(--accent-40);
-}
-
-/* --- Listado de usuarios (VGRP-36) ------------------------------------ */
 .userRow {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--glass-border);
-  font-size: 14px;
+  align-items: center;
+  gap: 4px 16px;
+  min-height: 52px;
+  padding: 12px 20px;
+  font-size: var(--fs-callout);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) linear;
 }
 
-.userRow:last-child {
-  border-bottom: none;
+a.userRow {
+  font-size: var(--fs-callout);
+  color: var(--text-primary);
 }
 
-.userRow:hover {
-  background: var(--surface-1-hover);
+@media (hover: hover) {
+  a.userRow:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+}
+
+a.userRow:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(245, 184, 19, 0.5);
 }
 
 .userEmail {
-  color: var(--text-primary);
-  font-weight: 600;
   margin-right: auto;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .userAlta {
+  font-size: var(--fs-footnote);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 /* Texto secundario de una fila (motivo de un override, proveedor_ref de un
-   pago): legible, se corta donde haga falta, no compite con el dato
-   principal. NO es un badge — un ref o un motivo largo en mayúsculas con
-   letter-spacing sería ilegible. */
+   pago): legible, se corta donde haga falta. */
 .filaMeta {
-  color: var(--text-secondary);
-  font-size: 13px;
-  overflow-wrap: anywhere;
   flex: 1 1 100%;
+  font-size: var(--fs-footnote);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 720px) {
@@ -357,44 +542,45 @@
   }
 }
 
-.nivelPill {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px var(--space-2);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
-  background: var(--surface-2);
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  color: var(--text-secondary);
+.nivelPill,
+.badgeEstado {
+  composes: chip from "../../components/ui/glass.module.css";
 }
 
-.nivelPillActivo {
-  color: var(--champagne);
-  border-color: var(--glass-border-active);
+.nivelPill {
+  text-transform: capitalize;
+}
+
+/* Selector compuesto: gana al `color` del chip sin depender del orden de
+   carga entre módulos. */
+.nivelPill.nivelPillActivo {
+  color: var(--text-primary);
 }
 
 /* --- Detalle de usuario (VGRP-36) ----------------------------------- */
+
 .seccion {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  margin-top: var(--space-5);
+  gap: 10px;
+  margin-top: 28px;
 }
 
 .seccionTitulo {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 16px;
   margin: 0;
+  padding-inline: 4px;
+  font-size: var(--fs-title3);
+  font-weight: 650;
+  letter-spacing: -0.018em;
 }
 
 .dl {
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: grid;
-  gap: var(--space-2) var(--space-4);
+  gap: 10px 24px;
   margin: 0;
+  padding: 18px 20px;
 }
 
 @media (min-width: 560px) {
@@ -404,115 +590,101 @@
 }
 
 .dl dt {
+  font-size: var(--fs-subhead);
   color: var(--text-muted);
-  font-size: 13px;
 }
 
 .dl dd {
   margin: 0;
+  font-size: var(--fs-callout);
   color: var(--text-primary);
-  font-size: 14px;
   overflow-wrap: anywhere;
 }
 
 .pre {
   margin: 0;
-  padding: var(--space-3);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
-  background: var(--surface-2);
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
   color: var(--text-secondary);
-  font-size: 13px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   overflow-x: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .formCambiarNivel {
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  max-width: 420px;
-}
-
-.formCampo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.formLabel {
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  color: var(--text-muted);
+  gap: 16px;
+  max-width: 460px;
+  padding: 20px;
 }
 
 .formOk {
-  color: var(--champagne);
-  font-size: 14px;
   margin: 0;
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  color: var(--success);
 }
 
 /* --- Contenido (VGRP-38) --------------------------------------------- */
 
-.inputNativo {
-  appearance: none;
-  color-scheme: dark;
-  background: var(--surface-2);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 14px;
-  padding: var(--space-2) var(--space-3);
-  min-height: 40px;
-  width: 100%;
-}
-
-.inputNativo:focus-visible {
-  outline: none;
-  border-color: var(--accent-40);
-}
-
 .checkboxCampo {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  color: var(--text-muted);
+  gap: 10px;
+  font-size: var(--fs-callout);
+  color: var(--text-secondary);
+}
+
+.checkboxCampo input {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
 }
 
 .formAcciones {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: 10px;
   align-items: center;
 }
 
 .itemLista {
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 0;
 }
 
 .itemFila {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
-  background: var(--surface-1);
+  gap: 12px;
+  min-height: 60px;
+  padding: 12px 16px 12px 20px;
+}
+
+.itemFila + .itemFila::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 0;
+  height: 1px;
+  background: var(--separator);
 }
 
 .itemInfo {
@@ -523,160 +695,136 @@
 }
 
 .itemTitulo {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.012em;
   color: var(--text-primary);
 }
 
 .itemSub {
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--text-muted);
 }
 
 .itemInactivo {
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 /* --- Ledger de pagos (VGRP-37) -------------------------------------- */
 
-/* Badge de estado del pago: neutro por defecto. */
-.badgeEstado {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px var(--space-2);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-control);
-  background: var(--surface-2);
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-/* `sin aplicar`: es LO que el admin tiene que cazar — acento ámbar, alto
-   contraste, sin depender del color para el significado (el texto lo dice). */
+/* `sin aplicar`: es LO que el admin tiene que cazar — ámbar, sin depender
+   del color para el significado (el texto lo dice). */
 .badgeSinAplicar {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px var(--space-2);
-  border: 1px solid var(--accent-40);
-  border-radius: var(--radius-control);
-  background: var(--accent-12, var(--surface-2));
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  color: var(--accent-from);
-  white-space: nowrap;
+  composes: chipAccent from "../../components/ui/glass.module.css";
 }
 
 .pagoDatos {
+  font-size: var(--fs-footnote);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-/* Contenedor de los badges de una fila / cabecera de detalle. */
 .badgeFila {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 6px;
   margin: 0;
 }
 
 .notaFiltrada {
-  color: var(--text-muted);
-  font-size: 13px;
   margin: 0;
+  font-size: var(--fs-footnote);
+  color: var(--text-muted);
 }
 
 .reprocesar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 10px;
   align-items: flex-start;
-  max-width: 420px;
+  max-width: 460px;
 }
 
 /* --- Callout del índice: pagos sin aplicar (VGRP-37 / 37-T11) -------- */
+
 .callout {
+  composes: surface from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: flex;
   align-items: center;
-  gap: var(--space-3) var(--space-4);
+  gap: 8px 20px;
   flex-wrap: wrap;
-  margin-top: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
-  background: var(--surface-1);
-  transition:
-    border-color var(--duration-base),
-    background var(--duration-base);
+  margin-top: 8px;
+  padding: 20px 24px;
+  text-decoration: none;
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
-.callout:hover {
-  border-color: var(--glass-border-active);
-  background: var(--surface-1-hover);
+a.callout {
+  font-size: var(--fs-callout);
+  color: var(--text-primary);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) {
+  a.callout:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .calloutAlerta {
-  border-color: var(--accent-40);
+  composes: accent from "../../components/ui/glass.module.css";
 }
 
 .calloutNumero {
-  font-family: var(--font-heading);
-  font-weight: 900;
-  font-size: clamp(32px, 6vw, 44px);
+  font-size: clamp(40px, 6vw, 52px);
+  font-weight: 700;
   line-height: 1;
-  color: var(--text-secondary);
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
 }
 
 .calloutAlerta .calloutNumero {
-  color: var(--accent-from);
+  color: var(--accent);
 }
 
 .calloutTexto {
+  font-size: var(--fs-callout);
   color: var(--text-secondary);
-  font-size: 14px;
 }
 
 /* --- Config: precios y flags (VGRP-40) -------------------------------- */
 
 /* Paso de confirmación inline de PreciosForm — no es un modal (el panel no
-   tiene ningún primitive de Dialog hoy, ver design-vgrp40.md §Trade-offs).
-   Mismo `max-width` que `.formCambiarNivel` para que no "salte" de ancho al
-   pasar del form a la confirmación. */
+   tiene ningún primitive de Dialog hoy, ver design-vgrp40.md §Trade-offs). */
 .confirmacion {
+  composes: surface accent from "../../components/ui/glass.module.css";
+  --g-radius: var(--radius-card);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  max-width: 420px;
-  padding: var(--space-4);
-  border: 1px solid var(--accent-40);
-  border-radius: var(--radius-surface);
-  background: var(--surface-1);
+  gap: 12px;
+  max-width: 460px;
+  padding: 20px;
 }
 
 .confirmacionTitulo {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 15px;
   margin: 0;
+  font-size: var(--fs-headline);
+  font-weight: 650;
 }
 
 .confirmacionLista {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 4px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .confirmacionValor {
-  font-size: 14px;
+  font-size: var(--fs-callout);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }

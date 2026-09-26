@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import type { NivelAcceso } from "@/lib/auth/claims";
 import buttonStyles from "./Button.module.css";
 import styles from "./ContenidoBloqueado.module.css";
+import { Icon } from "./Icon";
 
 const ETIQUETA_NIVEL: Record<NivelAcceso, string> = {
   ninguno: "ningún nivel",
@@ -42,9 +43,15 @@ export function ContenidoBloqueado({
   return (
     <div className={styles.bloqueado}>
       <p className={styles.mensaje}>
-        Disponible desde nivel <strong>{ETIQUETA_NIVEL[nivelRequerido]}</strong>.
+        <Icon name="candado" size={16} className={styles.candado} />
+        <span>
+          Disponible desde nivel <strong>{ETIQUETA_NIVEL[nivelRequerido]}</strong>.
+        </span>
       </p>
-      <NextLink href="/comprar" className={`${buttonStyles.button} ${buttonStyles.primary}`}>
+      <NextLink
+        href="/comprar"
+        className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.small}`}
+      >
         {nivelActual === "ninguno" ? "Comprar acceso" : "Mejorar mi nivel"}
       </NextLink>
     </div>

@@ -2,6 +2,7 @@ import NextLink from "next/link";
 import { notFound } from "next/navigation";
 import { InicioShell } from "@/components/inicio/InicioShell";
 import buttonStyles from "@/components/ui/Button.module.css";
+import { Icon } from "@/components/ui/Icon";
 import dashboardStyles from "../dashboard.module.css";
 
 // =============================================================================
@@ -64,6 +65,9 @@ export default async function InicioPorNivelPage({
     return (
       <div className={dashboardStyles.wrap}>
         <div className={dashboardStyles.card}>
+          <span className={dashboardStyles.icono}>
+            <Icon name="candado" size={26} />
+          </span>
           <p className={dashboardStyles.eyebrow}>Tu cuenta</p>
           <h1 className={dashboardStyles.title}>Todavía no tenés acceso a ningún nivel</h1>
           <p className={dashboardStyles.copy}>

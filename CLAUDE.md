@@ -11,6 +11,11 @@ Este archivo se carga automático en cada sesión de Claude Code. Sirve como red
 5. **Si el proyecto cambia de forma significativa (nuevo módulo grande, nueva convención)** → actualizar este CLAUDE.md con `/init` o a mano.
 6. **¿Tocaste rendering/caching, bundle de cliente o algo que el CI mide en `docs/RENDIMIENTO.md`?** → seguir las reglas de ahí (qué rompe el build, qué se mide antes de aceptar una optimización).
 
+## Sistema visual ("Liquid Glass")
+
+- La UI se arma con las primitivas de `components/ui/glass.module.css` (material) y `components/ui/type.module.css` (tipografía), vía `composes`. Detalle y reglas en `DESIGN.md` → "Sistema de ESTE repo".
+- Regla dura: quien compone una primitiva **no redeclara** sus propiedades (el orden de carga entre CSS Modules no está garantizado); se ajusta con las variables `--g-*`, `--rim`, `--t-*`, o con un selector más específico.
+
 ## MCP servers
 
 Configurados en `.mcp.json` (se commitea, es compartido para todo el equipo):

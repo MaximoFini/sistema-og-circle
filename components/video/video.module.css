@@ -1,40 +1,82 @@
-/* VGRP-29 — camino de videos (Stage 1/2). Tokens de app/tokens.css. */
+/* VGRP-29 — camino de videos (Stage 1/2/3) y tarjeta de progreso. */
+
+/* ------------------------------------------------------------------ */
+/* Progreso (StatsVideos)                                               */
+/* ------------------------------------------------------------------ */
+
+.progreso {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Anillo: conic-gradient + máscara radial. `--progreso` es <percentage>
+   registrado → la transición interpola el llenado. */
+.anillo {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) var(--progreso), rgba(255, 255, 255, 0.1) 0);
+  -webkit-mask: radial-gradient(circle, transparent 19px, #000 20px);
+  mask: radial-gradient(circle, transparent 19px, #000 20px);
+  transition: --progreso 0.9s var(--ease-out);
+}
+
+.progresoTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.progresoTitulo {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--text-primary);
+}
 
 .stats {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   line-height: 1.4;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.progresoPorcentaje {
+  flex-shrink: 0;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }
 
 /* VGRP-28 — skeleton mientras carga la primera lectura de progreso. Mismo <p>/tamaño de
-   fuente que el texto real (línea 4 de arriba) — no genera salto de layout al resolver. */
+   fuente que el texto real — no genera salto de layout al resolver. */
 .skeletonBar {
   display: inline-block;
-  width: 11ch;
-  height: 1em;
-  vertical-align: text-bottom;
-  background: var(--surface-2);
-  border-radius: var(--radius-control);
-  animation: pulso 1.4s ease-in-out infinite;
+  width: 16ch;
+  height: 0.9em;
+  vertical-align: middle;
+  border-radius: 4px;
+  background: var(--fill);
+  animation: latido 1.4s ease-in-out infinite;
 }
 
-@keyframes pulso {
+@keyframes latido {
   50% {
-    opacity: 0.4;
+    opacity: 0.45;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .skeletonBar {
-    animation: none;
-  }
-}
-
-/* Rediseño "camino de aprendizaje" (2026-09-13, elegido sobre 3 propuestas): cada
-   video es un paso conectado por una línea vertical (estilo path de curso), no una
-   tarjeta suelta en una grilla. */
+/* ------------------------------------------------------------------ */
+/* Camino de aprendizaje: cada video es un paso conectado por un riel   */
+/* vertical, no una tarjeta suelta.                                     */
+/* ------------------------------------------------------------------ */
 
 .camino {
   display: flex;
@@ -43,7 +85,7 @@
 
 .fila {
   display: flex;
-  gap: var(--space-3);
+  gap: 14px;
 }
 
 .riel {
@@ -51,76 +93,96 @@
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
+  padding-top: 8px;
 }
 
 .nodo {
-  width: 32px;
-  height: 32px;
-  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-heading);
-  font-size: 13px;
-  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
 .nodoCompletado {
-  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
 }
 
 .nodoActual {
-  background: transparent;
-  border: 2px solid var(--accent-to);
-  color: var(--accent-to);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.5);
 }
 
 .nodoBloqueado {
-  background: var(--surface-2);
-  color: var(--text-muted);
+  color: var(--text-faint);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.12);
 }
 
 .linea {
-  width: 2px;
+  width: 1.5px;
   flex: 1;
-  min-height: var(--space-5);
-  background: var(--glass-border);
-  margin-block: 2px;
+  min-height: 12px;
+  margin-block: 6px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .lineaLlena {
-  background: var(--accent-to);
+  background: var(--accent);
 }
 
 .contenido {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding-bottom: var(--space-5);
+  gap: 12px;
   flex: 1;
   min-width: 0;
+  padding-bottom: 18px;
 }
 
 .filaMedia {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.textoPaso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 4px;
 }
 
 .thumbBtn {
   position: relative;
-  width: 96px;
-  height: 60px;
+  width: 112px;
+  aspect-ratio: 16 / 9;
   flex-shrink: 0;
-  border-radius: var(--radius-control);
+  border-radius: 10px;
   overflow: hidden;
   background: var(--surface-1);
   border: 0;
   padding: 0;
   cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: transform var(--duration-base) var(--ease-spring);
+}
+
+.thumbBtn:active {
+  transform: scale(0.97);
+}
+
+.thumbBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .thumbnailChica {
@@ -128,43 +190,106 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .thumbBtn:hover .thumbnailChica {
+    transform: scale(1.04);
+  }
+}
+
+/* Play: disco de vidrio thin centrado sobre el thumbnail. */
+.play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  padding-left: 2px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(20, 20, 22, 0.4);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(160%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 
 .etiquetaProximamente {
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: var(--fs-footnote);
+  color: var(--text-faint);
 }
 
 .embed {
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 14px;
+  background: #000;
 }
 
 .tituloPaso {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
   color: var(--text-primary);
 }
 
+/* Paso todavía no publicado: sólo el título, atenuado. */
+.fila[data-disponible="false"] .contenido {
+  padding-top: 10px;
+  padding-bottom: 20px;
+}
+
+.fila[data-disponible="false"] .tituloPaso {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
 .botonVisto {
-  align-self: flex-start;
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: var(--accent-to);
-  background: transparent;
-  border: 1px solid var(--accent-40);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  background: var(--fill);
+  border: 0;
   border-radius: var(--radius-pill);
-  padding: 2px var(--space-2);
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) linear,
+    transform var(--duration-base) var(--ease-spring);
+}
+
+@media (hover: hover) {
+  .botonVisto:hover:not(:disabled) {
+    background: var(--fill-hover);
+  }
+}
+
+.botonVisto:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.botonVisto:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .botonVisto:disabled {
-  color: var(--text-muted);
-  border-color: var(--glass-border);
+  color: var(--accent);
+  background: transparent;
+  padding-left: 0;
   cursor: default;
 }

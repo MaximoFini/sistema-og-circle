@@ -2,23 +2,45 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
   color: var(--text-primary);
 }
 
 .content {
   flex: 1;
+  /* Entrada de página: fundido + 6px, una sola vez. */
+  animation: entrar 0.5s var(--ease-out) backwards;
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 /* VGRP-34 — footer con los links legales. Estático, sin datos por usuario:
-   no rompe el criterio del layout de arriba (prerenderizable, sin cookies).
-   El estilo de cada link vive en components/ui/TextLink.tsx, no acá — es el
-   mismo estilo exacto que usa "← Volver a legales" en app/(legal)/. */
+   no rompe el criterio del layout (prerenderizable, sin cookies). */
 .footer {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2) var(--space-5);
-  padding: var(--space-5) var(--space-4);
-  border-top: 1px solid var(--glass-border);
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  width: 100%;
+  max-width: var(--layout-wrap-max-width);
+  margin: var(--space-8) auto 0;
+  padding: 20px var(--layout-wrap-padding-inline) 32px;
+  border-top: 1px solid var(--separator);
+}
+
+.footerMarca {
+  margin: 0;
+  font-size: var(--fs-footnote);
+  color: var(--text-faint);
+}
+
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
 }

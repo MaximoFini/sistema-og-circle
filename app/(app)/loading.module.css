@@ -1,9 +1,38 @@
 .contenedor {
   display: flex;
   justify-content: center;
-  padding: var(--space-7) var(--space-4);
+  padding: 96px 16px;
 }
 
 .texto {
-  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: var(--fs-subhead);
+  color: var(--text-muted);
+}
+
+/* Indicador de actividad (rayos), el mismo de comprar/pendiente. */
+.texto::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(from 20deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.75));
+  -webkit-mask:
+    repeating-conic-gradient(from -9deg, #000 0 18deg, transparent 18deg 45deg),
+    radial-gradient(circle, transparent 4px, #000 4.5px);
+  -webkit-mask-composite: source-in;
+  mask:
+    repeating-conic-gradient(from -9deg, #000 0 18deg, transparent 18deg 45deg),
+    radial-gradient(circle, transparent 4px, #000 4.5px);
+  mask-composite: intersect;
+  animation: girar 0.9s steps(8) infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
 }

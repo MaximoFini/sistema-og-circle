@@ -1,76 +1,69 @@
-/* Mismo lenguaje visual que comprar.module.css / dashboard.module.css:
-   tarjeta de vidrio centrada, mobile primero. */
+/* Confirmando el pago: estado centrado al estilo Apple, con el indicador de
+   actividad clásico (rayos que se apagan en secuencia). */
 
 .wrap {
-  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-5) var(--space-4);
+  min-height: calc(100dvh - var(--header-height) - 200px);
+  padding: 48px var(--layout-wrap-padding-inline);
 }
 
 .card {
+  composes: surface from "../../../../components/ui/glass.module.css";
+  --g-radius: var(--radius-panel);
   width: 100%;
   max-width: 480px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-5);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
+  align-items: center;
+  gap: 12px;
+  padding: 40px 28px 32px;
+  text-align: center;
 }
 
+/* Indicador de actividad: 8 rayos (máscara cónica repetida) sobre un
+   gradiente cónico que los apaga en secuencia; gira a pasos. */
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid var(--glass-border-active);
-  border-top-color: var(--accent-to);
-  border-radius: var(--radius-pill);
-  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: conic-gradient(from 20deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.9));
+  -webkit-mask:
+    repeating-conic-gradient(from -9deg, #000 0 18deg, transparent 18deg 45deg),
+    radial-gradient(circle, transparent 7px, #000 7.5px);
+  -webkit-mask-composite: source-in;
+  mask:
+    repeating-conic-gradient(from -9deg, #000 0 18deg, transparent 18deg 45deg),
+    radial-gradient(circle, transparent 7px, #000 7.5px);
+  mask-composite: intersect;
+  animation: girar 0.9s steps(8) infinite;
 }
 
-@keyframes spin {
+@keyframes girar {
   to {
     transform: rotate(360deg);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
-}
-
 .title {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--text-primary);
+  composes: title1 from "../../../../components/ui/type.module.css";
 }
 
 .copy {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  composes: body from "../../../../components/ui/type.module.css";
+  --t-size: 15px;
+  max-width: 36ch;
 }
 
 .nivelDestacado {
   text-transform: capitalize;
-  color: var(--accent-to);
-  font-weight: 700;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
-/* Estado de timeout (2 min sin resolverse): mismo look de tarjeta, sin
-   spinner (ya no está "en curso", está "tardando"). */
+/* Timeout (2 min sin resolverse): mismo estado, sin indicador. */
 .timeoutTitle {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--danger);
+  composes: title1 from "../../../../components/ui/type.module.css";
 }

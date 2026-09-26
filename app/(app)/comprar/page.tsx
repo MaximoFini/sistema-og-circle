@@ -1,3 +1,4 @@
+import { Icon } from "@/components/ui/Icon";
 import { getPrecios } from "@/lib/config";
 import { formatearPrecio } from "@/lib/format";
 import type { NivelComprable } from "@/lib/mercadopago/preferencia";
@@ -38,6 +39,9 @@ export default async function ComprarPage() {
     return (
       <div className={styles.wrap}>
         <div className={styles.errorCard}>
+          <span className={styles.errorIcono}>
+            <Icon name="candado" size={24} />
+          </span>
           <h1 className={styles.errorTitle}>Checkout no disponible</h1>
           <p className={styles.copy}>
             No pudimos cargar los precios en este momento. Probá de nuevo en unos minutos — si el
@@ -56,7 +60,11 @@ export default async function ComprarPage() {
       </div>
 
       {NIVELES_COMPRABLES.map((nivel) => (
-        <div key={nivel} className={styles.card}>
+        // Avanzado es el nivel completo: se destaca sólo con el reflejo ámbar del borde.
+        <div
+          key={nivel}
+          className={nivel === "avanzado" ? `${styles.card} ${styles.cardDestacada}` : styles.card}
+        >
           <p className={styles.nivelNombre}>{nivel}</p>
           <p className={styles.precio}>
             {formatearPrecio.format(precios.precios[nivel])}

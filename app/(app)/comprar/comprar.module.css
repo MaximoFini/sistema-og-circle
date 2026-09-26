@@ -1,106 +1,127 @@
-/* Mobile primero, mismo criterio que dashboard.module.css: una sola columna
-   apilada. Con sólo dos niveles no hace falta un grid de escritorio para
-   este ticket — se puede sumar después sin tocar nada de lo de acá. */
+/* Compra de nivel: encabezado centrado + dos tarjetas de precio (estilo
+   comparador de la Apple Store). En mobile se apilan; desde 760px van lado a
+   lado. Avanzado se distingue sólo por el reflejo ámbar del borde. */
 
 .wrap {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-6) var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  padding: 48px var(--layout-wrap-padding-inline) 0;
 }
 
 .heading {
-  width: 100%;
-  max-width: 480px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  text-align: center;
 }
 
 .eyebrow {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  text-transform: uppercase;
-  color: var(--accent-to);
+  composes: eyebrow from "../../../components/ui/type.module.css";
 }
 
 .title {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--text-primary);
+  composes: largeTitle from "../../../components/ui/type.module.css";
 }
 
 .card {
-  width: 100%;
-  max-width: 480px;
+  composes: surface from "../../../components/ui/glass.module.css";
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-5);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
+  gap: 12px;
+  padding: 28px;
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 36px;
+  }
+}
+
+.cardDestacada {
+  composes: accent from "../../../components/ui/glass.module.css";
 }
 
 .nivelNombre {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--text-primary);
+  font-size: var(--fs-title3);
+  font-weight: 650;
+  letter-spacing: -0.018em;
   text-transform: capitalize;
+  color: var(--text-primary);
 }
 
 .precio {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--accent-to);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 4px 0 8px;
+  font-size: clamp(40px, 5vw, 52px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }
 
 .precio span {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin-left: var(--space-2);
+  font-size: var(--fs-subhead);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text-muted);
 }
 
 .copy {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.5;
+  composes: body from "../../../components/ui/type.module.css";
+  --t-margin: 0 0 12px;
+  flex: 1;
+}
+
+@media (min-width: 760px) {
+  .wrap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .heading {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Estado fail-closed de `getPrecios()`: nunca se inventa un precio, se
+   deshabilita el checkout con un mensaje explícito. */
+.errorCard {
+  composes: surface from "../../../components/ui/glass.module.css";
+  --g-radius: var(--radius-panel);
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 480px;
+  margin: 24px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 28px 32px;
+  text-align: center;
+}
+
+.errorIcono {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--fill);
   color: var(--text-secondary);
 }
 
-/* Estado fail-closed de `getPrecios()` (CLAUDE.md): nunca se inventa un
-   precio, se deshabilita el checkout con un mensaje explícito. Mismo look
-   de `.card` para no introducir un segundo lenguaje visual sólo para el
-   error. */
-.errorCard {
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-6) var(--space-5);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
-}
-
 .errorTitle {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--danger);
+  composes: title1 from "../../../components/ui/type.module.css";
 }

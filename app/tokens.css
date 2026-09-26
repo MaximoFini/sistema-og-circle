@@ -1,95 +1,158 @@
 /*
- * app/tokens.css — Design tokens de OG Circle
+ * app/tokens.css — Design tokens de OG Circle ("Liquid Glass")
  *
- * Portados desde DESIGN.md (Guía de Diseño y Estilos — VeGroup, sistema
- * "NEXOVA — dark cinematic"). Fuente de la verdad: DESIGN.md en la raíz
- * del repo. No inventar valores acá — cualquier cambio de paleta o
- * tipografía se hace primero en DESIGN.md y se porta después.
+ * Fuente de la verdad: DESIGN.md → "Sistema de ESTE repo". Cualquier valor
+ * nuevo se documenta ahí. Dark mode es el único modo.
  *
- * Dark mode es el único modo (DESIGN.md §0): no hay tokens de tema claro.
+ * Principios:
+ *   1. Contención. Una familia tipográfica, un acento (ámbar), jerarquía por
+ *      tamaño/peso/opacidad — no por decoración.
+ *   2. Material, no bordes. Las superficies son vidrio (tres grosores, como
+ *      los materiales de Apple) sobre un fondo cálido y quieto.
+ *   3. El ámbar significa algo: acción principal, progreso o estado activo.
  */
 
 :root {
-  /* --- Acento (único color del sistema, fuera de blanco/negro) --- */
+  /* ------------------------------------------------------------------ */
+  /* Color                                                                */
+  /* ------------------------------------------------------------------ */
+
+  /* Acento — ámbar de la marca (mismos valores que la landing). */
   --accent-from: #d99e00;
   --accent-to: #f5b813;
-  --accent-05: rgba(217, 158, 0, 0.05);
-  --accent-40: rgba(217, 158, 0, 0.4);
+  --accent: #f5b813;
+  --accent-soft: #ffd66b;
+  --accent-05: rgba(245, 184, 19, 0.05);
+  --accent-12: rgba(245, 184, 19, 0.12);
+  --accent-20: rgba(245, 184, 19, 0.2);
+  --accent-40: rgba(245, 184, 19, 0.4);
+  --accent-fill: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  /* Texto sobre ámbar: nunca blanco (regla dura heredada de la landing). */
+  --on-accent: #0b0800;
 
-  /* --- Fondo y superficies (jerarquía por oscuridad, no por borde) --- */
+  /* Fondo y superficies opacas (inputs nativos del admin, fallbacks). */
   --bg: #050505;
-  --surface-1: #0a0a0a;
-  --surface-1-hover: #111111;
-  --surface-2: #080808;
-  --surface-3: #060606;
+  --surface-1: #111113;
+  --surface-1-hover: #18181b;
+  --surface-2: #0c0c0e;
+  --surface-3: #09090a;
 
-  /* --- Champán: único color de texto que no es blanco ni ámbar --- */
-  --champagne: rgba(232, 210, 170, 0.88);
+  /* Champán: acento secundario, sólo tipográfico y en detalles. */
+  --champagne: rgba(236, 216, 180, 0.9);
 
-  /* --- Estado --- */
-  --danger: #ef4444;
+  /* Estado */
+  --danger: #ff6961;
+  --danger-soft: rgba(255, 105, 97, 0.12);
+  --success: #63e6a4;
+  --success-soft: rgba(99, 230, 164, 0.12);
 
-  /* --- Vidrio (glassmorphism) --- */
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-active: rgba(255, 255, 255, 0.18);
+  /* Etiquetas — escala de Apple (label / secondary / tertiary / quaternary)
+     sobre blanco cálido. */
+  --text-primary: rgba(255, 253, 250, 0.94);
+  --text-secondary: rgba(245, 242, 236, 0.6);
+  --text-muted: rgba(245, 242, 236, 0.44);
+  --text-faint: rgba(245, 242, 236, 0.26);
 
-  /* --- Texto: jerarquía por opacidad de blanco --- */
-  --text-primary: rgba(255, 255, 255, 0.92);
-  --text-secondary: rgba(255, 255, 255, 0.5);
-  --text-muted: rgba(255, 255, 255, 0.46);
+  /* Separadores y rellenos de controles (fill / secondaryFill de Apple). */
+  --separator: rgba(255, 255, 255, 0.08);
+  --separator-strong: rgba(255, 255, 255, 0.14);
+  --fill: rgba(255, 255, 255, 0.07);
+  --fill-hover: rgba(255, 255, 255, 0.11);
+  --fill-quiet: rgba(255, 255, 255, 0.04);
 
-  /*
-   * --- Tipografía ---
-   * DESIGN.md §2: Helvetica Now Var (body, CDN de terceros db.onlinewebfonts.com,
-   * no migrable a next/font), Montserrat (headings/números/labels, Google Fonts
-   * 300-900 + itálica 400), Inter (body copy dentro de .elegant-section, 300-600),
-   * Cormorant Garamond (serif de números de hero, solo peso 300).
-   *
-   * Este bootstrap no carga los <link> de fuentes todavía (eso depende de las
-   * pantallas que las usen). Los tokens de familia quedan declarados con
-   * fallback de sistema para que layouts futuros los consuman ya mismo.
-   */
-  --font-body:
-    "Helvetica Now Var", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-heading:
-    "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-body-alt:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-serif-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  /* Compatibilidad con nombres previos. */
+  --glass-bg: var(--fill-quiet);
+  --glass-border: var(--separator);
+  --glass-border-active: var(--separator-strong);
+  --hairline: var(--separator);
 
-  /* --- Escala tipográfica (DESIGN.md §2) --- */
-  --text-h1-size: clamp(48px, 7vw, 100px);
-  --text-h1-weight: 900;
-  --text-h1-line-height: 0.95;
-  --text-h1-letter-spacing: -0.03em;
+  /* ------------------------------------------------------------------ */
+  /* Liquid glass — tres grosores (thin / regular / thick)                */
+  /* ------------------------------------------------------------------ */
 
-  --text-h2-size: clamp(36px, 5vw, 64px);
-  --text-h2-weight: 800;
+  --glass-thin-fill: rgba(28, 28, 30, 0.42);
+  --glass-regular-fill: rgba(30, 30, 33, 0.5);
+  --glass-thick-fill: rgba(24, 24, 27, 0.74);
+  /* Luz del material: apenas más claro arriba. */
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012));
 
-  --text-h3-size: clamp(18px, 2vw, 22px);
-  --text-h3-weight: 700;
+  --glass-blur-thin: blur(20px) saturate(170%);
+  --glass-blur: blur(32px) saturate(180%);
+  --glass-blur-thick: blur(48px) saturate(190%);
 
-  --text-lede-size: clamp(15px, 1.6vw, 18px);
-  --text-lede-max-width: 52ch;
+  /* Reflejo especular del borde (misma receta que `.liquid-glass` de la
+     landing): la luz entra por arriba y rebota abajo; los laterales casi no
+     brillan. */
+  --glass-rim: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.08) 22%,
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0.05) 78%,
+    rgba(255, 255, 255, 0.14) 100%
+  );
+  --glass-rim-accent: linear-gradient(
+    180deg,
+    rgba(255, 214, 107, 0.55) 0%,
+    rgba(245, 184, 19, 0.16) 30%,
+    rgba(245, 184, 19, 0.06) 60%,
+    rgba(245, 184, 19, 0.3) 100%
+  );
 
-  --text-tag-label-size: 10px;
-  --text-tag-label-letter-spacing: 0.28em;
+  --glass-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.25), 0 12px 32px -12px rgba(0, 0, 0, 0.55),
+    0 40px 80px -40px rgba(0, 0, 0, 0.6);
+  --glass-shadow-thick: 0 2px 4px rgba(0, 0, 0, 0.3), 0 24px 60px -16px rgba(0, 0, 0, 0.7);
 
-  /* --- Layout (DESIGN.md §5) --- */
-  --layout-wrap-max-width: 1240px;
-  --layout-wrap-padding-inline: clamp(20px, 5vw, 72px);
-  --layout-section-padding-block: clamp(72px, 10vw, 140px);
+  /* ------------------------------------------------------------------ */
+  /* Tipografía — escala de Apple (Large Title → Caption)                 */
+  /* ------------------------------------------------------------------ */
 
-  /*
-   * --- Espaciado ---
-   * DESIGN.md NO documenta una escala de espaciado (la landing usa valores
-   * literales regla por regla). Esta escala es NUEVA, agregada para los
-   * formularios del Bloque 2: base 4px, la mínima necesaria para no volver a
-   * elegir números a ojo en cada componente. Los dos anclajes sí salen de
-   * DESIGN.md: 16px es el `top` de `.nav-header` (§3) y 24px es el techo de
-   * desplazamiento del presupuesto de movimiento (§4).
-   */
+  --font-sans:
+    var(--font-inter), -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-body: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --fs-large-title: clamp(34px, 4.4vw, 52px);
+  --fs-title1: clamp(26px, 2.6vw, 30px);
+  --fs-title2: 22px;
+  --fs-title3: 19px;
+  --fs-headline: 16px;
+  --fs-body: 15px;
+  --fs-callout: 14px;
+  --fs-subhead: 13.5px;
+  --fs-footnote: 12.5px;
+  --fs-caption: 11.5px;
+
+  /* Compatibilidad con nombres previos de la escala. */
+  --text-h1-size: var(--fs-large-title);
+  --text-h2-size: var(--fs-title1);
+  --text-h3-size: var(--fs-title3);
+  --text-h3-weight: 600;
+  --text-lede-size: 16px;
+  --text-lede-max-width: 58ch;
+  --text-tag-label-size: var(--fs-footnote);
+  --text-tag-label-letter-spacing: 0;
+
+  /* ------------------------------------------------------------------ */
+  /* Forma                                                                */
+  /* ------------------------------------------------------------------ */
+
+  --radius-xs: 8px;
+  --radius-control: 14px;
+  --radius-row: 16px;
+  --radius-card: 22px;
+  --radius-surface: 28px;
+  --radius-panel: 34px;
+  --radius-pill: 999px;
+
+  /* ------------------------------------------------------------------ */
+  /* Espacio y layout (grilla de 4/8)                                     */
+  /* ------------------------------------------------------------------ */
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -97,41 +160,181 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
 
-  /*
-   * --- Radios de borde ---
-   * DESIGN.md tampoco los documenta. NUEVOS, mínimos: uno para controles
-   * (inputs, botones), uno para contenedores (tarjetas de vidrio) y la
-   * píldora para los CTA redondeados.
-   */
-  --radius-control: 10px;
-  --radius-surface: 16px;
-  --radius-pill: 999px;
+  --layout-wrap-max-width: 1120px;
+  --layout-wrap-padding-inline: clamp(16px, 4vw, 40px);
+  --header-height: 76px;
 
-  /*
-   * --- Movimiento ---
-   * Portado de DESIGN.md §3 (mecanismo de tilt): entrada 0.1s lineal, salida
-   * 0.5s con `cubic-bezier(.16,1,.3,1)`. `--duration-base` (0.2s) es el único
-   * valor NUEVO acá: es el punto medio para hovers/foco de controles, donde
-   * 0.1s se siente cortado y 0.5s se siente lento en un formulario.
-   */
-  --duration-fast: 0.1s;
-  --duration-base: 0.2s;
+  /* ------------------------------------------------------------------ */
+  /* Foco y movimiento                                                    */
+  /* ------------------------------------------------------------------ */
+
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgba(245, 184, 19, 0.55);
+
+  --duration-fast: 0.14s;
+  --duration-base: 0.26s;
   --duration-slow: 0.5s;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Resorte suave, sin rebote exagerado. */
+  --ease-spring: cubic-bezier(0.3, 1.25, 0.5, 1);
 }
 
-* {
+/* ==================================================================== */
+/* Variables de ajuste de las primitivas (components/ui/glass.module.css y   */
+/* type.module.css). No se heredan: cada una aplica sólo al elemento que la */
+/* declara — si no, un `--g-position: fixed` del drawer lo heredaría la      */
+/* tarjeta de vidrio que tiene adentro.                                      */
+/* ==================================================================== */
+
+@property --g-position {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --g-radius {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --g-bg {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --rim {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --t-size {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --t-margin {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --t-color {
+  syntax: "*";
+  inherits: false;
+}
+
+/* Progreso del anillo (StatsVideos): registrado como <percentage> para que
+   el navegador pueda interpolarlo — el anillo se llena con transición. */
+@property --progreso {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+
+/* ==================================================================== */
+/* Base                                                                   */
+/* ==================================================================== */
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
   background: var(--bg);
   color: var(--text-primary);
+  color-scheme: dark;
+  /* Reserva el lugar de la barra de scroll: al abrir el menú (scroll lock)
+     la página no se corre de lugar. */
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  font-family: var(--font-body);
+  position: relative;
   margin: 0;
+  min-height: 100dvh;
+  /* Transparente: el fondo es <html> + las dos capas ambientales de abajo,
+     que el vidrio necesita para refractar. */
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-optical-sizing: auto;
+  line-height: 1.5;
+  letter-spacing: -0.006em;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(245, 184, 19, 0.3);
+  color: #fff;
+}
+
+/* Fondo ambiental — capa 1: tres luces cálidas muy difusas. Estático a
+   propósito: animarlo obligaría a recalcular cada backdrop-filter de la
+   página en cada frame. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(60vmax 42vmax at 8% -6%, rgba(245, 184, 19, 0.16), transparent 62%),
+    radial-gradient(46vmax 36vmax at 100% 30%, rgba(236, 206, 160, 0.075), transparent 64%),
+    radial-gradient(56vmax 40vmax at 70% 110%, rgba(217, 140, 0, 0.11), transparent 62%);
+}
+
+/* Capa 2: viñeta + grano. Receta de `.film-grain` de la landing: ruido en el
+   canal alfa (no en RGB), sRGB, contraste estirado, a opacidad 0.032 —
+   textura de ~1 LSB que rompe el banding sin ensuciar. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(125% 125% at 50% 40%, transparent 50%, rgba(0, 0, 0, 0.35) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='g' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.33 0.33 0.33 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='4' intercept='-1.7'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)' opacity='0.032'/%3E%3C/svg%3E");
+}
+
+/* Movimiento reducido: todo instantáneo, en un solo lugar. `!important` a
+   propósito: tiene que ganarle a cualquier animación de cualquier módulo. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: override global de accesibilidad */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: override global de accesibilidad */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: override global de accesibilidad */
+    transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: override global de accesibilidad */
+    scroll-behavior: auto !important;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
 }

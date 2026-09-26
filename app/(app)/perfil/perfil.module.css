@@ -1,142 +1,331 @@
-/* VGRP-33 — mismo lenguaje visual que components/inicio/inicio.module.css
-   (.card/.badge) y app/(app)/comprar/comprar.module.css (tokens de tipografía). */
+/* VGRP-33 — Perfil, al estilo de la página de cuenta de Apple.
+   Mobile: una columna. Desde 960px: "Tus datos" a la izquierda y las listas
+   agrupadas (accesos, atajos, soporte, cerrar sesión) a la derecha. */
 
 .page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
   max-width: var(--layout-wrap-max-width);
   margin-inline: auto;
-  padding: var(--space-6) var(--space-4);
+  padding: 40px var(--layout-wrap-padding-inline) 0;
 }
+
+/* --- Encabezado --- */
 
 .encabezado {
   display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 4px 20px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #6b6660, #45413d);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 10px 24px -10px rgba(0, 0, 0, 0.7);
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.encabezadoTexto {
+  display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 
 .eyebrow {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  text-transform: uppercase;
-  color: var(--accent-to);
+  composes: eyebrow from "../../../components/ui/type.module.css";
 }
 
 .titulo {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h2-size);
-  font-weight: var(--text-h2-weight);
-  color: var(--text-primary);
+  composes: largeTitle from "../../../components/ui/type.module.css";
 }
 
 .nivelActivo {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
+  margin: 6px 0 0;
+  font-size: var(--fs-subhead);
   color: var(--text-secondary);
-  text-transform: capitalize;
 }
 
-.card {
+.nivelActivo strong {
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--accent);
+}
+
+/* --- Tus datos --- */
+
+.cardDatos {
+  composes: surface from "../../../components/ui/glass.module.css";
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-surface);
+  gap: 24px;
+  padding: 28px 24px;
+}
+
+@media (min-width: 640px) {
+  .cardDatos {
+    padding: 32px;
+  }
+}
+
+.cardCabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .h2 {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-h3-size);
-  font-weight: var(--text-h3-weight);
-  color: var(--text-primary);
+  composes: title2 from "../../../components/ui/type.module.css";
 }
 
 .email {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--fs-subhead);
   color: var(--text-muted);
-}
-
-.descripcion {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-secondary);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  max-width: 420px;
+  gap: 18px;
+  max-width: 440px;
 }
 
 .exito {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--accent-to);
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  color: var(--success);
 }
 
-.listaAccesos {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* --- Listas agrupadas (derecha) --- */
+
+.columna {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  font-family: var(--font-body);
-  font-size: 14px;
+  gap: 28px;
+}
+
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Título de grupo por fuera de la tarjeta, como en Ajustes de iOS. */
+.grupoTitulo {
+  margin: 0;
+  padding-inline: 16px;
+  font-size: var(--fs-headline);
+  font-weight: 650;
+  letter-spacing: -0.014em;
+  color: var(--text-primary);
+}
+
+.grupoPie {
+  margin: 0;
+  padding-inline: 16px;
+  font-size: var(--fs-footnote);
+  color: var(--text-muted);
+}
+
+.lista {
+  composes: surface from "../../../components/ui/glass.module.css";
+  --g-radius: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grupoCuerpo {
+  composes: surface from "../../../components/ui/glass.module.css";
+  --g-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 16px;
+}
+
+/* Dentro del bloque "Avanzado suma, además", la lista no es otra tarjeta. */
+.grupoCuerpo .lista {
+  --g-bg: transparent;
+  --rim: none;
+  width: 100%;
+  padding: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.descripcion {
+  composes: body from "../../../components/ui/type.module.css";
+}
+
+/* Fila de acceso: check + texto, separador inset. */
+.acceso {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+
+.acceso + .acceso::before,
+.fila + .fila::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 46px;
+  height: 1px;
+  background: var(--separator);
+}
+
+.check {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.accesoPendiente {
   color: var(--text-secondary);
 }
 
-.listaAccesos li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.accesoPendiente .check {
+  color: var(--text-muted);
 }
 
-.listaAccesos li::before {
-  content: "";
-  width: 6px;
-  height: 6px;
+.grupoCuerpo .acceso {
+  padding: 0;
+}
+
+.grupoCuerpo .acceso + .acceso::before {
+  left: 30px;
+}
+
+/* Fila con ícono (atajos, soporte). */
+.fila {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 16px 0 12px;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.fila + .fila::before {
+  left: 56px;
+}
+
+.filaLink {
+  border-radius: 20px;
+  transition: background-color var(--duration-fast) linear;
+}
+
+@media (hover: hover) {
+  .filaLink:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.filaLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.iconTile {
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--accent-to);
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-primary);
+}
+
+.filaLabel {
+  flex: 1;
+  min-width: 0;
 }
 
 .badge {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent-to);
-  background: var(--accent-05);
-  border: 1px solid var(--accent-40);
-  border-radius: var(--radius-pill);
-  padding: 2px var(--space-2);
-  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: var(--fs-footnote);
+  color: var(--text-faint);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-faint);
 }
 
 .ctaComprar {
-  align-self: flex-start;
-  font-family: var(--font-heading);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--bg);
-  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
-  border-radius: var(--radius-pill);
-  padding: var(--space-3) var(--space-5);
-  white-space: nowrap;
+  composes: button primary from "../../../components/ui/Button.module.css";
+}
+
+/* Cerrar sesión: acción destructiva, fila propia (como en Ajustes). */
+.salir {
+  composes: surface from "../../../components/ui/glass.module.css";
+  --g-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--danger);
+  border: 0;
+  cursor: pointer;
+}
+
+.salir:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .salir:hover {
+    color: #ff8a84;
+  }
+}
+
+@media (min-width: 960px) {
+  .page {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 24px 32px;
+  }
+
+  .encabezado {
+    grid-column: 1 / -1;
+  }
 }

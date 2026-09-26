@@ -6,6 +6,7 @@
 // una vez resuelto.
 
 import { useEffect, useState } from "react";
+import { iniciales } from "./iniciales";
 import styles from "./inicio.module.css";
 
 interface ProfesionalRespuesta {
@@ -36,23 +37,32 @@ export function ProfesionalesGrid() {
   }, []);
 
   if (!profesionales) {
-    return <p className={styles.descripcion}>Cargando profesionales…</p>;
+    return <p className={styles.estado}>Cargando profesionales…</p>;
   }
 
   if (profesionales.length === 0) {
-    return <p className={styles.descripcion}>Todavía no hay profesionales cargados.</p>;
+    return <p className={styles.estado}>Todavía no hay profesionales cargados.</p>;
   }
 
   return (
     <div className={styles.agentesGrid}>
       {profesionales.map((prof) => (
         <div key={prof.id} className={styles.agenteCard}>
-          <strong>{prof.publicMeta.nombre}</strong>
-          <p className={styles.descripcion}>{prof.publicMeta.rubro}</p>
+          {/* <span>, no <div>: e2e/gating-contenido.spec.ts toma el ÚLTIMO div que
+              contiene el nombre y espera que sea la tarjeta entera (con el CTA). */}
+          <span className={styles.agenteCabecera}>
+            <span className={styles.iniciales} aria-hidden="true">
+              {iniciales(prof.publicMeta.nombre)}
+            </span>
+            <span className={styles.agenteNombre}>
+              <strong>{prof.publicMeta.nombre}</strong>
+              <span className={styles.meta}>{prof.publicMeta.rubro}</span>
+            </span>
+          </span>
           {prof.publicMeta.descripcion ? (
-            <p className={styles.descripcion}>{prof.publicMeta.descripcion}</p>
+            <p className={styles.textoTarjeta}>{prof.publicMeta.descripcion}</p>
           ) : null}
-          {prof.contacto ? <p className={styles.descripcion}>{prof.contacto}</p> : null}
+          {prof.contacto ? <p className={styles.contacto}>{prof.contacto}</p> : null}
         </div>
       ))}
     </div>

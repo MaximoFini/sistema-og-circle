@@ -1,68 +1,89 @@
+/*
+ * Campo de texto estilo Apple: relleno translúcido, sin borde; el foco se
+ * marca con un anillo ámbar. Label arriba, en sentence case.
+ */
+
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 8px;
   width: 100%;
 }
 
 .label {
-  font-family: var(--font-heading);
-  font-size: var(--text-tag-label-size);
-  letter-spacing: var(--text-tag-label-letter-spacing);
-  text-transform: uppercase;
-  color: var(--text-muted);
+  padding-inline: 4px;
+  font-size: var(--fs-subhead);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text-secondary);
 }
 
 .input {
   /* 16px como mínimo: por debajo de eso iOS Safari hace zoom al enfocar. */
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-size: 16px;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
+  caret-color: var(--accent);
   /* Alto cómodo de toque en mobile, que es el grueso de la audiencia. */
-  min-height: 48px;
+  min-height: 50px;
   width: 100%;
-  padding: var(--space-3) var(--space-4);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  padding: 0 16px;
+  background: var(--fill);
+  border: 0;
   border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   transition:
-    border-color var(--duration-base) var(--ease-out-expo),
-    background-color var(--duration-base) var(--ease-out-expo);
+    background-color var(--duration-fast) linear,
+    box-shadow var(--duration-base) var(--ease-out);
 }
 
 .input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-faint);
 }
 
-.input:hover:not(:disabled) {
-  border-color: var(--glass-border-active);
+@media (hover: hover) {
+  .input:hover:not(:disabled):not(:focus) {
+    background-color: var(--fill-hover);
+  }
 }
 
 .input:focus-visible {
-  /* DESIGN.md §1: `--accent-40` es, textualmente, el borde de input en foco. */
-  outline: 2px solid var(--accent-40);
-  outline-offset: 2px;
-  border-color: var(--accent-from);
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 0 0 1px rgba(245, 184, 19, 0.6),
+    0 0 0 4px rgba(245, 184, 19, 0.16);
+}
+
+/* Autocompletado del navegador: sin el fondo amarillo/celeste por defecto. */
+.input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px #1b1b1d inset;
+  transition: background-color 9999s;
 }
 
 .input:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .inputError,
 .inputError:hover:not(:disabled) {
-  border-color: var(--danger);
+  background-color: var(--danger-soft);
+  box-shadow: inset 0 0 0 1px rgba(255, 105, 97, 0.55);
 }
 
 .hint {
   margin: 0;
-  font-size: 13px;
+  padding-inline: 4px;
+  font-size: var(--fs-footnote);
   color: var(--text-muted);
 }
 
 .error {
   margin: 0;
-  font-size: 13px;
+  padding-inline: 4px;
+  font-size: var(--fs-footnote);
   color: var(--danger);
 }
