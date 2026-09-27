@@ -139,15 +139,21 @@ a.brandLink {
   box-shadow: var(--focus-ring);
 }
 
-.logoutForm {
+.acciones {
   display: flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
 }
 
 @media (min-width: 900px) {
-  .logoutForm {
+  .acciones {
     margin-left: 0;
   }
+}
+
+.logoutForm {
+  display: flex;
 }
 
 /* --- Contenido ----------------------------------------------------------- */

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getRol } from "@/lib/auth/claims";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
 
 // VGRP-27 — datos mínimos de perfil para el pie del drawer de navegación
@@ -23,5 +24,12 @@ export async function GET() {
     return NextResponse.json({ error: "No se pudo leer el perfil." }, { status: 500 });
   }
 
-  return NextResponse.json({ nombre: data.nombre, email: data.email });
+  // `esAdmin` sale del claim ya verificado (cero queries): sólo decide si el
+  // menú muestra el acceso al panel. No es un permiso — `/admin` sigue
+  // protegido por middleware, layout y `requireAdmin()` en cada handler.
+  return NextResponse.json({
+    nombre: data.nombre,
+    email: data.email,
+    esAdmin: getRol(claims) === "admin",
+  });
 }

@@ -8,6 +8,8 @@ import styles from "./nav.module.css";
 export interface PerfilResumen {
   nombre: string | null;
   email: string;
+  /** Muestra el acceso al panel de admin en el menú (NavDrawer.tsx). */
+  esAdmin?: boolean;
 }
 
 export interface UserFooterProps {

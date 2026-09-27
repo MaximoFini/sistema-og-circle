@@ -1,5 +1,7 @@
+import NextLink from "next/link";
 import type { ReactNode } from "react";
 import { Button, TextLink } from "@/components/ui";
+import buttonStyles from "@/components/ui/Button.module.css";
 import { cerrarSesion } from "@/lib/auth/actions";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { AdminNav } from "./AdminNav";
@@ -38,11 +40,21 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
           <AdminNav />
 
-          <form action={cerrarSesion} className={styles.logoutForm}>
-            <Button type="submit" variant="ghost" size="sm">
-              Cerrar sesión
-            </Button>
-          </form>
+          <div className={styles.acciones}>
+            {/* Vuelta al panel general, como cualquier usuario. Link (no
+                botón) con los estilos del Button: es navegación, no acción. */}
+            <NextLink
+              href="/dashboard"
+              className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.small}`}
+            >
+              Ir al panel general
+            </NextLink>
+            <form action={cerrarSesion} className={styles.logoutForm}>
+              <Button type="submit" variant="ghost" size="sm">
+                Cerrar sesión
+              </Button>
+            </form>
+          </div>
         </header>
       </div>
 

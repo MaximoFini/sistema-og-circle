@@ -148,6 +148,23 @@ export function NavDrawer({
               ),
             )}
           </ul>
+
+          {/* Sólo visible para admins (`esAdmin` viene de /api/perfil). Grupo
+              propio, separado de los destinos: no es un destino del usuario
+              sino un cambio de modo. */}
+          {perfil?.esAdmin ? (
+            <ul className={styles.lista}>
+              <li className={styles.item}>
+                <NextLink href="/admin" className={styles.destino} onClick={onCerrar}>
+                  <span className={`${styles.iconTile} ${styles.iconTileAdmin}`}>
+                    <Icon name="escudo" size={18} />
+                  </span>
+                  <span className={styles.destinoLabel}>Panel de administrador</span>
+                  <Icon name="chevron" size={16} className={styles.chevron} />
+                </NextLink>
+              </li>
+            </ul>
+          ) : null}
         </nav>
 
         <form action={cerrarSesion}>

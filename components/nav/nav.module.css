@@ -388,6 +388,7 @@
 .nav {
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
 .lista {
@@ -471,6 +472,13 @@
 .destino[aria-current="page"] .iconTile {
   background: var(--accent);
   color: var(--on-accent);
+}
+
+/* Acceso al panel de admin: tile ámbar tenue, para que se lea como un
+   cambio de modo y no como un destino más. */
+.iconTileAdmin {
+  background: rgba(245, 184, 19, 0.16);
+  color: var(--accent);
 }
 
 .destinoProximamente .iconTile {
