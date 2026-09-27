@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Button, FormError } from "@/components/ui";
 import { Constants } from "@/lib/database.types";
+import { videoProvider } from "@/lib/video/provider";
 import styles from "../../admin.module.css";
 
 const NIVELES = Constants.public.Enums.nivel_acceso;
@@ -40,9 +41,8 @@ const CAMPOS: Record<string, CampoConfig[]> = {
     { name: "descripcion", label: "Descripción", tipo: "textarea" },
     {
       name: "provider_ref",
-      label: "Link del video de YouTube (sensible)",
-      ayuda:
-        "Pegá el link completo tal cual lo copiás de YouTube (botón Compartir o barra de direcciones). El id del video se extrae solo al guardar.",
+      label: `Link del video de ${videoProvider.nombre} (sensible)`,
+      ayuda: `Pegá el link completo tal cual lo copiás de ${videoProvider.nombre} (botón Compartir o barra de direcciones). El id del video se extrae solo al guardar.`,
       tipo: "text",
     },
     {
@@ -161,6 +161,19 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
     }
   }
 
+  // Mismo cableado a11y para todos los controles: la ayuda y el error del
+  // campo (ids de abajo) se anuncian junto al control.
+  function ariaCampo(campo: CampoConfig) {
+    const error = erroresCampo[campo.name];
+    const describedby = [campo.ayuda && `ayuda-${campo.name}`, error && `error-${campo.name}`]
+      .filter(Boolean)
+      .join(" ");
+    return {
+      "aria-invalid": error ? true : undefined,
+      "aria-describedby": describedby || undefined,
+    };
+  }
+
   return (
     <form className={styles.formCambiarNivel} onSubmit={onSubmit}>
       {campos.map((campo) =>
@@ -185,17 +198,23 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
               {campo.label}
               {campo.requerido ? " *" : ""}
             </span>
-            {campo.ayuda ? <span className={styles.formAyuda}>{campo.ayuda}</span> : null}
+            {campo.ayuda ? (
+              <span id={`ayuda-${campo.name}`} className={styles.formAyuda}>
+                {campo.ayuda}
+              </span>
+            ) : null}
 
             {campo.tipo === "textarea" ? (
               <textarea
                 className={styles.textareaNativo}
+                {...ariaCampo(campo)}
                 value={(valores[campo.name] as string) ?? ""}
                 onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.value }))}
               />
             ) : campo.tipo === "nivel" ? (
               <select
                 className={styles.selectNativo}
+                {...ariaCampo(campo)}
                 value={(valores[campo.name] as string) ?? "principiante"}
                 onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.value }))}
               >
@@ -208,6 +227,7 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
             ) : campo.tipo === "stage" ? (
               <select
                 className={styles.selectNativo}
+                {...ariaCampo(campo)}
                 value={String(valores[campo.name] ?? 1)}
                 onChange={(e) =>
                   setValores((v) => ({ ...v, [campo.name]: Number(e.target.value) }))
@@ -221,6 +241,7 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
               <input
                 type="number"
                 className={styles.inputNativo}
+                {...ariaCampo(campo)}
                 value={String(valores[campo.name] ?? 0)}
                 onChange={(e) =>
                   setValores((v) => ({ ...v, [campo.name]: Number(e.target.value) }))
@@ -230,12 +251,14 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
               <input
                 type="text"
                 className={styles.inputNativo}
+                {...ariaCampo(campo)}
                 value={(valores[campo.name] as string) ?? ""}
                 onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.value }))}
-                aria-invalid={erroresCampo[campo.name] ? true : undefined}
               />
             )}
-            {erroresCampo[campo.name] ? <FormError>{erroresCampo[campo.name]}</FormError> : null}
+            {erroresCampo[campo.name] ? (
+              <FormError id={`error-${campo.name}`}>{erroresCampo[campo.name]}</FormError>
+            ) : null}
           </label>
         ),
       )}

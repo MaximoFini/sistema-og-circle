@@ -72,14 +72,18 @@ export async function obtenerVideosPorStage(
 
   const cantidad = CANTIDAD_STAGE[stage];
   const filas: VideoGridItem[] = (data ?? []).slice(0, cantidad).map((fila) => {
-    const disponible = fila.publicado && Boolean(fila.provider_ref);
+    // Se normaliza también al leer: una fila vieja con un ref inválido (se llegó a
+    // guardar el `si=` de un link de Compartir) queda "Próximamente" en vez de un
+    // embed roto.
+    const ref =
+      fila.publicado && fila.provider_ref ? videoProvider.parsearRef(fila.provider_ref) : null;
     return {
       id: fila.id,
       titulo: fila.titulo,
       descripcion: fila.descripcion,
-      estado: disponible ? "disponible" : "proximamente",
-      embedUrl: disponible ? videoProvider.urlEmbed(fila.provider_ref as string) : null,
-      thumbnailUrl: disponible ? videoProvider.urlThumbnail(fila.provider_ref as string) : null,
+      estado: ref ? "disponible" : "proximamente",
+      embedUrl: ref ? videoProvider.urlEmbed(ref) : null,
+      thumbnailUrl: ref ? videoProvider.urlThumbnail(ref) : null,
     };
   });
 

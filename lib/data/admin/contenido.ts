@@ -88,23 +88,22 @@ const videoSchema = z.object({
   // El admin puede pegar el link completo: se normaliza al id con
   // videoProvider.parsearRef() y se rechaza lo que no sea un video reconocible
   // (antes se guardaba cualquier string y el embed fallaba en silencio).
+  // `.optional()` va AL FINAL: un PATCH sin el campo (ej. el soft-delete) no
+  // corre el transform y no lo pisa.
   provider_ref: z
     .string()
-    .trim()
     .nullable()
-    .optional()
     .transform((valor, ctx) => {
-      // undefined = campo ausente (PATCH parcial, ej. el soft-delete) — no tocarlo.
-      if (valor === undefined) return undefined;
-      if (!valor) return null;
+      if (!valor?.trim()) return null;
       const ref = videoProvider.parsearRef(valor);
       if (ref) return ref;
       ctx.addIssue({
         code: "custom",
-        message: "No es un link de YouTube válido. Pegá el link completo del video.",
+        message: `No es un link de ${videoProvider.nombre} válido. Pegá el link completo del video.`,
       });
       return z.NEVER;
-    }),
+    })
+    .optional(),
   // Ver comment de columna en la migración: existe por paridad de schema,
   // VGRP-29 documenta que no se aplica gating real sobre la formación.
   nivel_requerido: z.enum(NIVELES),

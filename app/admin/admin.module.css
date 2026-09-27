@@ -333,9 +333,8 @@ a.notFoundLink {
 }
 
 .formAyuda {
+  composes: footnote from "../../components/ui/type.module.css";
   padding-inline: 4px;
-  font-size: var(--fs-caption);
-  color: var(--text-muted);
 }
 
 /* Controles nativos del panel (VGRP-36/38): mismo relleno translúcido que

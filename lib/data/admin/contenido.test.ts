@@ -82,35 +82,29 @@ describe("crearContenido / actualizarContenido / listarContenido (agentes)", () 
   });
 });
 
-describe("videos: provider_ref acepta el link completo", () => {
-  const base = { stage: 1, titulo: "Video de test", nivel_requerido: "principiante", orden: 999 };
-
-  it("guarda sólo el id aunque se pegue un link de Compartir con ?si=, y un PATCH sin el campo no lo pisa", async () => {
-    const creado = await crearContenido(admin, "videos", {
-      ...base,
-      publicado: true,
-      provider_ref: "https://youtu.be/dQw4w9WgXcQ?si=gy8t0Yy0cOIeXEeQ",
-    });
-    idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
-    expect(creado.resultado.provider_ref).toBe("dQw4w9WgXcQ");
-
-    const despublicado = await borrarContenido(admin, "videos", creado.entidadId as string);
-    expect(despublicado.resultado?.provider_ref).toBe("dQw4w9WgXcQ");
-  });
-
+describe("videos: provider_ref", () => {
+  // El link -> id y el "PATCH sin el campo no lo pisa" se cubren en el test de
+  // soft-delete de abajo (misma ida a la base); los formatos, en
+  // lib/video/provider.test.ts.
   it("rechaza un valor que no es un video reconocible, antes de tocar la base", async () => {
     await expect(
       crearContenido(admin, "videos", {
-        ...base,
+        stage: 1,
+        titulo: "Video de test",
+        nivel_requerido: "principiante",
+        orden: 999,
         publicado: true,
         provider_ref: "gy8t0Yy0cOIeXEeQ",
       }),
-    ).rejects.toThrow(/YouTube/);
+    ).rejects.toThrow(/link de .* válido/);
   });
 
   it("vacío se guarda como null (queda 'Próximamente')", async () => {
     const creado = await crearContenido(admin, "videos", {
-      ...base,
+      stage: 1,
+      titulo: "Video de test",
+      nivel_requerido: "principiante",
+      orden: 999,
       publicado: false,
       provider_ref: "  ",
     });
@@ -127,11 +121,16 @@ describe("borrarContenido", () => {
       nivel_requerido: "principiante",
       orden: 999,
       publicado: true,
+      // Link de Compartir con `?si=`: se guarda sólo el id.
+      provider_ref: "https://youtu.be/dQw4w9WgXcQ?si=gy8t0Yy0cOIeXEeQ",
     });
     idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
+    expect(creado.resultado.provider_ref).toBe("dQw4w9WgXcQ");
 
     const borrado = await borrarContenido(admin, "videos", creado.entidadId as string);
     expect(borrado.resultado?.publicado).toBe(false);
+    // El soft-delete es un PATCH sin provider_ref: no lo pisa.
+    expect(borrado.resultado?.provider_ref).toBe("dQw4w9WgXcQ");
 
     // La fila sigue existiendo (soft-delete) — profiles.progreso podría
     // referenciarla por id (PRD §4.1, US-5 de requirements-vgrp38.md).

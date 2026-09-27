@@ -7,6 +7,9 @@
 // debe importar una URL/SDK de YouTube directamente (VGRP-29, criterio de aceptación).
 
 export interface VideoProvider {
+  /** Nombre visible del proveedor — para textos del admin, así ningún archivo fuera
+   *  de acá nombra al proveedor concreto (migrar a Mux = cambiar sólo este archivo). */
+  nombre: string;
   urlEmbed(providerRef: string): string;
   urlThumbnail(providerRef: string): string;
   /** Normaliza lo que pega el admin (link completo o id suelto) al `provider_ref`
@@ -20,14 +23,13 @@ const HOSTS_YOUTUBE = new Set([
   "youtube.com",
   "www.youtube.com",
   "m.youtube.com",
-  "music.youtube.com",
-  "youtube-nocookie.com",
   "www.youtube-nocookie.com",
 ]);
+const PREFIJOS_CON_ID = new Set(["embed", "shorts", "live"]);
 
 /**
  * Acepta un id suelto o cualquiera de los formatos de link habituales:
- * `youtu.be/ID`, `youtube.com/watch?v=ID`, `/embed/ID`, `/shorts/ID`, `/live/ID`, `/v/ID`
+ * `youtu.be/ID`, `youtube.com/watch?v=ID`, `/embed/ID`, `/shorts/ID`, `/live/ID`
  * — con o sin protocolo y con parámetros extra (`?si=…`, `&t=…`). Bug real que motivó
  * esto: se guardó el `si=` de rastreo de un link de "Compartir" (16 chars) en vez del id,
  * y el embed mostraba "Se produjo un error".
@@ -44,19 +46,19 @@ function parsearRefYoutube(entrada: string): string | null {
   }
 
   const host = url.hostname.toLowerCase();
-  let candidato: string | null = null;
-  if (host === "youtu.be" || host === "www.youtu.be") {
-    candidato = url.pathname.split("/")[1] ?? null;
-  } else if (HOSTS_YOUTUBE.has(host)) {
-    const [primero, segundo] = url.pathname.split("/").filter(Boolean);
+  const [primero, segundo] = url.pathname.split("/").filter(Boolean);
+  let candidato: string | null | undefined;
+  if (host === "youtu.be") candidato = primero;
+  else if (HOSTS_YOUTUBE.has(host)) {
     if (primero === "watch") candidato = url.searchParams.get("v");
-    else if (["embed", "shorts", "live", "v"].includes(primero ?? "")) candidato = segundo ?? null;
+    else if (PREFIJOS_CON_ID.has(primero)) candidato = segundo;
   }
 
   return candidato && ID_YOUTUBE.test(candidato) ? candidato : null;
 }
 
 export const youtubeVideoProvider: VideoProvider = {
+  nombre: "YouTube",
   parsearRef: parsearRefYoutube,
   urlEmbed: (ref) => `https://www.youtube.com/embed/${ref}`,
   // VGRP-56 punto 6 — `mqdefault.jpg` (320×180, ~un tercio del peso de
