@@ -21,6 +21,8 @@ interface CampoConfig {
   label: string;
   tipo: TipoCampo;
   requerido?: boolean;
+  /** Texto de ayuda debajo de la etiqueta. */
+  ayuda?: string;
 }
 
 const CAMPOS: Record<string, CampoConfig[]> = {
@@ -36,7 +38,13 @@ const CAMPOS: Record<string, CampoConfig[]> = {
     { name: "stage", label: "Stage", tipo: "stage" },
     { name: "titulo", label: "Título", tipo: "text", requerido: true },
     { name: "descripcion", label: "Descripción", tipo: "textarea" },
-    { name: "provider_ref", label: "Provider ref — id de YouTube (sensible)", tipo: "text" },
+    {
+      name: "provider_ref",
+      label: "Link del video de YouTube (sensible)",
+      ayuda:
+        "Pegá el link completo tal cual lo copiás de YouTube (botón Compartir o barra de direcciones). El id del video se extrae solo al guardar.",
+      tipo: "text",
+    },
     {
       name: "nivel_requerido",
       label: "Nivel requerido (sin uso real hoy — VGRP-29)",
@@ -177,6 +185,7 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
               {campo.label}
               {campo.requerido ? " *" : ""}
             </span>
+            {campo.ayuda ? <span className={styles.formAyuda}>{campo.ayuda}</span> : null}
 
             {campo.tipo === "textarea" ? (
               <textarea

@@ -332,6 +332,12 @@ a.notFoundLink {
   color: var(--text-secondary);
 }
 
+.formAyuda {
+  padding-inline: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
 /* Controles nativos del panel (VGRP-36/38): mismo relleno translúcido que
    components/ui/TextField, más compactos. Decisión previa: nativos estilados
    localmente, no primitivas de components/ui. */

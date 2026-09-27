@@ -23,6 +23,7 @@ import {
   type TablesInsert,
   type TablesUpdate,
 } from "../../database.types";
+import { videoProvider } from "../../video/provider";
 import type { ResultadoMutacion } from "./audit-log";
 
 type AdminClient = SupabaseClient<Database>;
@@ -84,7 +85,26 @@ const videoSchema = z.object({
   // SENSIBLE — igual pasa por acá porque el admin SÍ puede cargar/editarlo;
   // lo que nunca debe pasar es que este valor llegue a un cliente sin nivel
   // (VGRP-30, resolverSecreto()) o a un video con publicado=false.
-  provider_ref: z.string().trim().nullable().optional(),
+  // El admin puede pegar el link completo: se normaliza al id con
+  // videoProvider.parsearRef() y se rechaza lo que no sea un video reconocible
+  // (antes se guardaba cualquier string y el embed fallaba en silencio).
+  provider_ref: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((valor, ctx) => {
+      // undefined = campo ausente (PATCH parcial, ej. el soft-delete) — no tocarlo.
+      if (valor === undefined) return undefined;
+      if (!valor) return null;
+      const ref = videoProvider.parsearRef(valor);
+      if (ref) return ref;
+      ctx.addIssue({
+        code: "custom",
+        message: "No es un link de YouTube válido. Pegá el link completo del video.",
+      });
+      return z.NEVER;
+    }),
   // Ver comment de columna en la migración: existe por paridad de schema,
   // VGRP-29 documenta que no se aplica gating real sobre la formación.
   nivel_requerido: z.enum(NIVELES),

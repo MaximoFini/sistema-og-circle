@@ -82,6 +82,43 @@ describe("crearContenido / actualizarContenido / listarContenido (agentes)", () 
   });
 });
 
+describe("videos: provider_ref acepta el link completo", () => {
+  const base = { stage: 1, titulo: "Video de test", nivel_requerido: "principiante", orden: 999 };
+
+  it("guarda sólo el id aunque se pegue un link de Compartir con ?si=, y un PATCH sin el campo no lo pisa", async () => {
+    const creado = await crearContenido(admin, "videos", {
+      ...base,
+      publicado: true,
+      provider_ref: "https://youtu.be/dQw4w9WgXcQ?si=gy8t0Yy0cOIeXEeQ",
+    });
+    idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
+    expect(creado.resultado.provider_ref).toBe("dQw4w9WgXcQ");
+
+    const despublicado = await borrarContenido(admin, "videos", creado.entidadId as string);
+    expect(despublicado.resultado?.provider_ref).toBe("dQw4w9WgXcQ");
+  });
+
+  it("rechaza un valor que no es un video reconocible, antes de tocar la base", async () => {
+    await expect(
+      crearContenido(admin, "videos", {
+        ...base,
+        publicado: true,
+        provider_ref: "gy8t0Yy0cOIeXEeQ",
+      }),
+    ).rejects.toThrow(/YouTube/);
+  });
+
+  it("vacío se guarda como null (queda 'Próximamente')", async () => {
+    const creado = await crearContenido(admin, "videos", {
+      ...base,
+      publicado: false,
+      provider_ref: "  ",
+    });
+    idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
+    expect(creado.resultado.provider_ref).toBeNull();
+  });
+});
+
 describe("borrarContenido", () => {
   it("videos: SIEMPRE soft-delete (publicado=false), nunca borra la fila", async () => {
     const creado = await crearContenido(admin, "videos", {
