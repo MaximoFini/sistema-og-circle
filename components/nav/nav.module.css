@@ -492,11 +492,16 @@
 
 /* --- Gestos por ícono al hover (partes sueltas del SVG, ver Icon.tsx) --- */
 
-:global(.i-roof),
-:global(.i-head),
-:global(.i-dot),
-:global(.i-front),
-:global(.i-back) {
+.destino :global(.i-roof),
+.destino :global(.i-head),
+.destino :global(.i-dot),
+.destino :global(.i-front),
+.destino :global(.i-back),
+.destinoProximamente :global(.i-roof),
+.destinoProximamente :global(.i-head),
+.destinoProximamente :global(.i-dot),
+.destinoProximamente :global(.i-front),
+.destinoProximamente :global(.i-back) {
   transform-box: fill-box;
   transform-origin: center;
 }
