@@ -15,7 +15,7 @@ Cubre 1 work item del Epic "Fase 2 — MVP para cobrar" (proyecto VGRP en Plane)
 
 ## Duda abierta del ticket — resuelta con fuente
 
-El propio ticket pide confirmar con Jota si "servicios financieros" es de ambos niveles
+El propio ticket pide confirmar con OG Circle si "servicios financieros" es de ambos niveles
 con sólo SWIFT exclusivo de Avanzado. Encontrado y citado en VGRP-33
 (requirements-vgrp33.md): la PRD "Fase 2 — MVP para cobrar" §1.1 dice literal:
 
@@ -56,7 +56,7 @@ pendiente.
 
 - **Banner de comunidad** — ya está (VGRP-27), no se toca.
 - **Cargar contenido real** (los 4 profesionales, los servicios financieros reales) —
-  mismo criterio que VGRP-38/29/31: tablas vacías, Jota carga desde el panel.
+  mismo criterio que VGRP-38/29/31: tablas vacías, OG Circle carga desde el panel.
 - **Calculadora de costos locales** (mencionada en "Qué hacer") — no hay ninguna tabla
   ni ticket que defina esto como algo separado de la calculadora externa ya resuelta
   (VGRP-31); se interpreta como parte de la descripción de la sección de servicios

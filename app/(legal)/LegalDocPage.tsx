@@ -36,8 +36,8 @@ export function LegalDocPage({ title, placeholderExtra, children }: LegalDocPage
       <div className={styles.placeholder}>
         <p>
           <strong>Placeholder.</strong> Esta página está maquetada con la estructura que va a tener
-          el texto legal, pero el contenido todavía no es el definitivo. El texto real lo entrega
-          Jota — hasta que llegue, no se puede lanzar la plataforma (PRD Fase 2 §8).
+          el texto legal, pero el contenido todavía no es el definitivo. El texto real lo entrega OG
+          Circle — hasta que llegue, no se puede lanzar la plataforma (PRD Fase 2 §8).
         </p>
         {placeholderExtra}
       </div>

@@ -1058,7 +1058,7 @@ commit;
    es igual o más nuevo que el último pago `approved` no reembolsado. Consecuencia: si un
    admin baja a alguien a `ninguno` y esa persona después paga por MP, el pago (más nuevo)
    restaura el acceso automáticamente. Es el comportamiento deseable, pero conviene que
-   Jota lo confirme.
+   OG Circle lo confirme.
 3. **`admin_pagos_ledger` como vista `security_invoker`.** `get_advisors` de Supabase
    podría marcar la vista; se consulta por service role así que no hay fuga, pero hay que
    verificar que no dispare un advisor bloqueante y documentarlo.
@@ -1069,7 +1069,7 @@ commit;
 5. **`set_config('request.jwt.claims', …)` para el alta de admin** — sin poder ejecutarlo
    desde acá, queda como verificación de la fase de implementación (ver "Alta de admin").
 6. **Refunds (PRD §8, hereda de requirements).** Los `refunded` sólo se listan; `sin_aplicar`
-   es `false` para ellos. Si Jota define la política antes de implementar VGRP-37, US-5
+   es `false` para ellos. Si OG Circle define la política antes de implementar VGRP-37, US-5
    podría querer además un flag "refunded con nivel todavía activo". No bloquea empezar.
 7. **Autorización del MCP de Supabase.** Aplicar las 3 migraciones necesita el MCP
    autorizado y apuntando al proyecto `sa-east-1`. Si no lo está al llegar a tasks, se cae

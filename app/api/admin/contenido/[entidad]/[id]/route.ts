@@ -10,8 +10,8 @@
 //   :id uuid pero sin fila ................ 404 (SIN audit log)
 //   ok ..................................... 200 + audit log + revalidateTag
 //
-// DELETE de `videos`: SIEMPRE soft-delete (`publicado=false`) — ver
-// `borrarContenido()` en lib/data/admin/contenido.ts. El resto: DELETE real.
+// DELETE: borrado real en las 4 entidades, incluido `videos` — ver
+// `borrarContenido()` en lib/data/admin/contenido.ts.
 // =============================================================================
 
 import * as Sentry from "@sentry/nextjs";

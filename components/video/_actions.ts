@@ -11,6 +11,7 @@
 // explícita, no el único candado.
 
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 interface ProgresoForma {
   videosVistos: string[];
@@ -29,6 +30,27 @@ function leerVideosVistos(progreso: unknown): string[] {
   return [];
 }
 
+/**
+ * Ids reales de `videos` hoy. Un admin puede borrar un video (lib/data/admin/contenido.ts)
+ * que ya esté marcado como visto en el `progreso` de algún usuario — sin este filtro, ese
+ * id huérfano infla "vistos" por encima de `TOTAL_VIDEOS` en StatsVideos (ej. "12 / 11").
+ * Service role a propósito: es sólo una lectura de ids (nada sensible) y no debe atarse
+ * a la policy por nivel de `videos_select_por_nivel` — un video ya visto sigue contando
+ * aunque después se lo despublique o le cambien el nivel requerido.
+ * Fail-open (null en vez de tirar): si la lectura falla, se muestra el progreso SIN
+ * filtrar antes que romper el contador entero por un problema transitorio de la base.
+ */
+async function idsVideosVigentes(): Promise<Set<string> | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin.from("videos").select("id");
+  if (error) return null;
+  return new Set(data.map((v) => v.id));
+}
+
+function filtrarVigentes(ids: string[], vigentes: Set<string> | null): string[] {
+  return vigentes ? ids.filter((id) => vigentes.has(id)) : ids;
+}
+
 function userId(claims: Awaited<ReturnType<typeof getVerifiedClaims>>): string | null {
   const sub = claims?.sub;
   return typeof sub === "string" && sub ? sub : null;
@@ -40,9 +62,12 @@ export async function obtenerProgresoVideos(): Promise<{ videosVistos: string[] 
   if (!id) return { videosVistos: [] };
 
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.from("profiles").select("progreso").eq("id", id).maybeSingle();
+  const [{ data }, vigentes] = await Promise.all([
+    supabase.from("profiles").select("progreso").eq("id", id).maybeSingle(),
+    idsVideosVigentes(),
+  ]);
 
-  return { videosVistos: leerVideosVistos(data?.progreso) };
+  return { videosVistos: filtrarVigentes(leerVideosVistos(data?.progreso), vigentes) };
 }
 
 export type MarcarVideoVistoResult =
@@ -62,15 +87,20 @@ export async function marcarVideoVisto(videoId: string): Promise<MarcarVideoVist
   if (!id) return { ok: false, error: "Tenés que iniciar sesión." };
 
   const supabase = await createSupabaseServerClient();
-  const { data: perfil, error: errorLectura } = await supabase
-    .from("profiles")
-    .select("progreso")
-    .eq("id", id)
-    .maybeSingle();
+  // Una sola lectura de `idsVideosVigentes()` para toda la función (antes se pedía de
+  // nuevo en cada branch de salida): dos lecturas separadas podían, en la ventana entre
+  // ellas, ver un video borrado por un admin en una y no en la otra — un `videosVistos`
+  // inconsistente entre el early-return y el camino de escritura.
+  const [{ data: perfil, error: errorLectura }, vigentes] = await Promise.all([
+    supabase.from("profiles").select("progreso").eq("id", id).maybeSingle(),
+    idsVideosVigentes(),
+  ]);
   if (errorLectura) return { ok: false, error: "No pudimos leer tu progreso." };
 
   const actuales = leerVideosVistos(perfil?.progreso);
-  if (actuales.includes(videoId)) return { ok: true, videosVistos: actuales };
+  if (actuales.includes(videoId)) {
+    return { ok: true, videosVistos: filtrarVigentes(actuales, vigentes) };
+  }
 
   const nuevo = [...actuales, videoId];
   const progresoExistente =
@@ -81,5 +111,5 @@ export async function marcarVideoVisto(videoId: string): Promise<MarcarVideoVist
     .eq("id", id);
   if (errorUpdate) return { ok: false, error: "No pudimos guardar tu progreso." };
 
-  return { ok: true, videosVistos: nuevo };
+  return { ok: true, videosVistos: filtrarVigentes(nuevo, vigentes) };
 }

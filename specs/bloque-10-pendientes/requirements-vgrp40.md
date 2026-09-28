@@ -5,7 +5,7 @@
 
 ## Summary
 
-Pantalla y endpoint de admin (`/admin/config`) que le permiten a Jota cambiar los precios
+Pantalla y endpoint de admin (`/admin/config`) que le permiten a OG Circle cambiar los precios
 de los dos niveles y los flags de fase (`checkout_habilitado`, `registro_habilitado`,
 `fase`) sin pedirle nada al programador. Cierra el panel de administración completo
 (VGRP-35/36/37/38 ya construidos): es la única pieza de configuración de negocio que
@@ -14,7 +14,7 @@ update`, documentado en `docs/EDGE-CONFIG.md`).
 
 ## Goals
 
-- Que Jota pueda cambiar un precio o un flag desde una pantalla, sin tocar la CLI de
+- Que OG Circle pueda cambiar un precio o un flag desde una pantalla, sin tocar la CLI de
   Vercel ni pedirle nada a un programador, y que el cambio se refleje en el resto del
   sistema (checkout, flags de registro/checkout) sin deploy — mismo contrato que ya
   cumple la lectura (`lib/config/`).

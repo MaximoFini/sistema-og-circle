@@ -44,7 +44,7 @@ Cubre 1 work item del Epic "Fase 2 — MVP para cobrar" (proyecto VGRP en Plane)
   completa es igual para Principiante y Avanzado — PRD §1.1, confirmado con cita textual
   en una sesión anterior). Este ticket no aplica candado a Stage 1/2.
 - **Definir qué agentes/servicios específicos requieren qué nivel** — ver Open questions:
-  es una decisión de negocio (de Jota), no técnica.
+  es una decisión de negocio (de OG Circle), no técnica.
 - **Revisar/tocar las políticas RLS existentes** de `profiles`/`pagos` — ya están
   resueltas (VGRP-15). Este ticket puede necesitar RLS nueva sólo si VGRP-38 ya hubiera
   creado tablas de contenido, y no las creó todavía.
@@ -155,6 +155,6 @@ contenido de Avanzado.
   Avanzado agrega "agente de muestras y de volumen"; no está claro si eso significa que
   los otros agentes (¿4 de los 6?) son visibles para Principiante con contacto incluido,
   o si TODOS los agentes son Avanzado-only y Principiante sólo ve el directorio
-  bloqueado. Esto lo define Jota — VGRP-38 es quien carga los datos reales con su
+  bloqueado. Esto lo define OG Circle — VGRP-38 es quien carga los datos reales con su
   `nivel_requerido` por fila, así que no bloquea empezar VGRP-30 (el mecanismo es
   agnóstico a esa decisión), pero sí bloquearía cargar contenido real después.

@@ -83,7 +83,7 @@ describe("crearContenido / actualizarContenido / listarContenido (agentes)", () 
 });
 
 describe("borrarContenido", () => {
-  it("videos: SIEMPRE soft-delete (publicado=false), nunca borra la fila", async () => {
+  it("videos: DELETE real (a pedido explícito; un id borrado puede quedar huérfano en profiles.progreso, filtrado en components/video/_actions.ts)", async () => {
     const creado = await crearContenido(admin, "videos", {
       stage: 1,
       titulo: "Video de test",
@@ -91,19 +91,16 @@ describe("borrarContenido", () => {
       orden: 999,
       publicado: true,
     });
-    idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
+    // No se agrega a idsCreados: si borrarContenido() funciona, no queda nada que limpiar.
 
-    const borrado = await borrarContenido(admin, "videos", creado.entidadId as string);
-    expect(borrado.resultado?.publicado).toBe(false);
+    await borrarContenido(admin, "videos", creado.entidadId as string);
 
-    // La fila sigue existiendo (soft-delete) — profiles.progreso podría
-    // referenciarla por id (PRD §4.1, US-5 de requirements-vgrp38.md).
     const { data } = await admin
       .from("videos")
       .select("id")
       .eq("id", creado.entidadId as string)
       .maybeSingle();
-    expect(data).not.toBeNull();
+    expect(data).toBeNull();
   });
 
   it("agentes: DELETE real (sin referencias conocidas desde otro lado)", async () => {

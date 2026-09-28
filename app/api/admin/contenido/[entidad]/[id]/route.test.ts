@@ -278,11 +278,11 @@ describe("PATCH|DELETE /api/admin/contenido/[entidad]/[id]", () => {
       expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-agentes");
     });
 
-    it("videos: DELETE por HTTP hace soft-delete (delega en actualizarContenido con publicado=false) — cubierto a nivel de negocio en lib/data/admin/contenido.test.ts; acá sólo se confirma que la ruta llama a borrarContenido y no a un delete propio", async () => {
+    it("videos: DELETE por HTTP delega en borrarContenido (el comportamiento real — borrado real vs. soft-delete — está cubierto a nivel de negocio en lib/data/admin/contenido.test.ts)", async () => {
       mockBorrarContenido.mockResolvedValue({
-        resultado: { id: UUID, publicado: false },
+        resultado: null,
         valorAnterior: { id: UUID, publicado: true },
-        valorNuevo: { id: UUID, publicado: false },
+        valorNuevo: null,
       });
 
       const res = await callDelete("videos", UUID);

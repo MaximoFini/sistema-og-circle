@@ -235,7 +235,7 @@ describe("panel admin de contenido — integración real (VGRP-49 / VGRP-38)", (
     expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-agentes");
   });
 
-  it("DELETE videos: soft-delete por HTTP (publicado=false), la fila SIGUE existiendo, + auditoría + revalidateTag('grilla-videos')", async () => {
+  it("DELETE videos: borrado real por HTTP (la fila deja de existir) + auditoría + revalidateTag('grilla-videos')", async () => {
     const creado = await admin
       .from("videos")
       .insert({
@@ -248,18 +248,17 @@ describe("panel admin de contenido — integración real (VGRP-49 / VGRP-38)", (
       .select()
       .single();
     if (creado.error) throw creado.error;
-    videosCreados.push(creado.data.id);
+    // No se agrega a videosCreados: si borrarContenido() funciona, no queda nada que limpiar.
 
     const res = await reqDelete("videos", creado.data.id);
     expect(res.status).toBe(200);
 
     const { data: filaTrasBorrar } = await admin
       .from("videos")
-      .select("id, publicado")
+      .select("id")
       .eq("id", creado.data.id)
-      .single();
-    expect(filaTrasBorrar).not.toBeNull();
-    expect(filaTrasBorrar?.publicado).toBe(false);
+      .maybeSingle();
+    expect(filaTrasBorrar).toBeNull();
 
     const { data: auditRow } = await admin
       .from("admin_audit_log")

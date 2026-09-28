@@ -6,7 +6,7 @@
 
 ## 1. Qué es OG Circle
 
-Una plataforma cerrada y paga para personas en Argentina de 20 a 40 años que quieren importar mercadería de China y venderla online. No es un curso: el diferenciador declarado en `landing.md` es "todos venden el mapa, nosotros te damos las llaves del auto" — el valor no es la información (eso ya está en YouTube gratis), es el acceso directo a la infraestructura operativa que ya usa Jota Vera para operar su propio negocio: agentes de compra en China, depósitos, flete, SWIFT y una calculadora de costos ya construida.
+Una plataforma cerrada y paga para personas en Argentina de 20 a 40 años que quieren importar mercadería de China y venderla online. No es un curso: el diferenciador declarado en `landing.md` es "todos venden el mapa, nosotros te damos las llaves del auto" — el valor no es la información (eso ya está en YouTube gratis), es el acceso directo a la infraestructura operativa que ya usa OG Circle para operar su propio negocio: agentes de compra en China, depósitos, flete, SWIFT y una calculadora de costos ya construida.
 
 ## 2. El problema que resuelve (por qué existe cada pieza)
 
@@ -35,7 +35,7 @@ Un usuario puede subir de Principiante a Avanzado pagando solo la diferencia ($6
 | Término | Significado |
 |---|---|
 | Emi / Joaco Vera | Dueño de la operación real de importación que la plataforma empaqueta y vende. Es la autoridad/cara del producto. |
-| Agente de compra | Persona en China que gestiona la compra, inspección y a veces fabricación de la mercadería. La plataforma da acceso directo a 6 agentes verificados con los que Jota ya opera. |
+| Agente de compra | Persona en China que gestiona la compra, inspección y a veces fabricación de la mercadería. La plataforma da acceso directo a 6 agentes verificados con los que OG Circle ya opera. |
 | FOB | Free On Board — el costo del producto antes de flete, seguro y aduana. Es el dato que se carga en la calculadora. |
 | Depósito | Punto físico de consolidación de mercadería antes de enviarla a Argentina. Ubicados en Miami, China y España (los dos últimos solo nivel Avanzado). |
 | Despacho | Trámite aduanero para nacionalizar la mercadería al llegar a Argentina. |
@@ -69,7 +69,7 @@ La versión más simple del producto que ya permite generar ingresos reales.
 - Sección de profesionales al servicio
 - Sección de servicios financieros
 - Perfil básico: datos del usuario, nivel activo, accesos habilitados, soporte vía WhatsApp
-- Páginas legales: Términos y Condiciones, Política de Privacidad, Política de Reembolsos (contenido lo entrega Jota)
+- Páginas legales: Términos y Condiciones, Política de Privacidad, Política de Reembolsos (contenido lo entrega OG Circle)
 - Emails transaccionales: bienvenida, confirmación de pago, reset de contraseña
 
 ## Fase 3 — Primeros usuarios pagando

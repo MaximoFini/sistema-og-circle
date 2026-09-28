@@ -106,7 +106,7 @@ const [stage1, stage2, stage3, links] = await Promise.all([
 <SeccionSlot
   eyebrow="Infraestructura"
   titulo="Agentes de compra en China"
-  descripcion="6 agentes verificados con los que ya opera Jota."
+  descripcion="6 agentes verificados con los que ya opera OG Circle."
 >
   <VideoGrid videos={stage3} />
   <AgentesGrid />

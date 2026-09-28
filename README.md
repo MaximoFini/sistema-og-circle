@@ -4,7 +4,7 @@
 
 Plataforma cerrada (paga) para personas en Argentina de 20 a 40 años que quieren empezar a importar mercadería de China y venderla online, resolviendo el problema real de quienes se paralizan en el primer envío: no saben cuánto les cuesta realmente el producto puesto en Argentina, no confían en un agente de compras, no tienen forma de pagar a China sin SWIFT, y no tienen dónde vender lo que importan.
 
-No es un curso: combina formación en video (8 videos de importación + 3 de ecommerce) con acceso directo a la infraestructura operativa que ya usa Jota Vera, quien opera la red: una calculadora de costos de importación ya construida y en producción (`vegroup.vercel.app/calculadora`), un directorio de 6 agentes de compra verificados en China, depósitos en Miami/China/España, gestión de flete y despacho, tracking de envíos vía Traxcargo, pagos SWIFT a China, y una red de profesionales (contable, automatizaciones, agencia de marketing, UGC creator).
+No es un curso: combina formación en video (8 videos de importación + 3 de ecommerce) con acceso directo a la infraestructura operativa que ya opera OG Circle: una calculadora de costos de importación ya construida y en producción (`vegroup.vercel.app/calculadora`), un directorio de 6 agentes de compra verificados en China, depósitos en Miami/China/España, gestión de flete y despacho, tracking de envíos vía Traxcargo, pagos SWIFT a China, y una red de profesionales (contable, automatizaciones, agencia de marketing, UGC creator).
 
 El acceso se vende en 2 niveles con pago único y acceso de por vida (Principiante $75.000 ARS / Avanzado $125.000 ARS), sin suscripción.
 

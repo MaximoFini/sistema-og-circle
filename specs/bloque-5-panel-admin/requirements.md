@@ -233,7 +233,7 @@ obtenga el nivel que pagó sin que yo tenga que tocar la base.
 ## Open questions
 
 - **Reembolsos (PRD §8):** qué le pasa al nivel cuando un pago pasa a `refunded` sigue sin
-  decidirse. Este bloque lo deja fuera (los `refunded` sólo se listan). Si Jota define la
+  decidirse. Este bloque lo deja fuera (los `refunded` sólo se listan). Si OG Circle define la
   política antes de implementar, puede que US-5 quiera además resaltar los `refunded` con
   nivel todavía activo — a confirmar, no bloquea empezar.
 - **Autorización del MCP de Supabase:** aplicar migraciones necesita que el MCP esté
