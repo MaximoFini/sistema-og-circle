@@ -1,0 +1,53 @@
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      353 B         186 kB
+├ ○ /_not-found                          1.15 kB         187 kB
+├ ƒ /admin                                  1 kB         189 kB
+├ ƒ /admin/auditoria                        1 kB         189 kB
+├ ƒ /admin/config                        4.45 kB         209 kB
+├ ƒ /admin/contenido                     1.01 kB         189 kB
+├ ƒ /admin/contenido/[entidad]           1.01 kB         189 kB
+├ ƒ /admin/contenido/[entidad]/[id]        315 B         192 kB
+├ ƒ /admin/contenido/[entidad]/nuevo       314 B         192 kB
+├ ƒ /admin/pagos                         1.01 kB         189 kB
+├ ƒ /admin/pagos/[id]                    3.22 kB         191 kB
+├ ƒ /admin/usuarios                      1.01 kB         189 kB
+├ ƒ /admin/usuarios/[id]                 3.63 kB         191 kB
+├ ƒ /api/admin/config                      353 B         186 kB
+├ ƒ /api/admin/contenido/[entidad]         352 B         186 kB
+├ ƒ /api/admin/contenido/[entidad]/[id]    355 B         186 kB
+├ ƒ /api/admin/pagos/[id]/reprocesar       353 B         186 kB
+├ ƒ /api/admin/usuarios/[id]/nivel         353 B         186 kB
+├ ƒ /api/agentes                           353 B         186 kB
+├ ƒ /api/auth/send-email                   353 B         186 kB
+├ ƒ /api/perfil                            352 B         186 kB
+├ ƒ /api/profesionales                     353 B         186 kB
+├ ƒ /api/servicios-financieros             353 B         186 kB
+├ ƒ /api/webhooks/mercadopago              352 B         186 kB
+├ ƒ /auth/callback                         353 B         186 kB
+├ ƒ /comprar                             2.23 kB         190 kB
+├ ƒ /comprar/pendiente                   69.5 kB         255 kB
+├ ƒ /dashboard                             459 B         188 kB
+├ ● /dashboard/[variante]                3.95 kB         192 kB
+├   ├ /dashboard/principiante
+├   └ /dashboard/avanzado
+├ ○ /legales                               530 B         188 kB
+├ ƒ /login                               2.68 kB         207 kB
+├ ƒ /perfil                              2.58 kB         207 kB
+├ ○ /privacidad                          1.31 kB         189 kB
+├ ○ /recuperar                           2.62 kB         207 kB
+├ ƒ /recuperar/nueva                     2.58 kB         207 kB
+├ ○ /reembolsos                          1.31 kB         189 kB
+├ ƒ /registro                            2.86 kB         207 kB
+└ ○ /terminos                            1.31 kB         189 kB
++ First Load JS shared by all             186 kB
+  ├ chunks/837-dc6fd875eecf6cee.js        128 kB
+  ├ chunks/b1cc8189-bcbf961d75a0fec8.js  54.4 kB
+  └ other shared chunks (total)           3.4 kB
+
+
+ƒ Middleware                              181 kB
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

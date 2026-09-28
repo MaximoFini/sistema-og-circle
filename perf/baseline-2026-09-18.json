@@ -1,0 +1,277 @@
+{
+  "baseUrl": "http://localhost:3210",
+  "fecha": "2026-09-19T00:08:14.969Z",
+  "reps": 5,
+  "resultados": [
+    {
+      "ruta": "/login",
+      "sesion": "anonimo",
+      "reps": 5,
+      "ttfbMs": 27,
+      "dclMs": 74,
+      "loadMs": 74,
+      "hidratadoEnMs": 143,
+      "reqsPostLoad": 2,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/recuperar",
+        "/registro"
+      ],
+      "jsKbCacheFria": 218.5,
+      "totalKbCacheFria": 232.7
+    },
+    {
+      "ruta": "/registro",
+      "sesion": "anonimo",
+      "reps": 5,
+      "ttfbMs": 70,
+      "dclMs": 167,
+      "loadMs": 167,
+      "hidratadoEnMs": 211,
+      "reqsPostLoad": 1,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/login"
+      ],
+      "jsKbCacheFria": 215.9,
+      "totalKbCacheFria": 228.4
+    },
+    {
+      "ruta": "/recuperar",
+      "sesion": "anonimo",
+      "reps": 5,
+      "ttfbMs": 14,
+      "dclMs": 42,
+      "loadMs": 63,
+      "hidratadoEnMs": 124,
+      "reqsPostLoad": 1,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/login"
+      ],
+      "jsKbCacheFria": 215.6,
+      "totalKbCacheFria": 227.1
+    },
+    {
+      "ruta": "/terminos",
+      "sesion": "anonimo",
+      "reps": 5,
+      "ttfbMs": 8,
+      "dclMs": 38,
+      "loadMs": 52,
+      "hidratadoEnMs": 125,
+      "reqsPostLoad": 1,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/legales"
+      ],
+      "jsKbCacheFria": 198.7,
+      "totalKbCacheFria": 212
+    },
+    {
+      "ruta": "/dashboard",
+      "sesion": "ninguno",
+      "reps": 5,
+      "ttfbMs": 37,
+      "dclMs": 96,
+      "loadMs": 96,
+      "hidratadoEnMs": 274,
+      "reqsPostLoad": 5,
+      "reqsApiPostLoad": 1,
+      "urlsPostLoad": [
+        "/api/perfil",
+        "/comprar",
+        "/privacidad",
+        "/reembolsos",
+        "/terminos"
+      ],
+      "jsKbCacheFria": 204.2,
+      "totalKbCacheFria": 233.2
+    },
+    {
+      "ruta": "/comprar",
+      "sesion": "ninguno",
+      "reps": 5,
+      "ttfbMs": 72,
+      "dclMs": 117,
+      "loadMs": 117,
+      "hidratadoEnMs": 256,
+      "reqsPostLoad": 5,
+      "reqsApiPostLoad": 1,
+      "urlsPostLoad": [
+        "/api/perfil",
+        "/dashboard",
+        "/privacidad",
+        "/reembolsos",
+        "/terminos"
+      ],
+      "jsKbCacheFria": 206.6,
+      "totalKbCacheFria": 236.6
+    },
+    {
+      "ruta": "/dashboard",
+      "sesion": "principiante",
+      "reps": 5,
+      "ttfbMs": 70,
+      "dclMs": 120,
+      "loadMs": 120,
+      "hidratadoEnMs": 406,
+      "reqsPostLoad": 5,
+      "reqsApiPostLoad": 4,
+      "urlsPostLoad": [
+        "/api/agentes",
+        "/api/perfil",
+        "/api/profesionales",
+        "/api/servicios-financieros",
+        "/dashboard"
+      ],
+      "jsKbCacheFria": 202.5,
+      "totalKbCacheFria": 227.6
+    },
+    {
+      "ruta": "/dashboard/principiante",
+      "sesion": "principiante",
+      "reps": 5,
+      "ttfbMs": 72,
+      "dclMs": 119,
+      "loadMs": 121,
+      "hidratadoEnMs": 394,
+      "reqsPostLoad": 6,
+      "reqsApiPostLoad": 4,
+      "urlsPostLoad": [
+        "/api/agentes",
+        "/api/perfil",
+        "/api/profesionales",
+        "/api/servicios-financieros",
+        "/dashboard",
+        "/dashboard/principiante"
+      ],
+      "jsKbCacheFria": 202.5,
+      "totalKbCacheFria": 228.1
+    },
+    {
+      "ruta": "/perfil",
+      "sesion": "principiante",
+      "reps": 5,
+      "ttfbMs": 133,
+      "dclMs": 196,
+      "loadMs": 205,
+      "hidratadoEnMs": 374,
+      "reqsPostLoad": 2,
+      "reqsApiPostLoad": 1,
+      "urlsPostLoad": [
+        "/api/perfil",
+        "/dashboard"
+      ],
+      "jsKbCacheFria": 218.2,
+      "totalKbCacheFria": 240.7
+    },
+    {
+      "ruta": "/admin",
+      "sesion": "admin",
+      "reps": 5,
+      "ttfbMs": 184,
+      "dclMs": 239,
+      "loadMs": 239,
+      "hidratadoEnMs": 313,
+      "reqsPostLoad": 5,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/admin/auditoria",
+        "/admin/config",
+        "/admin/contenido",
+        "/admin/pagos",
+        "/admin/usuarios"
+      ],
+      "jsKbCacheFria": 190.2,
+      "totalKbCacheFria": 204.1
+    },
+    {
+      "ruta": "/admin/usuarios",
+      "sesion": "admin",
+      "reps": 5,
+      "ttfbMs": 112,
+      "dclMs": 159,
+      "loadMs": 159,
+      "hidratadoEnMs": 312,
+      "reqsPostLoad": 9,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/admin",
+        "/admin/auditoria",
+        "/admin/config",
+        "/admin/contenido",
+        "/admin/pagos",
+        "/admin/usuarios/037e0ebd-8a9e-4321-a508-3771e8a8e026",
+        "/admin/usuarios/b66a6d18-db48-4815-9f33-472c7f60e5cc",
+        "/admin/usuarios/c1896055-3b2a-4a84-b7e2-9b6fc5799602",
+        "/admin/usuarios/ceba8959-6e55-4a79-a299-0f67e7369975"
+      ],
+      "jsKbCacheFria": 190.2,
+      "totalKbCacheFria": 206.5
+    },
+    {
+      "ruta": "/admin/pagos",
+      "sesion": "admin",
+      "reps": 5,
+      "ttfbMs": 159,
+      "dclMs": 270,
+      "loadMs": 291,
+      "hidratadoEnMs": 413,
+      "reqsPostLoad": 8,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/admin",
+        "/admin/auditoria",
+        "/admin/config",
+        "/admin/contenido",
+        "/admin/pagos/44d59aec-1f03-4148-8235-d6ab9dbeb233",
+        "/admin/pagos/5e039bae-aaea-4606-bd5c-04769cd1e037",
+        "/admin/pagos/e833ae2e-f59a-49bf-8495-0870c1a4a3f1",
+        "/admin/usuarios"
+      ],
+      "jsKbCacheFria": 190.2,
+      "totalKbCacheFria": 206.5
+    },
+    {
+      "ruta": "/admin/auditoria",
+      "sesion": "admin",
+      "reps": 5,
+      "ttfbMs": 112,
+      "dclMs": 158,
+      "loadMs": 158,
+      "hidratadoEnMs": 266,
+      "reqsPostLoad": 5,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/admin",
+        "/admin/config",
+        "/admin/contenido",
+        "/admin/pagos",
+        "/admin/usuarios"
+      ],
+      "jsKbCacheFria": 190.2,
+      "totalKbCacheFria": 204
+    },
+    {
+      "ruta": "/admin/config",
+      "sesion": "admin",
+      "reps": 5,
+      "ttfbMs": 70,
+      "dclMs": 122,
+      "loadMs": 122,
+      "hidratadoEnMs": 234,
+      "reqsPostLoad": 5,
+      "reqsApiPostLoad": 0,
+      "urlsPostLoad": [
+        "/admin",
+        "/admin/auditoria",
+        "/admin/contenido",
+        "/admin/pagos",
+        "/admin/usuarios"
+      ],
+      "jsKbCacheFria": 211.8,
+      "totalKbCacheFria": 225.8
+    }
+  ]
+}

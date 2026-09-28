@@ -1,0 +1,108 @@
+Guía de arranque para el desarrollo de la Fase 2. Decime en qué orden agarrar los tickets del Epic "Fase 2 — MVP para cobrar" (VGRP-14) y por qué ese orden y no otro.
+Si estás apurado y querés saber solo con qué empezar: leé el bloque "Antes de escribir una línea de código", y después arrancá con VGRP-39. Si todavía no tenés acceso al dashboard de Vercel, arrancá con VGRP-15.
+Cómo leer esta guía
+Los 35 work items del Epic están agrupados en 10 bloques. El orden entre bloques es obligatorio: cada bloque necesita que el anterior esté terminado. Dentro de un bloque, el orden es fuertemente recomendado pero no siempre bloqueante.
+La regla que ordena todo es: primero lo que no se puede cambiar después, después lo que permite cobrar, y al final lo que se ve. Es tentador arrancar por el dashboard porque es lo visual y lo gratificante. No lo hagas — el dashboard depende de decisiones de identidad y de datos que si se toman mal, se arreglan reescribiendo.
+Antes de escribir una línea de código
+Esto no son tickets, son verificaciones. Si alguna falla, avisá antes de seguir — no las resuelvas por tu cuenta.
+¿Existe el proyecto de Supabase en la región sa-east-1 (São Paulo)? Esto es lo más importante de toda la lista. La región de un proyecto Supabase no se puede cambiar después: si está creado en la región por defecto (Virginia), cada consulta cruza el continente dos veces y son ~200 ms en vez de ~10 ms. Si el proyecto no existe o está en otra región, frená y avisá.
+¿vercel.json tiene { "regions": ["gru1"] }? Mismo motivo, del lado de las funciones.
+¿Tenés acceso a el repo, el dashboard de Vercel, el proyecto de Supabase y el DNS del dominio?
+¿Hay credenciales de prueba de Mercado Pago? Las vas a necesitar en el bloque 4, pero conviene pedirlas ahora porque a veces tardan.
+Lectura previa, en este orden: CONTEXT.md (qué es el producto y por qué existe cada pieza) → STACK.md (qué se usa y qué se descartó a propósito) → la página "PRD Fase 2 — MVP para cobrar" (el detalle de lo que vas a construir). Son unas dos horas y te ahorran mucho más que eso.
+Bloque 1 — Cimientos
+Nada de esto se ve en pantalla, y todo lo demás depende de esto. Es la parte más importante y la que más conviene hacer despacio.
+VGRP-39 — Configuración mutable en Edge Config. Tu primer ticket. Es el único que no depende de ningún otro, es chico, y te sirve para conocer el proyecto sin riesgo. Define dónde viven los precios, los flags y los links externos. El checkout lo va a necesitar sí o sí, así que tenerlo listo temprano evita un bloqueo después.
+VGRP-15 — Esquema de base de datos y RLS. El cimiento real. Acá se crean profiles, pagos y el audit log, con las policies de seguridad. Tomate el tiempo que haga falta. Un error en las policies acá no se nota hasta que alguien accede a contenido que no pagó.
+VGRP-16 — Auth Hook con claves asimétricas. Es lo que hace que el nivel del usuario viaje dentro del token y no haya que consultar la base en cada pantalla. Si esto queda mal, todo el sistema funciona igual pero lento, y arreglarlo después toca muchos archivos.
+VGRP-17 — Route group (app). El esqueleto donde vive la plataforma privada, con el middleware de sesión. A partir de acá ya podés ver algo en el navegador.
+Bloque 2 — Que un usuario pueda entrar
+VGRP-18 — Registro y login con email y contraseña. La puerta de entrada. Dejá andando el caso del usuario que se registra y no paga: tiene que ver la plataforma bloqueada, no una pantalla rota.
+VGRP-25 — Setup de Resend con SPF/DKIM. Va acá y no más adelante por un motivo práctico: los cambios de DNS tardan en propagar, a veces horas. Si lo dejás para cuando lo necesites, te vas a quedar esperando. Arrancalo apenas puedas y seguí con otra cosa mientras propaga.
+VGRP-19 — Recuperación de contraseña. Necesita que Resend esté configurado. Sin esto, cada usuario que olvide la contraseña es un mensaje de WhatsApp para el equipo.
+Bloque 3 — Validación de cimientos
+Este bloque no agrega funcionalidad: cierra lo que hicieron los dos anteriores. Va acá y no al final por una razón concreta: a partir del bloque siguiente el sistema maneja plata, y no querés descubrir que una policy de RLS estaba mal escrita cuando ya hay clientes pagando.
+Los tests se escriben acá, no se dejan anotados para después. Un bloque de validación que produce una checklist manual en vez de código no sirve de mucho: no corre en CI, no protege de regresiones, y se deja de hacer a la tercera semana.
+VGRP-43 — Infraestructura de testing. Vitest, Playwright, base de datos de prueba aislada y seed reproducible. Va primero porque sin esto no hay dónde correr nada. Prestá atención a la guarda que impide correr tests contra producción: es de las cosas que se agradecen una sola vez, pero mucho.
+VGRP-44 — Tests del bloque 1: esquema, RLS, claims y configuración. El ticket de tests más importante de la fase. Lo que cubre son fallos que no se ven: una policy mal escrita no rompe ninguna pantalla, solo deja entrar a quien no pagó. Incluye un paso que conviene no saltear — desactivar una policy a propósito y confirmar que el test falla. Un test que pasa igual es un test roto que te da falsa seguridad.
+VGRP-45 — Tests del bloque 2: registro, login, recuperación y emails. Incluye el primer E2E en navegador real. Si son dos personas, se puede escribir en paralelo con VGRP-44.
+Cómo saber que el bloque terminó: la suite corre en verde en CI, y si desactivás una policy de RLS a mano, CI se pone en rojo. Si lo segundo no pasa, los tests no te están protegiendo de nada.
+Bloque 4 — Que se pueda cobrar
+Este es el corazón del proyecto. El Epic entero existe para que esto funcione. Si tenés dudas en algún ticket de este bloque, preguntá antes de improvisar.
+VGRP-22 — Checkout de Mercado Pago. Prestá atención a la metadata (external_reference y metadata.nivel): sin eso, el webhook del ticket siguiente no tiene forma de saber a quién activarle qué.
+VGRP-23 — Webhook de Mercado Pago. El ticket más delicado de toda la fase. Si falla, alguien pagó y no tiene acceso. Tres cosas que no se negocian: leer el body crudo antes de parsearlo (si no, no podés validar la firma), no confiar nunca en el estado que viene en el evento (consultá la API de MP), y apoyarte en proveedor_ref UNIQUE para los reintentos. Este ticket merece que alguien más lo mire antes de darlo por terminado.
+VGRP-24 — Activación de nivel. Convierte un pago aprobado en acceso real. Está separado del webhook a propósito: la misma función la usa después el panel de admin para activar a mano y para reprocesar. No la dupliques.
+VGRP-26 — Plantillas de emails transaccionales. El de confirmación de pago es el más importante del sistema: es el comprobante de que la plata llegó a algún lado.
+VGRP-41 — Observabilidad y alerta del webhook. Va inmediatamente después de que el webhook exista, no al final del proyecto. Es la única alerta obligatoria del sistema. Sin ella, te enterás de que el cobro se rompió porque un cliente escribe por WhatsApp.
+Al terminar este bloque el producto ya genera plata. Es el hito real de la fase.
+Bloque 5 — Red de seguridad operativa
+Va acá, y no al final, por una razón concreta: en cuanto se pueda cobrar de verdad, alguien del equipo tiene que poder arreglar a mano lo que el flujo automático no resolvió.
+VGRP-35 — Panel admin: rol, protección de rutas y audit log. Primero de los cuatro de admin, siempre. El panel puede regalar acceso pago, así que sin protección y sin auditoría cualquier otra pantalla de admin es un riesgo. Recordá que los admins se dan de alta a mano en la base: no construyas pantalla de invitación.
+VGRP-36 — Panel admin: gestión de usuarios y activación de nivel.
+VGRP-37 — Panel admin: ledger de pagos y reproceso. Con esto cerrás el círculo del bloque 4: si un webhook falla, se puede reparar sin tocar la base a mano.
+Bloque 6 — Validación de cobro y operación
+Mismo rol que el bloque 3, un piso más arriba: no agrega funcionalidad, cierra en tests lo que hicieron los bloques 4 y 5. Va acá y no al final por la misma razón de siempre, sólo que ahora con más en juego: a partir de este punto el sistema ya cobra plata de verdad, y los dos bloques que siguen le construyen el producto entero encima. No querés descubrir que el webhook confiaba en el status del body, o que un handler de admin se quedó sin guard, cuando ya haya clientes adentro.
+La regla del bloque 3 sigue valiendo: los tests se escriben acá, no se dejan anotados para después. Y su ritual también — romper a propósito lo que el test protege y confirmar que se pone en rojo. Un test que pasa igual es un test roto que te da falsa seguridad.
+VGRP-46 — Tests del bloque 4: checkout, webhook, activación de nivel y observabilidad. El camino del dinero. Hoy el webhook sólo tiene tests mockeados y el checkout no tiene ninguno. Lo que más importa acá: que el webhook no confíe en el status del body, que un reintento no duplique nada, y que nivel_vigente() resuelva bien toda la matriz de pagos. Ojo con una deuda que hay que tratar honestamente: VGRP-26 (plantillas de email) no se implementó — el email de confirmación de pago es hoy un console.info. No inventar tests de una plantilla que no existe.
+VGRP-47 — Tests del bloque 5: panel de admin. El panel puede regalar acceso pago. Se prueba que sólo un admin entre, que toda mutación quede auditada (incluida la rama fea: la mutación salió bien y el insert de auditoría falló), y que nada de lo que el panel ve se filtre — la vista admin_pagos_ledger y el payload_raw de Mercado Pago son los dos puntos sensibles. Se puede escribir en paralelo con VGRP-46 si son dos personas.
+VGRP-48 — E2E de cobro y reparación, y cierre del bloque. Los dos recorridos completos en navegador real: alguien paga y obtiene acceso solo, y cuando eso falla, el admin lo repara sin tocar la base a mano. Acá se adelanta el E2E de pago que estaba prometido en VGRP-42 — esperar al final del proyecto para probar el camino del dinero es justo lo que este bloque evita.
+Cómo saber que el bloque terminó: la suite corre en verde en CI (corriendo de verdad, no salteada por falta de secrets), y si rompés a mano cualquiera de estas tres cosas — que el webhook confíe en el body, sacarle el guard a un handler de admin, desactivar una policy de RLS de pagos — CI se pone en rojo. Si alguna pasa en verde, ese test es decorativo y el bloque no está cerrado.
+Bloque 7 — Los cimientos del producto
+Recién acá aparece lo visual, pero este bloque todavía no es "hacer pantallas": son las cuatro decisiones que después no se cambian sin reescribir — cómo se bloquea el contenido, dónde vive, cómo se sirve estático y cómo se reproducen los videos. Las secciones que las usan vienen en el bloque siguiente.
+Fijate que el gating va antes que todo lo que protege: es más fácil construir cada sección sabiendo que el bloqueo ya existe, que agregarlo después a seis pantallas. Es una cadena bastante serial — cada ticket habilita al que sigue —, así que si son tres personas, este es el bloque donde conviene que dos ayuden a revisar en vez de abrir tickets en paralelo.
+VGRP-27 — Shell del dashboard y navegación.
+VGRP-30 — Gating de contenido por nivel. La pieza que protege el producto. Los contactos de los agentes y los datos de SWIFT son lo que se vende: si se filtran al cliente, regalaste el producto. Todo archivo que los toque arranca con import 'server-only'.
+VGRP-38 — Panel admin: gestión de contenido. Va antes que las grillas porque crea las tablas de las que ellas leen (agentes, videos, profesionales, servicios_financieros).
+VGRP-29 — VideoProvider y grillas de Stage 1 y 2. Los videos todavía no están grabados: esto se construye entero contra placeholders, y está bien que así sea.
+Cómo saber que el bloque terminó: tres verificaciones concretas, con la evidencia a la vista — (1) entrás al dashboard con un usuario principiante, mirás el HTML y el bundle, y no aparece ni un dato de contacto de agente ni un dato de SWIFT reservado a Avanzado; (2) el output del build muestra las grillas como estáticas pese a leer de base, y editar un ítem desde el panel las actualiza sin deploy; (3) ningún componente importa el SDK de YouTube directo — todo pasa por VideoProvider. Si las tres no dan, no arranques el bloque 8: replicar el patrón en cuatro pantallas más multiplica el arreglo. Las tres se hacen a mano al cerrar este bloque; el bloque 9 las convierte en tests que corren solos (VGRP-50), porque una verificación manual se deja de hacer a la tercera semana.
+Ojo con una contradicción a resolver acá: VGRP-38 mueve el contenido a base de datos, lo que reemplaza la arquitectura de "contenido como módulos TypeScript" de STACK.md §3 y §5. Actualizá STACK.md cuando lo implementes, o el próximo que lo lea va a construir contra una decisión vieja.
+Bloque 8 — Las secciones del producto
+Cuatro pantallas que aplican patrones ya cerrados en el bloque anterior: no hay ninguna decisión de arquitectura nueva acá. Como no se tocan entre sí, es el bloque que mejor se reparte: si son tres personas, tres tickets en paralelo y el cuarto para quien se libere primero.
+Si en alguno de estos tickets sentís que necesitás cambiar el componente de bloqueo, el esquema de contenido o el VideoProvider, no lo cambies por tu cuenta: es señal de que algo del bloque 7 quedó corto, y conviene plantearlo para arreglarlo en un solo lugar y no cuatro veces.
+VGRP-31 — Banner de calculadora y directorio de agentes.
+VGRP-32 — Profesionales y servicios financieros.
+VGRP-28 — Stats del usuario.
+VGRP-33 — Perfil y soporte por WhatsApp.
+Antes de arrancar VGRP-32, resolvé la duda abierta: la matriz de acceso dice que servicios financieros está en ambos niveles, pero que SWIFT es exclusivo de Avanzado. Confirmalo con Jota antes de cerrar el gating de esa sección — si se define mal, se filtra la pieza más cara del producto o se le bloquea a alguien algo que pagó.
+Cómo saber que el bloque terminó: las cuatro secciones funcionan en mobile, un usuario con nivel ninguno recorre todo el dashboard y en ninguna pantalla ve algo roto (ve bloqueo con CTA de compra, que no es lo mismo), y la verificación de bundle del bloque 7 se repite sobre las pantallas nuevas y sigue dando limpia.
+Bloque 9 — Validación del producto
+Mismo rol que los bloques 3 y 6, un piso más arriba: no agrega funcionalidad, cierra en tests lo que hizo el bloque 7 — el gating de contenido, el panel que lo carga, el shell y las grillas. Va acá y no al final por la razón de siempre, con un agregado: el bloque 7 es el único que se entregó con sus verificaciones de cierre a mano (mirar el HTML, mirar el output del build, buscar imports de YouTube). Eso alcanza una vez; no alcanza para que seis pantallas más se construyan encima sin que nadie se dé cuenta de que el candado dejó de cerrar.
+La regla de los bloques 3 y 6 sigue valiendo: los tests se escriben acá, no se dejan anotados para después. Y su ritual también — romper a propósito lo que el test protege y confirmar que se pone en rojo.
+Lo que la auditoría del bloque 7 encontró (por eso este bloque existe y no es una formalidad): las policies de RLS de las cuatro tablas de contenido no tienen un solo test; /api/agentes —el único camino por el que un contacto real llega al browser— tampoco; las dos rutas HTTP del panel de contenido son las únicas de admin sin route.test.ts; y el fallback de la grilla de videos, el progreso de video y /api/perfil son código sin cobertura. No está mal hecho el bloque 7 — está sin anclar, que es distinto y se arregla acá.
+Son dos tickets, partidos por dónde se rompe la garantía y no por ticket de origen: uno cubre todo lo que vive en el servidor (datos, RLS y la superficie que los escribe), el otro lo que se ve y el recorrido completo en navegador. Se pueden escribir en paralelo si son dos personas.
+VGRP-49 — Tests del bloque 7: gating por nivel, RLS del contenido y panel admin de contenido. El más importante de los dos. Los contactos de los agentes y los datos de SWIFT son lo que se vende: si se filtran, regalaste el producto. Cubre también el panel que los carga — escribe con service role y recibe el nombre de la entidad desde la URL. Incluye el ritual de desactivar una policy a propósito y confirmar que CI se pone en rojo.
+VGRP-50 — Tests del bloque 7: shell, VideoProvider y grillas, y E2E de cierre del bloque. Convierte en código las tres verificaciones manuales del bloque 7, incluido el E2E del "canario": un contacto con un string único que no puede aparecer en ningún HTML ni respuesta de red de un usuario principiante. Conviene que corra después de VGRP-49.
+Cómo saber que el bloque terminó: la suite corre en verde en CI (corriendo de verdad, no salteada por falta de secrets), y si rompés a mano cualquiera de estas tres cosas — desactivar la policy agentes_select_por_nivel, sacarle el requireAdmin() a un handler de contenido, o hacer que /api/agentes lea el nivel de la URL en vez del claim — CI se pone en rojo. Si alguna pasa en verde, ese test es decorativo y el bloque no está cerrado.
+Bloque 10 — Completar y cerrar
+VGRP-40 — Panel admin: precios y flags. Cierra el panel completo.
+VGRP-34 — Páginas legales. Depende de que Jota entregue el texto. Podés maquetarlo contra un placeholder, pero no se lanza sin el texto real: sin esto no se puede cobrar legalmente.
+VGRP-20 — Login con Google. Va al final porque es una mejora de conveniencia, no algo que bloquee cobrar.
+VGRP-42 — Regresión final del sistema integrado. (El E2E del flujo de pago se adelantó al bloque 6, VGRP-48: acá queda la regresión sobre el sistema completo — dashboard, gating, secciones y legales.) Último por definición: corre toda la suite sobre el sistema integrado y cierra la fase.
+Cosas que te van a tentar y conviene no hacer
+Arrancar por el dashboard porque es lo visual. Depende de identidad y datos. Si esas decisiones salen mal, el dashboard se reescribe.
+Saltear el bloque 3 "para no perder tiempo". Es exactamente al revés: los bugs que cubre son los que se descubren tarde y caros. Un test escrito hoy cuesta una hora; el mismo bug encontrado con clientes pagando cuesta un fin de semana y credibilidad.
+Escribir tests que pasan siempre. Un test de RLS que no falla al desactivar la policy no está probando nada, y es peor que no tenerlo: te da confianza falsa.
+Dejar la observabilidad para el final. La alerta del webhook tiene que existir el mismo día que el webhook.
+Poner el check de nivel solo en el frontend. Un check de frontend se esquiva abriendo las herramientas de desarrollo. El gating se resuelve en el servidor; RLS es la red de seguridad debajo.
+Hardcodear precios "por ahora". Los precios van en Edge Config desde el primer día, justamente para que cambiarlos no dependa de un deploy.
+Agregar librerías que no están en STACK.md. Hay una sección entera de cosas descartadas a propósito (§10). Si creés que falta algo, planteálo antes de instalarlo.
+Llamar a supabase.auth.getUser() en cada pantalla. Es el error de performance más común de este stack. El nivel se lee del token.
+Cuándo pedir ayuda sin dudarlo
+No es una lista de cosas difíciles, es una lista de cosas caras de arreglar si salen mal:
+La región de Supabase (verificaciones previas) — es irreversible.
+Las policies de RLS (VGRP-15) — un error no se ve hasta que se filtra contenido pago.
+El webhook de Mercado Pago (VGRP-23) — falla en silencio y el síntoma es un cliente enojado.
+El gating por nivel (VGRP-30) — si se filtra, regalaste el producto.
+Fijate que las cuatro tienen tests dedicados en los bloques 3, 6 y 9. No es casualidad: lo que es caro de arreglar es lo que merece un test.
+Cómo trabajar (convenciones del equipo)
+Están en CLAUDE.md, pero las importantes para vos son:
+Todo commit y push se hace a través de Claude Code, no desde una terminal suelta. Hay hooks que corren revisión de código antes del commit y revisión de seguridad antes del push. Si commiteás por afuera, esas revisiones no se ejecutan.
+Antes de abrir un PR, corré /simplify sobre el código nuevo.
+Si tocás UI nueva, corré /design-critique. Si tocás componentes visuales compartidos (botones, inputs, cards), corré /design-system.
+Un ticket no está terminado si rompe alguno de los criterios de aceptación globales del PRD §6. Leelos una vez al principio y volvé a ellos antes de cerrar cada ticket.
+Decisiones que todavía están abiertas
+No te bloquean para empezar, pero si un ticket te las cruza, preguntá en vez de decidir por tu cuenta:
+El texto legal que tiene que entregar Jota.
+Qué pasa con el acceso cuando un pago se reembolsa.
+Si la calculadora se migra al dominio de la plataforma (hoy se enlaza externa).
+El estado de @vercel/kv en el dashboard de Vercel.
