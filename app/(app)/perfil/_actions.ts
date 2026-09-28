@@ -1,8 +1,9 @@
 "use server";
 
-// VGRP-33 — editar nombre/teléfono desde el perfil. Mismo criterio que las Server
-// Actions de auth (`app/(auth)/_actions.ts`): Zod es la frontera de confianza real,
-// se vuelve a validar acá aunque el form ya haya validado en el cliente.
+// VGRP-33 — editar nombre/teléfono desde el modal "Tus datos" del perfil
+// (DatosModal.tsx). Mismo criterio que las Server Actions de auth
+// (`app/(auth)/_actions.ts`): Zod es la frontera de confianza real, se vuelve
+// a validar acá aunque el form ya haya validado en el cliente.
 //
 // `createSupabaseServerClient()` (RLS, no service role): la policy `profiles_update_own`
 // ya limita el UPDATE a la propia fila; el `.eq("id", ...)` de abajo es defensa en

@@ -457,7 +457,9 @@
   color: var(--text-muted);
 }
 
-/* Tile del ícono (como los íconos de Ajustes). */
+/* Tile del ícono (como los íconos de Ajustes). Al pasar el mouse, el fondo
+   se aclara apenas y el trazo del ícono hace su propio gesto (ver más abajo,
+   "Gestos por ícono al hover") — como los íconos de Claude. */
 .iconTile {
   display: grid;
   place-items: center;
@@ -467,11 +469,119 @@
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.09);
   color: var(--text-primary);
+  transition:
+    background-color var(--duration-fast) linear,
+    transform var(--duration-base) var(--ease-spring);
+}
+
+@media (hover: hover) {
+  .destino:hover .iconTile,
+  .destinoProximamente:hover .iconTile {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.destino:active .iconTile {
+  transform: scale(0.92);
 }
 
 .destino[aria-current="page"] .iconTile {
   background: var(--accent);
   color: var(--on-accent);
+}
+
+/* --- Gestos por ícono al hover (partes sueltas del SVG, ver Icon.tsx) --- */
+
+:global(.i-roof),
+:global(.i-head),
+:global(.i-dot),
+:global(.i-front),
+:global(.i-back) {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (hover: hover) {
+  /* Inicio: el techo asienta con un pequeño rebote. */
+  .destino:hover :global(.icon-inicio) :global(.i-roof) {
+    animation: nav-techo var(--duration-slow) var(--ease-spring);
+  }
+
+  /* Calculadora: los botones van apareciendo, uno a uno. */
+  .destino:hover :global(.icon-calculadora) :global(.i-dot) {
+    animation: nav-punto 420ms var(--ease-spring) backwards;
+  }
+
+  /* Comunidad: las dos personas aparecen con un leve rebote, fondo primero.
+     ("Próximamente": mismo gesto, aunque el ítem no sea clickeable). */
+  .destino:hover :global(.icon-comunidad) :global(.i-back),
+  .destinoProximamente:hover :global(.icon-comunidad) :global(.i-back) {
+    animation: nav-persona 380ms var(--ease-spring) backwards;
+  }
+
+  .destino:hover :global(.icon-comunidad) :global(.i-front),
+  .destinoProximamente:hover :global(.icon-comunidad) :global(.i-front) {
+    animation: nav-persona 380ms var(--ease-spring) 70ms backwards;
+  }
+
+  /* Tracking: la caja da una vuelta completa ("Próximamente" incluido). */
+  .destino:hover :global(.icon-tracking),
+  .destinoProximamente:hover :global(.icon-tracking) {
+    animation: nav-caja 520ms var(--ease-spring);
+  }
+
+  /* Perfil: la cabeza se mueve apenas hacia los lados. */
+  .destino:hover :global(.icon-perfil) :global(.i-head) {
+    animation: nav-cabeza 480ms var(--ease-spring);
+  }
+}
+
+@keyframes nav-techo {
+  30% {
+    transform: translateY(-1.5px);
+  }
+  60% {
+    transform: translateY(0.8px);
+  }
+}
+
+@keyframes nav-punto {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes nav-persona {
+  from {
+    opacity: 0.5;
+    transform: scale(0.6);
+  }
+  65% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes nav-caja {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes nav-cabeza {
+  25% {
+    transform: translateX(-1.4px);
+  }
+  70% {
+    transform: translateX(1.4px);
+  }
 }
 
 /* Acceso al panel de admin: tile ámbar tenue, para que se lea como un

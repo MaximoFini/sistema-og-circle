@@ -1,11 +1,11 @@
 import NextLink from "next/link";
 import { notFound } from "next/navigation";
+import { CerrarSesionBoton } from "@/components/auth/CerrarSesionBoton";
 import { Icon } from "@/components/ui/Icon";
-import { cerrarSesion } from "@/lib/auth/actions";
 import type { NivelAcceso } from "@/lib/auth/claims";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
 import { getLinks } from "@/lib/config";
-import { PerfilForm } from "./PerfilForm";
+import { DatosModal } from "./DatosModal";
 import styles from "./perfil.module.css";
 
 // =============================================================================
@@ -60,25 +60,25 @@ export default async function PerfilPage() {
   return (
     <div className={styles.page}>
       <header className={styles.encabezado}>
-        <span className={styles.avatar} aria-hidden="true">
-          {nombreMostrado.charAt(0).toUpperCase()}
-        </span>
-        <div className={styles.encabezadoTexto}>
-          <p className={styles.eyebrow}>Tu cuenta</p>
-          <h1 className={styles.titulo}>Perfil</h1>
-          <p className={styles.nivelActivo}>
-            Nivel activo: <strong>{nivel}</strong>
-          </p>
+        <div className={styles.encabezadoInfo}>
+          <span className={styles.avatar} aria-hidden="true">
+            {nombreMostrado.charAt(0).toUpperCase()}
+          </span>
+          <div className={styles.encabezadoTexto}>
+            <p className={styles.eyebrow}>Tu cuenta</p>
+            <h1 className={styles.titulo}>Perfil</h1>
+            <p className={styles.nivelActivo}>
+              Nivel activo: <strong>{nivel}</strong>
+            </p>
+          </div>
         </div>
-      </header>
 
-      <section className={styles.cardDatos} aria-label="Editar datos">
-        <div className={styles.cardCabecera}>
-          <h2 className={styles.h2}>Tus datos</h2>
-          <p className={styles.email}>{perfil.email}</p>
-        </div>
-        <PerfilForm nombreInicial={perfil.nombre ?? ""} telefonoInicial={perfil.telefono ?? ""} />
-      </section>
+        <DatosModal
+          email={perfil.email}
+          nombreInicial={perfil.nombre ?? ""}
+          telefonoInicial={perfil.telefono ?? ""}
+        />
+      </header>
 
       <div className={styles.columna}>
         <section className={styles.grupo} aria-label="Accesos habilitados">
@@ -171,12 +171,10 @@ export default async function PerfilPage() {
           <p className={styles.grupoPie}>¿Tenés una duda o un problema? Escribinos.</p>
         </section>
 
-        <form action={cerrarSesion}>
-          <button type="submit" className={styles.salir}>
-            <Icon name="salir" size={18} />
-            Cerrar sesión
-          </button>
-        </form>
+        <CerrarSesionBoton className={styles.salir}>
+          <Icon name="salir" size={18} />
+          Cerrar sesión
+        </CerrarSesionBoton>
       </div>
     </div>
   );

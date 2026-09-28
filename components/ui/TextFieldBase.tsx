@@ -10,7 +10,7 @@
 // Mismo markup exacto en los dos casos — esto es de dónde sale el id, no de
 // qué sale.
 
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import styles from "./TextField.module.css";
 
 export interface TextFieldBaseProps
@@ -22,6 +22,8 @@ export interface TextFieldBaseProps
   error?: string | null;
   /** Ayuda opcional bajo el campo (formato esperado, requisitos, etc.). */
   hint?: string;
+  /** Contenido opcional pegado al borde derecho del input (ej. mostrar/ocultar contraseña). */
+  endAdornment?: ReactNode;
 }
 
 export function TextFieldBase({
@@ -30,6 +32,7 @@ export function TextFieldBase({
   error,
   hint,
   className,
+  endAdornment,
   ...inputProps
 }: TextFieldBaseProps) {
   const hintId = `${id}-hint`;
@@ -42,15 +45,24 @@ export function TextFieldBase({
         {label}
       </label>
 
-      <input
-        {...inputProps}
-        id={id}
-        className={[styles.input, error ? styles.inputError : null, className]
-          .filter(Boolean)
-          .join(" ")}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy || undefined}
-      />
+      <div className={styles.inputWrap}>
+        <input
+          {...inputProps}
+          id={id}
+          className={[
+            styles.input,
+            endAdornment ? styles.inputWithAdornment : null,
+            error ? styles.inputError : null,
+            className,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy || undefined}
+        />
+
+        {endAdornment ? <div className={styles.adornment}>{endAdornment}</div> : null}
+      </div>
 
       {hint ? (
         <p className={styles.hint} id={hintId}>
