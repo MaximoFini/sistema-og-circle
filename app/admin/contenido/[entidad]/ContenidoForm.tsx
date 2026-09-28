@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Button, FormError } from "@/components/ui";
 import { Constants } from "@/lib/database.types";
+import { capitalizar } from "@/lib/format";
 import { videoProvider } from "@/lib/video/provider";
 import styles from "../../admin.module.css";
 
@@ -220,7 +221,7 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
               >
                 {NIVELES.map((n) => (
                   <option key={n} value={n}>
-                    {n}
+                    {capitalizar(n)}
                   </option>
                 ))}
               </select>

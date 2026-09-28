@@ -12,6 +12,15 @@ import styles from "../admin.module.css";
 // libre para el admin.
 const ESTADOS = ["approved", "pending", "in_process", "rejected", "refunded", "cancelled"] as const;
 
+const ESTADO_LABELS: Record<(typeof ESTADOS)[number], string> = {
+  approved: "Aprobado",
+  pending: "Pendiente",
+  in_process: "En proceso",
+  rejected: "Rechazado",
+  refunded: "Reembolsado",
+  cancelled: "Cancelado",
+};
+
 export function PagosFiltros({
   estado,
   desde,
@@ -31,7 +40,7 @@ export function PagosFiltros({
           <option value="">Todos</option>
           {ESTADOS.map((e) => (
             <option key={e} value={e}>
-              {e}
+              {ESTADO_LABELS[e]}
             </option>
           ))}
         </select>
@@ -48,7 +57,7 @@ export function PagosFiltros({
         id="ref"
         name="ref"
         label="Referencia del proveedor"
-        placeholder="buscar por proveedor_ref"
+        placeholder="Buscar"
         defaultValue={proveedorRef ?? ""}
         autoComplete="off"
       />

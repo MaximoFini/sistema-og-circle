@@ -20,7 +20,7 @@ export function AuditoriaFiltros({
         id="actor"
         name="actor"
         label="Actor (email)"
-        placeholder="buscar por email"
+        placeholder="Buscar por email"
         defaultValue={actor ?? ""}
         autoComplete="off"
       />

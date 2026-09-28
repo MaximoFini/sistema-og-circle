@@ -35,7 +35,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <TextLink href="/admin" className={styles.brandLink}>
               Panel · OG Circle
             </TextLink>
-            <span className={styles.modoAdmin}>modo admin</span>
+            <span className={styles.modoAdmin}>Modo Admin</span>
           </div>
 
           <AdminNav />
