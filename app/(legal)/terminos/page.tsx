@@ -4,7 +4,7 @@ import { LegalDocPage } from "../LegalDocPage";
 export const metadata: Metadata = { title: "Términos y Condiciones — OG Circle" };
 
 // VGRP-34 — placeholder de Términos y Condiciones. El texto real lo entrega
-// Jota (PRD Fase 2 §8): esto es la maqueta, marcada como tal, con la
+// OG Circle (PRD Fase 2 §8): esto es la maqueta, marcada como tal, con la
 // estructura que ese texto va a ocupar. No se lanza con este contenido — ver
 // el criterio de aceptación en el ticket. El chrome (link de vuelta, título,
 // callout de placeholder) vive en `../LegalDocPage.tsx`, compartido con

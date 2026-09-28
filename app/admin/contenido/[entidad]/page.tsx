@@ -9,6 +9,7 @@ import {
 } from "@/lib/data/admin/contenido";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../../admin.module.css";
+import { EliminarItemBoton } from "./EliminarItemBoton";
 
 // VGRP-38 — listado de una entidad de contenido. Server Component: lectura
 // directa por service role (bypassa RLS; la barrera de autorización es el rol
@@ -61,20 +62,34 @@ async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
           {items.map((item) => {
             const registro = item as Record<string, unknown>;
             const vigente = Boolean(registro[campo]);
+            const nombre = tituloItem(entidad, registro);
             return (
-              <li key={String(registro.id)}>
+              <li
+                key={String(registro.id)}
+                className={`${styles.itemFila} ${vigente ? "" : styles.itemInactivo}`}
+              >
                 <TextLink
                   href={`/admin/contenido/${entidad}/${registro.id}`}
-                  className={`${styles.itemFila} ${vigente ? "" : styles.itemInactivo}`}
+                  className={styles.itemFilaLink}
                 >
                   <span className={styles.itemInfo}>
-                    <span className={styles.itemTitulo}>{tituloItem(entidad, registro)}</span>
+                    <span className={styles.itemTitulo}>{nombre}</span>
                     <span className={styles.itemSub}>{subtitulo(entidad, registro)}</span>
                   </span>
                   <span className={styles.itemSub}>
                     orden {String(registro.orden)} · {campo}: {vigente ? "sí" : "no"}
                   </span>
                 </TextLink>
+                <EliminarItemBoton
+                  entidad={entidad}
+                  id={String(registro.id)}
+                  nombre={nombre}
+                  avisoExtra={
+                    entidad === "videos"
+                      ? "Si sólo querés ocultarlo sin perder el progreso de los usuarios, entrá a editarlo y destildá 'Publicado' en vez de borrarlo."
+                      : undefined
+                  }
+                />
               </li>
             );
           })}

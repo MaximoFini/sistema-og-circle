@@ -104,7 +104,7 @@ const PUBLIC_PREFIXES = [
 
   // --- Legales (`app/(legal)/`): son públicas por definición; suelen
   // linkearse desde la landing y desde el pie del registro, antes de que
-  // exista una cuenta. El contenido lo entrega Jota (ver CONTEXT.md).
+  // exista una cuenta. El contenido lo entrega OG Circle (ver CONTEXT.md).
   "/terminos",
   "/privacidad",
   "/reembolsos",

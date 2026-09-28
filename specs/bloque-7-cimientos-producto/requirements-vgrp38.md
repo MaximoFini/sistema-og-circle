@@ -6,7 +6,7 @@
 ## Summary
 
 Crea las 4 tablas de contenido de la plataforma (`agentes`, `videos`, `profesionales`,
-`servicios_financieros`) con CRUD completo en el panel de admin, para que Jota pueda
+`servicios_financieros`) con CRUD completo en el panel de admin, para que OG Circle pueda
 cargar y corregir contenido sin pedirle nada al equipo de desarrollo. **Decisión cerrada**
 (PRD, "Decisiones tomadas" §7): todo el contenido va a base de datos, videos incluidos,
 aunque casi no cambien — es la red de seguridad de poder corregirlos sin deploy. El costo
@@ -37,7 +37,7 @@ Ya no está bloqueado por ninguna decisión abierta (a diferencia de cuando se r
 - **Las grillas que leen esta base** (Stage 1/2, directorio de agentes real) — es VGRP-29.
   Este ticket sólo dejar el contenido cargable; consumirlo es el ticket siguiente.
 - **Cargar el contenido real de negocio** (los 6 agentes reales, los 4 profesionales
-  reales, los textos de servicios financieros) — eso es tarea de Jota, usando el CRUD que
+  reales, los textos de servicios financieros) — eso es tarea de OG Circle, usando el CRUD que
   este ticket construye. Este ticket no inventa datos de negocio reales; ver Open
   questions sobre qué significa exactamente "cargar el contenido inicial" del ticket
   original.
@@ -148,7 +148,7 @@ abra una vía nueva para filtrar secretos.
 
 ### US-6: Contenido inicial cargable, no inventado
 
-Como equipo, queremos que el panel quede listo para que Jota cargue el contenido real
+Como equipo, queremos que el panel quede listo para que OG Circle cargue el contenido real
 apenas esté disponible, sin que el ticket invente datos de negocio.
 
 **Acceptance criteria:**
@@ -185,7 +185,7 @@ apenas esté disponible, sin que el ticket invente datos de negocio.
   VGRP-29). No se agrega la columna.
 - **Contenido inicial:** las 4 tablas quedan **vacías** al cerrar este ticket (a lo sumo
   un ítem de ejemplo con `activo=false` para probar el CRUD a mano). No se inventan
-  agentes, profesionales ni servicios reales — Jota carga el contenido real desde el
+  agentes, profesionales ni servicios reales — OG Circle carga el contenido real desde el
   panel una vez construido.
 - **`content/agentes-demo.ts` (VGRP-30):** queda para después. Este ticket no lo toca ni
   lo reemplaza — sólo crea la tabla `agentes` y su CRUD.

@@ -3,7 +3,7 @@ import styles from "../admin.module.css";
 import { FlagsForm } from "./FlagsForm";
 import { PreciosForm } from "./PreciosForm";
 
-// VGRP-40 — Cierra el panel: Jota puede cambiar precios y flags de fase sin
+// VGRP-40 — Cierra el panel: OG Circle puede cambiar precios y flags de fase sin
 // pedirle nada al programador. `requireAdminPage()` ya lo aplica el layout de
 // `app/admin/` (mismo criterio que el resto de las páginas del panel, no se
 // repite acá). Server Component: lee `getConfig()` directo, sin pasar por su

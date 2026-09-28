@@ -39,7 +39,7 @@ const CAMPOS: Record<string, CampoConfig[]> = {
     { name: "provider_ref", label: "Provider ref — id de YouTube (sensible)", tipo: "text" },
     {
       name: "nivel_requerido",
-      label: "Nivel requerido (sin uso real hoy — VGRP-29)",
+      label: "Nivel requerido (sin uso real hoy)",
       tipo: "nivel",
     },
     { name: "orden", label: "Orden", tipo: "number" },
@@ -133,7 +133,12 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
 
   async function onBorrar() {
     if (!item) return;
-    if (!window.confirm("¿Borrar este ítem? Esta acción no se puede deshacer desde acá.")) return;
+    const aviso =
+      entidad === "videos"
+        ? "¿Eliminar este video? Esta acción no se puede deshacer: la fila se borra de la base " +
+          "(si sólo querés ocultarlo sin perder el progreso de los usuarios, destildá 'Publicado')."
+        : "¿Eliminar este ítem? Esta acción no se puede deshacer.";
+    if (!window.confirm(aviso)) return;
 
     setBorrando(true);
     setError(null);
@@ -239,7 +244,7 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
         </Button>
         {item ? (
           <Button type="button" variant="ghost" loading={borrando} onClick={onBorrar}>
-            {entidad === "videos" ? "Despublicar" : "Borrar"}
+            Eliminar
           </Button>
         ) : null}
       </div>

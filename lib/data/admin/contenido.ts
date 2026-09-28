@@ -217,21 +217,19 @@ export async function actualizarContenido<E extends Entidad>(
 }
 
 /**
- * `videos`: SIEMPRE soft-delete (`publicado = false`), nunca DELETE real —
- * `profiles.progreso` referencia videos por id (PRD §4.1), y borrar la fila
- * rompería el progreso ya guardado de usuarios reales (requirements-vgrp38.md
- * US-5). El resto de las entidades no tiene ninguna referencia conocida desde
- * otro lado, así que un DELETE real es seguro.
+ * DELETE real en las 4 entidades. `videos` incluido a pedido explícito (antes
+ * hacía soft-delete acá porque `profiles.progreso.videosVistos` referencia
+ * videos por id — PRD §4.1). El id borrado puede quedar huérfano en el
+ * `progreso` de algún usuario: `leerVideosVistosVigentes()`
+ * (components/video/_actions.ts) filtra esos ids contra la tabla real antes de
+ * mostrar el contador, así que un id borrado nunca infla "vistos" por encima
+ * del total real de videos.
  */
 export async function borrarContenido<E extends Entidad>(
   admin: AdminClient,
   entidad: E,
   id: string,
 ): Promise<ResultadoMutacion<Tables<E> | null>> {
-  if (entidad === "videos") {
-    return actualizarContenido(admin, entidad, id, { publicado: false });
-  }
-
   const { data: anterior, error: errorAnterior } = await tabla(admin, entidad)
     .select("*")
     .eq("id", id)

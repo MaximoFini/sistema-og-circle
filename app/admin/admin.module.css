@@ -672,7 +672,7 @@ a.userRow:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   min-height: 60px;
   padding: 12px 16px 12px 20px;
 }
@@ -685,6 +685,50 @@ a.userRow:focus-visible {
   right: 0;
   height: 1px;
   background: var(--separator);
+}
+
+/* El link ocupa lo mismo que antes ocupaba el <a> entero (itemInfo + el
+   "orden ... · activo: sí" de la derecha) — separado del botón de borrar,
+   que ahora vive afuera del link (un <button> anidado en un <a> es HTML
+   inválido y el navegador lo renderiza mal). */
+.itemFilaLink {
+  display: flex;
+  flex: 1 1 260px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  min-width: 0;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+a.itemFilaLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 8px;
+}
+
+.itemAcciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.itemBorrar {
+  composes: button ghost small from "../../components/ui/Button.module.css";
+}
+
+/* Selector más específico que `.ghost` (elemento + clase vs. clase sola) para
+   ganarle sin depender del orden de carga entre CSS Modules — mismo criterio
+   que `a.cargarMas` más abajo. */
+button.itemBorrar {
+  color: var(--danger);
+}
+
+.itemError {
+  font-size: var(--fs-footnote);
+  color: var(--danger);
 }
 
 .itemInfo {

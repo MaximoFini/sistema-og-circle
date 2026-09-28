@@ -116,7 +116,7 @@ export async function InicioShell({ variante }: InicioShellProps) {
           <SeccionSlot
             eyebrow="Infraestructura"
             titulo="Agentes de compra en China"
-            descripcion="6 agentes verificados con los que ya opera Jota."
+            descripcion="6 agentes verificados con los que ya opera OG Circle."
           >
             <VideoGrid videos={stage3} />
             <AgentesGrid />

@@ -95,7 +95,7 @@ Cubre 1 work item del Epic "Fase 2 — MVP para cobrar" (proyecto VGRP en Plane)
     financieros es de ambos niveles y SWIFT sólo de Avanzado?): sí — "servicios
     financieros" está en la lista de Principiante, SWIFT sólo aparece en el "+" de
     Avanzado. Documentado acá porque es la primera vez que se lee esta sección de la
-    PRD con ese detalle; VGRP-32 la reutiliza en vez de esperar la respuesta de Jota
+    PRD con ese detalle; VGRP-32 la reutiliza en vez de esperar la respuesta de OG Circle
     (que igual sigue en curso, por las dudas la PRD esté desactualizada).
 - **`/perfil` es un Server Component dinámico normal**, no una pieza estática con
   fetch-post-hidratación — no está sujeto a la regla de shell estático de VGRP-27

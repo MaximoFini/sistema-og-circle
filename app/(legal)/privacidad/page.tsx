@@ -4,7 +4,7 @@ import { LegalDocPage } from "../LegalDocPage";
 export const metadata: Metadata = { title: "Política de Privacidad — OG Circle" };
 
 // VGRP-34 — placeholder de Política de Privacidad. Mismo criterio que
-// `/terminos`: texto pendiente de Jota, estructura ya lista, chrome
+// `/terminos`: texto pendiente de OG Circle, estructura ya lista, chrome
 // compartido vía `../LegalDocPage.tsx`.
 export default function PrivacidadPage() {
   return (

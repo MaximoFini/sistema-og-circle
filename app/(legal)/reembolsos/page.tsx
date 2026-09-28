@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Política de Reembolsos — OG Circl
 // mismo `proveedor_ref` deja de contar, así que el nivel cae solo a
 // 'ninguno'. El PRD §8 todavía lista esto como "decisión abierta", pero no
 // lo es: es el comportamiento real del código desde VGRP-15. Si el texto
-// final que entregue Jota describe otra cosa (por ejemplo, acceso que
+// final que entregue OG Circle describe otra cosa (por ejemplo, acceso que
 // persiste hasta que un admin lo revoque a mano), hay que avisar ANTES de
 // publicarlo — el texto legal y el sistema tienen que decir lo mismo.
 export default function ReembolsosPage() {

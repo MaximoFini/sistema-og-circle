@@ -10,7 +10,7 @@
   Notes: la propia PRD "Fase 2 — MVP para cobrar" §1.1 confirma: servicios financieros
   está en ambos niveles, SWIFT es exclusivo de Avanzado. Documentado en
   requirements-vgrp32.md y en requirements-vgrp33.md (donde se encontró primero). Sigue
-  pendiente la confirmación explícita de Jota — no bloqueante para implementar.
+  pendiente la confirmación explícita de OG Circle — no bloqueante para implementar.
 
 - [x] **32-T2 — `lib/data/profesionales.ts` (sin gating por nivel)**
   Satisfies: US-1
