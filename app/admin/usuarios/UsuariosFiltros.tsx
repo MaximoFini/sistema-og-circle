@@ -1,5 +1,6 @@
 import { Button, TextFieldBase } from "@/components/ui";
 import { Constants } from "@/lib/database.types";
+import { capitalizar } from "@/lib/format";
 import styles from "../admin.module.css";
 
 // VGRP-36 — filtros del listado de usuarios. Form nativo `method="get"`: al
@@ -16,7 +17,7 @@ export function UsuariosFiltros({ q, nivel }: { q?: string; nivel?: string }) {
         id="q"
         name="q"
         label="Email"
-        placeholder="buscar por email"
+        placeholder="Buscar"
         defaultValue={q ?? ""}
         autoComplete="off"
       />
@@ -26,7 +27,7 @@ export function UsuariosFiltros({ q, nivel }: { q?: string; nivel?: string }) {
           <option value="">Todos</option>
           {NIVELES.map((n) => (
             <option key={n} value={n}>
-              {n}
+              {capitalizar(n)}
             </option>
           ))}
         </select>

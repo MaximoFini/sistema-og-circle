@@ -43,7 +43,7 @@ export default async function AdminIndexPage() {
     <div className={styles.page}>
       <h1 className={styles.h1}>Panel de administración</h1>
       <p className={styles.lede}>
-        Herramienta interna para reparar a mano lo que el flujo automático de cobro no resolvió.
+        Panel interno para gestionar usuarios, pagos, contenido y auditoría de la plataforma.
       </p>
 
       <TextLink
