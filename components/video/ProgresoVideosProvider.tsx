@@ -16,6 +16,8 @@ interface ProgresoContexto {
    *  para distinguir "todavía no sabemos" de "de verdad tiene 0 videos vistos" en el
    *  contador (StatsVideos), sin generar salto de layout. */
   cargando: boolean;
+  /** true solo para un admin: habilita el reorden por arrastre de los videos. */
+  esAdmin: boolean;
   marcarVisto: (videoId: string) => void;
 }
 
@@ -30,12 +32,15 @@ export function ProgresoVideosProvider({
 }) {
   const [vistos, setVistos] = useState<Set<string>>(new Set());
   const [cargando, setCargando] = useState(true);
+  const [esAdmin, setEsAdmin] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
     obtenerProgresoVideos()
-      .then(({ videosVistos }) => {
-        if (!cancelado) setVistos(new Set(videosVistos));
+      .then(({ videosVistos, esAdmin }) => {
+        if (cancelado) return;
+        setVistos(new Set(videosVistos));
+        setEsAdmin(esAdmin);
       })
       .catch(() => {
         // Fallo silencioso: el contador queda en 0 hasta el próximo mount — no es
@@ -64,7 +69,7 @@ export function ProgresoVideosProvider({
   }
 
   return (
-    <Contexto.Provider value={{ vistos, totalVideos, cargando, marcarVisto }}>
+    <Contexto.Provider value={{ vistos, totalVideos, cargando, esAdmin, marcarVisto }}>
       {children}
     </Contexto.Provider>
   );

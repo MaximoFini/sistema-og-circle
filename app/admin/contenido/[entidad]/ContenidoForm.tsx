@@ -51,7 +51,7 @@ const CAMPOS: Record<string, CampoConfig[]> = {
       label: "Nivel requerido (sin uso real hoy — VGRP-29)",
       tipo: "nivel",
     },
-    { name: "orden", label: "Orden", tipo: "number" },
+    // Sin campo "orden": los videos se reordenan arrastrando en el listado.
     { name: "publicado", label: "Publicado", tipo: "checkbox" },
   ],
   profesionales: [

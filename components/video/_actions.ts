@@ -10,6 +10,7 @@
 // (`id = auth.uid()`); el `.eq("id", claims.sub)` de abajo es defensa en profundidad
 // explícita, no el único candado.
 
+import { getRol } from "@/lib/auth/claims";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
 
 interface ProgresoForma {
@@ -34,15 +35,23 @@ function userId(claims: Awaited<ReturnType<typeof getVerifiedClaims>>): string |
   return typeof sub === "string" && sub ? sub : null;
 }
 
-export async function obtenerProgresoVideos(): Promise<{ videosVistos: string[] }> {
+/**
+ * `esAdmin` sale del claim ya verificado (sin query extra) y solo decide si el
+ * Inicio muestra el reorden por arrastre. Es UX, no seguridad: quien manda de
+ * verdad es `requireAdmin()` en PUT /api/admin/contenido/videos/orden.
+ */
+export async function obtenerProgresoVideos(): Promise<{
+  videosVistos: string[];
+  esAdmin: boolean;
+}> {
   const claims = await getVerifiedClaims();
   const id = userId(claims);
-  if (!id) return { videosVistos: [] };
+  if (!id) return { videosVistos: [], esAdmin: false };
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.from("profiles").select("progreso").eq("id", id).maybeSingle();
 
-  return { videosVistos: leerVideosVistos(data?.progreso) };
+  return { videosVistos: leerVideosVistos(data?.progreso), esAdmin: getRol(claims) === "admin" };
 }
 
 export type MarcarVideoVistoResult =

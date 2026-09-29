@@ -8,13 +8,24 @@
 // datos: "completado" (visto), "disponible" (no gateado, ver lib/data/videos.ts) o
 // "próximamente" — no hay un bloqueo secuencial real entre pasos, es sólo la lectura
 // visual del progreso.
+//
+// `reordenable` (solo la variante Avanzado): un admin puede reordenar los pasos
+// arrastrando. El camino de abajo sigue siendo el HTML estático para todos; ReordenAdmin
+// lo reemplaza en el cliente únicamente si la sesión es admin.
 
 import type { VideoGridItem } from "@/lib/data/videos";
+import { ReordenAdmin } from "./ReordenAdmin";
 import { VideoCard } from "./VideoCard";
 import styles from "./video.module.css";
 
-export function VideoGrid({ videos }: { videos: VideoGridItem[] }) {
-  return (
+export function VideoGrid({
+  videos,
+  reordenable = false,
+}: {
+  videos: VideoGridItem[];
+  reordenable?: boolean;
+}) {
+  const camino = (
     <div className={styles.camino}>
       {videos.map((video, i) => (
         <VideoCard
@@ -26,4 +37,6 @@ export function VideoGrid({ videos }: { videos: VideoGridItem[] }) {
       ))}
     </div>
   );
+
+  return reordenable ? <ReordenAdmin videos={videos}>{camino}</ReordenAdmin> : camino;
 }

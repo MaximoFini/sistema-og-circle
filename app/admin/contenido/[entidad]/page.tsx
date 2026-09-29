@@ -7,8 +7,10 @@ import {
   esEntidadValida,
   listarContenido,
 } from "@/lib/data/admin/contenido";
+import type { Tables } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../../admin.module.css";
+import { VideosReordenables } from "./VideosReordenables";
 
 // VGRP-38 — listado de una entidad de contenido. Server Component: lectura
 // directa por service role (bypassa RLS; la barrera de autorización es el rol
@@ -43,7 +45,10 @@ async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
 
   return (
     <>
-      <p className={styles.lede}>{items.length} ítem(s), ordenados por "orden".</p>
+      <p className={styles.lede}>
+        {items.length} ítem(s),{" "}
+        {entidad === "videos" ? "arrastrá para reordenar." : 'ordenados por "orden".'}
+      </p>
 
       {/* VGRP-54 punto 4 — "+ Crear nuevo" no depende de `items`, pero queda
           adentro del mismo Suspense que el lede (que sí depende) para no
@@ -56,6 +61,15 @@ async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
 
       {items.length === 0 ? (
         <p className={styles.vacio}>Todavía no hay ítems cargados.</p>
+      ) : entidad === "videos" ? (
+        <VideosReordenables
+          inicial={(items as Tables<"videos">[]).map((v) => ({
+            id: v.id,
+            titulo: v.titulo,
+            stage: v.stage,
+            publicado: v.publicado,
+          }))}
+        />
       ) : (
         <ul className={styles.itemLista}>
           {items.map((item) => {

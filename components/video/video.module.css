@@ -293,3 +293,53 @@
   padding-left: 0;
   cursor: default;
 }
+
+/* ------------------------------------------------------------------ */
+/* Reorden por arrastre (solo admin, variante Avanzado)               */
+/* ------------------------------------------------------------------ */
+
+.pasoArrastrable {
+  position: relative;
+}
+
+/* El agarre flota a la derecha del paso; el contenido conserva su layout. */
+.agarreAdmin {
+  position: absolute;
+  top: 6px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.agarreAdmin:hover {
+  color: var(--text-primary);
+}
+
+.agarreAdmin:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.pasoArrastrando {
+  z-index: 1;
+  opacity: 0.9;
+  cursor: grabbing;
+}
+
+.errorReorden {
+  margin: 0 0 8px;
+  font-size: var(--fs-footnote);
+  color: var(--text-primary);
+}
