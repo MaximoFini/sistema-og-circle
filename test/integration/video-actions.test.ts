@@ -107,7 +107,7 @@ describe("sin sesión (VGRP-50)", () => {
 
   it("obtenerProgresoVideos devuelve lista vacía", async () => {
     const resultado = await obtenerProgresoVideos();
-    expect(resultado).toEqual({ videosVistos: [] });
+    expect(resultado).toEqual({ videosVistos: [], esAdmin: false });
   });
 });
 
