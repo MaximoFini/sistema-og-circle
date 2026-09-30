@@ -1,8 +1,8 @@
 import NextLink from "next/link";
 import type { ReactNode } from "react";
-import { Button, TextLink } from "@/components/ui";
+import { CerrarSesionBoton } from "@/components/auth/CerrarSesionBoton";
+import { TextLink } from "@/components/ui";
 import buttonStyles from "@/components/ui/Button.module.css";
-import { cerrarSesion } from "@/lib/auth/actions";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { AdminNav } from "./AdminNav";
 import styles from "./admin.module.css";
@@ -35,7 +35,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <TextLink href="/admin" className={styles.brandLink}>
               Panel · OG Circle
             </TextLink>
-            <span className={styles.modoAdmin}>modo admin</span>
+            <span className={styles.modoAdmin}>Modo Admin</span>
           </div>
 
           <AdminNav />
@@ -49,11 +49,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             >
               Ir al panel general
             </NextLink>
-            <form action={cerrarSesion} className={styles.logoutForm}>
-              <Button type="submit" variant="ghost" size="sm">
-                Cerrar sesión
-              </Button>
-            </form>
+            <CerrarSesionBoton
+              className={`${buttonStyles.button} ${buttonStyles.ghost} ${buttonStyles.small}`}
+            >
+              Cerrar sesión
+            </CerrarSesionBoton>
           </div>
         </header>
       </div>

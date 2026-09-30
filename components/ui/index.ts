@@ -7,6 +7,7 @@ export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { ContenidoBloqueado, type ContenidoBloqueadoProps } from "./ContenidoBloqueado";
 export { FormError, type FormErrorProps } from "./FormError";
 export { Icon, type IconName, type IconProps } from "./Icon";
+export { PasswordField, type PasswordFieldProps } from "./PasswordField";
 export { TextField, type TextFieldProps } from "./TextField";
 export { TextFieldBase, type TextFieldBaseProps } from "./TextFieldBase";
 export { TextLink, type TextLinkProps } from "./TextLink";

@@ -42,6 +42,56 @@
   color: var(--text-faint);
 }
 
+.inputWrap {
+  position: relative;
+  width: 100%;
+}
+
+.inputWithAdornment {
+  padding-right: 44px;
+}
+
+.adornment {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.toggleVisibilidad {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) linear,
+    color var(--duration-fast) linear;
+}
+
+@media (hover: hover) {
+  .toggleVisibilidad:hover {
+    background: var(--fill-hover);
+    color: var(--text-primary);
+  }
+}
+
+.toggleVisibilidad:active {
+  transform: scale(0.92);
+}
+
+.toggleVisibilidad:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 @media (hover: hover) {
   .input:hover:not(:disabled):not(:focus) {
     background-color: var(--fill-hover);

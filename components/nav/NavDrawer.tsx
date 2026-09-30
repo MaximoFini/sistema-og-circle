@@ -11,8 +11,8 @@ import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { CerrarSesionBoton } from "@/components/auth/CerrarSesionBoton";
 import { Icon } from "@/components/ui/Icon";
-import { cerrarSesion } from "@/lib/auth/actions";
 import { DESTINOS_NAV } from "./destinos";
 import styles from "./nav.module.css";
 import { type PerfilResumen, UserFooter } from "./UserFooter";
@@ -167,12 +167,10 @@ export function NavDrawer({
           ) : null}
         </nav>
 
-        <form action={cerrarSesion}>
-          <button type="submit" className={styles.salir}>
-            <Icon name="salir" size={18} />
-            Cerrar sesión
-          </button>
-        </form>
+        <CerrarSesionBoton className={styles.salir}>
+          <Icon name="salir" size={18} />
+          Cerrar sesión
+        </CerrarSesionBoton>
       </div>
     </>,
     document.body,

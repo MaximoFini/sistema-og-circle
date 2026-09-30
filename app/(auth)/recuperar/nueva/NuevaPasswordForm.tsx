@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button, FormError, TextField } from "@/components/ui";
+import { Button, FormError, PasswordField } from "@/components/ui";
 import { INITIAL_ACTION_STATE } from "@/lib/forms/action-state";
 import { definirNuevaPassword } from "../../_actions";
 import styles from "../../auth.module.css";
@@ -17,9 +17,8 @@ export function NuevaPasswordForm() {
 
   return (
     <form action={formAction} className={styles.form} noValidate>
-      <TextField
+      <PasswordField
         name="password"
-        type="password"
         label="Contraseña nueva"
         autoComplete="new-password"
         required

@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 const PATHS = {
   inicio: (
     <>
-      <path d="M4 10.2 12 4l8 6.2" />
+      <path className="i-roof" d="M4 10.2 12 4l8 6.2" />
       <path d="M6 9v9.5A1.5 1.5 0 0 0 7.5 20H10v-5.5h4V20h2.5a1.5 1.5 0 0 0 1.5-1.5V9" />
     </>
   ),
@@ -19,15 +19,20 @@ const PATHS = {
     <>
       <rect x="5" y="3" width="14" height="18" rx="3" />
       <path d="M8.5 7h7" />
-      <path d="M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
+      <path className="i-dot" style={{ animationDelay: "0ms" }} d="M9 12h.01" />
+      <path className="i-dot" style={{ animationDelay: "30ms" }} d="M12 12h.01" />
+      <path className="i-dot" style={{ animationDelay: "60ms" }} d="M15 12h.01" />
+      <path className="i-dot" style={{ animationDelay: "90ms" }} d="M9 16h.01" />
+      <path className="i-dot" style={{ animationDelay: "120ms" }} d="M12 16h.01" />
+      <path className="i-dot" style={{ animationDelay: "150ms" }} d="M15 16h.01" />
     </>
   ),
   comunidad: (
     <>
-      <circle cx="9" cy="9" r="3.2" />
-      <path d="M3.5 19c.7-3 2.9-4.8 5.5-4.8s4.8 1.8 5.5 4.8" />
-      <path d="M15.5 6a3 3 0 0 1 0 6" />
-      <path d="M17 14.4c1.9.5 3 2.1 3.5 4.6" />
+      <circle className="i-front" cx="9" cy="9" r="3.2" />
+      <path className="i-front" d="M3.5 19c.7-3 2.9-4.8 5.5-4.8s4.8 1.8 5.5 4.8" />
+      <path className="i-back" d="M15.5 6a3 3 0 0 1 0 6" />
+      <path className="i-back" d="M17 14.4c1.9.5 3 2.1 3.5 4.6" />
     </>
   ),
   tracking: (
@@ -39,7 +44,7 @@ const PATHS = {
   ),
   perfil: (
     <>
-      <circle cx="12" cy="8.5" r="3.8" />
+      <circle className="i-head" cx="12" cy="8.5" r="3.8" />
       <path d="M5 20c.9-3.6 3.7-5.6 7-5.6s6.1 2 7 5.6" />
     </>
   ),
@@ -101,6 +106,25 @@ const PATHS = {
       <path d="M5.5 15v2.5A1.5 1.5 0 0 0 7 19h10a1.5 1.5 0 0 0 1.5-1.5V15" />
     </>
   ),
+  ojo: (
+    <>
+      <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  cerrar: (
+    <>
+      <path d="M6 6l12 12" />
+      <path d="M18 6 6 18" />
+    </>
+  ),
+  ojoTachado: (
+    <>
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      <path d="M6.3 6.9C3.9 8.5 2.5 12 2.5 12s3.5 6.2 9.5 6.2c1.4 0 2.6-.3 3.7-.8M17.9 16.8c2.1-1.6 3.6-4.8 3.6-4.8s-3.5-6.2-9.5-6.2c-.6 0-1.2.06-1.8.18" />
+      <path d="M3.5 3.5l17 17" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof PATHS;
@@ -115,7 +139,7 @@ export function Icon({ name, size = 20, className }: IconProps) {
   const relleno = name === "play";
   return (
     <svg
-      className={className}
+      className={className ? `${className} icon-${name}` : `icon-${name}`}
       width={size}
       height={size}
       viewBox="0 0 24 24"

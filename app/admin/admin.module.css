@@ -152,10 +152,6 @@ a.brandLink {
   }
 }
 
-.logoutForm {
-  display: flex;
-}
-
 /* --- Contenido ----------------------------------------------------------- */
 
 .main {
@@ -333,9 +329,8 @@ a.notFoundLink {
 }
 
 .formAyuda {
+  composes: footnote from "../../components/ui/type.module.css";
   padding-inline: 4px;
-  font-size: var(--fs-caption);
-  color: var(--text-muted);
 }
 
 /* Controles nativos del panel (VGRP-36/38): mismo relleno translúcido que
@@ -720,6 +715,57 @@ a.userRow:focus-visible {
 
 .itemInactivo {
   opacity: 0.5;
+}
+
+/* --- Reorden por arrastre (videos) ------------------------------------ */
+
+/* El agarre va a la izquierda de la fila; la fila (link) ocupa el resto y
+   conserva su propio padding. */
+.itemFilaArrastrable {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: transparent;
+}
+
+.itemFilaArrastrable > .itemFila {
+  flex: 1;
+  min-width: 0;
+  padding-left: 4px;
+}
+
+.itemAgarre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.itemAgarre:hover {
+  color: var(--text-primary);
+}
+
+.itemAgarre:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+  border-radius: var(--radius-card);
+}
+
+.itemArrastrando {
+  z-index: 1;
+  opacity: 0.9;
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  background: var(--bg-elevated, rgba(30, 30, 30, 0.95));
 }
 
 /* --- Ledger de pagos (VGRP-37) -------------------------------------- */

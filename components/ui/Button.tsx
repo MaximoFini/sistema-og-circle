@@ -4,6 +4,7 @@
 // handlers.
 
 import type { ComponentPropsWithoutRef } from "react";
+import { forwardRef } from "react";
 import styles from "./Button.module.css";
 
 export interface ButtonProps extends Omit<ComponentPropsWithoutRef<"button">, "aria-busy"> {
@@ -24,20 +25,24 @@ export interface ButtonProps extends Omit<ComponentPropsWithoutRef<"button">, "a
   size?: "md" | "sm";
 }
 
-export function Button({
-  variant = "primary",
-  loading = false,
-  fullWidth = false,
-  size = "md",
-  disabled,
-  className,
-  children,
-  type = "button",
-  ...buttonProps
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = "primary",
+    loading = false,
+    fullWidth = false,
+    size = "md",
+    disabled,
+    className,
+    children,
+    type = "button",
+    ...buttonProps
+  },
+  ref,
+) {
   return (
     <button
       {...buttonProps}
+      ref={ref}
       type={type}
       className={[
         styles.button,
@@ -56,4 +61,4 @@ export function Button({
       <span className={styles.label}>{children}</span>
     </button>
   );
-}
+});

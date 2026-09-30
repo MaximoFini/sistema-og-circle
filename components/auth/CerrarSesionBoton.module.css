@@ -1,0 +1,140 @@
+/* Confirmación de "Cerrar sesión". Mobile: hoja inferior (mismo lenguaje
+   visual que components/nav/nav.module.css .panel). Desde 640px: diálogo
+   centrado. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  /* Por encima del drawer de navegación (z-index 100/101): el botón "Cerrar
+     sesión" también vive adentro del drawer, así que esta confirmación tiene
+     que quedar arriba de todo. */
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  animation: aparecer var(--duration-base) linear;
+}
+
+.panel {
+  composes: raised from "../ui/glass.module.css";
+  --g-position: fixed;
+  --g-radius: 26px;
+  position: fixed;
+  z-index: 201;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 20px 20px;
+  text-align: center;
+  transform-origin: bottom center;
+  animation: hoja-in var(--duration-slow) var(--ease-out-expo);
+}
+
+/* Agarradera de la hoja (sólo mobile, decorativa — mismo truco que NavDrawer). */
+.panel::after {
+  content: "";
+  order: -1;
+  align-self: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 5px;
+  margin-bottom: 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.titulo {
+  composes: title2 from "../ui/type.module.css";
+}
+
+.descripcion {
+  margin: 0 0 8px;
+  font-size: var(--fs-callout);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.botones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirmar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 24px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) linear;
+}
+
+@media (hover: hover) {
+  .confirmar:hover {
+    background: rgba(255, 105, 97, 0.2);
+  }
+}
+
+.confirmar:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.cancelar {
+  composes: button ghost from "../ui/Button.module.css";
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .overlay {
+    background: rgba(0, 0, 0, 0.32);
+  }
+
+  .panel {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    width: calc(100vw - 32px);
+    max-width: 380px;
+    padding: 28px;
+    transform-origin: center;
+    animation: modal-in var(--duration-base) var(--ease-out-expo);
+  }
+
+  .panel::after {
+    display: none;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hoja-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.96);
+    opacity: 0;
+  }
+}

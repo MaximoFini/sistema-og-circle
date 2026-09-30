@@ -1,10 +1,11 @@
-/* VGRP-33 — Perfil, al estilo de la página de cuenta de Apple.
-   Mobile: una columna. Desde 960px: "Tus datos" a la izquierda y las listas
-   agrupadas (accesos, atajos, soporte, cerrar sesión) a la derecha. */
+/* VGRP-33 — Perfil, al estilo de la página de cuenta de Apple. Una sola
+   columna: el encabezado (avatar + título + botón "Ver datos", que abre el
+   modal de DatosModal.tsx) y debajo las listas agrupadas (accesos, atajos,
+   soporte, cerrar sesión). */
 
 .page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   max-width: var(--layout-wrap-max-width);
   margin-inline: auto;
@@ -16,8 +17,30 @@
 .encabezado {
   display: flex;
   align-items: center;
-  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px 20px;
   padding: 8px 4px 20px;
+}
+
+.encabezadoInfo {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Botón "Ver datos" (+ aviso de teléfono faltante), a la derecha del título,
+   en el mismo renglón del encabezado. */
+.encabezadoAcciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avisoTelefono {
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  color: var(--accent);
 }
 
 .avatar {
@@ -65,19 +88,85 @@
   color: var(--accent);
 }
 
-/* --- Tus datos --- */
+/* --- Modal "Tus datos" (DatosModal.tsx) --- */
 
-.cardDatos {
-  composes: surface from "../../../components/ui/glass.module.css";
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.5);
+  animation: modalAparecer var(--duration-base) linear;
+}
+
+.modalPanel {
+  composes: raised from "../../../components/ui/glass.module.css";
+  --g-radius: 26px;
+  position: fixed;
+  z-index: 101;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100vw - 32px);
+  max-width: 440px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 24px;
   padding: 28px 24px;
+  animation: modalEntrar var(--duration-slow) var(--ease-out-expo);
 }
 
 @media (min-width: 640px) {
-  .cardDatos {
+  .modalPanel {
     padding: 32px;
+  }
+}
+
+.modalCabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modalCerrar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) linear;
+}
+
+@media (hover: hover) {
+  .modalCerrar:hover {
+    background: var(--fill-hover);
+  }
+}
+
+.modalCerrar:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@keyframes modalAparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes modalEntrar {
+  from {
+    transform: translate(-50%, -50%) scale(0.96);
+    opacity: 0;
   }
 }
 
@@ -120,6 +209,10 @@
   display: flex;
   flex-direction: column;
   gap: 28px;
+  /* Antes ocupaba la mitad del grid de dos columnas (~560px); sin la card de
+     la izquierda, se cap acá para que las filas no queden estiradas de
+     borde a borde en pantallas anchas. */
+  max-width: 640px;
 }
 
 .grupo {
@@ -315,17 +408,5 @@
 @media (hover: hover) {
   .salir:hover {
     color: #ff8a84;
-  }
-}
-
-@media (min-width: 960px) {
-  .page {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    align-items: start;
-    gap: 24px 32px;
-  }
-
-  .encabezado {
-    grid-column: 1 / -1;
   }
 }

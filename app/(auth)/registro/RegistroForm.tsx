@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button, Checkbox, FormError, TextField } from "@/components/ui";
+import { Button, Checkbox, FormError, PasswordField, TextField } from "@/components/ui";
 import { INITIAL_ACTION_STATE } from "@/lib/forms/action-state";
 import { registrarse } from "../_actions";
 import styles from "../auth.module.css";
+import { GoogleLogo } from "../GoogleLogo";
 
 export function RegistroForm() {
   const [state, formAction, pending] = useActionState(registrarse, INITIAL_ACTION_STATE);
@@ -34,16 +35,14 @@ export function RegistroForm() {
         name="telefono"
         type="tel"
         label="Teléfono"
-        hint="Lo usamos para soporte por WhatsApp."
         autoComplete="tel"
         inputMode="tel"
         required
         error={state.fieldErrors?.telefono?.[0]}
       />
 
-      <TextField
+      <PasswordField
         name="password"
-        type="password"
         label="Contraseña"
         hint="Al menos 8 caracteres."
         autoComplete="new-password"
@@ -76,6 +75,26 @@ export function RegistroForm() {
       <Button type="submit" fullWidth loading={pending}>
         Crear cuenta
       </Button>
+
+      <div className={styles.social}>
+        <div className={styles.divisor} aria-hidden="true">
+          o
+        </div>
+
+        {/* Botón de UI únicamente: la integración con Google todavía no está
+            hecha (queda deshabilitado hasta que exista la Server Action). */}
+        <Button
+          type="button"
+          variant="ghost"
+          fullWidth
+          disabled
+          title="Muy pronto vas a poder registrarte con tu cuenta de Google."
+        >
+          <GoogleLogo />
+          Continuar con Google
+        </Button>
+        <p className={styles.proximamente}>Próximamente</p>
+      </div>
     </form>
   );
 }
