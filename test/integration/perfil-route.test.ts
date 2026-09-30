@@ -104,7 +104,7 @@ describe("GET /api/perfil (VGRP-27/VGRP-50)", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ nombre: "Usuaria A - VGRP-50", email: userA.email });
+    expect(body).toEqual({ nombre: "Usuaria A - VGRP-50", email: userA.email, esAdmin: false });
     expect(body.nombre).not.toBe("Usuaria B - VGRP-50");
     expect(body.email).not.toBe(userB.email);
   });

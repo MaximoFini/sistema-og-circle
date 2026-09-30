@@ -44,6 +44,9 @@ export async function InicioShell({ variante }: InicioShellProps) {
     getLinks(),
   ]);
 
+  // Solo en Avanzado el admin puede reordenar los videos arrastrando (ver VideoGrid).
+  const reordenable = variante === "avanzado";
+
   return (
     <ProgresoVideosProvider totalVideos={TOTAL_VIDEOS}>
       <div className={styles.shell}>
@@ -77,7 +80,7 @@ export async function InicioShell({ variante }: InicioShellProps) {
               ancho="amplio"
               descripcion="8 videos que te llevan de cero a tu primera importación."
             >
-              <VideoGrid videos={stage1} />
+              <VideoGrid videos={stage1} reordenable={reordenable} />
             </SeccionSlot>
 
             {/* Columna lateral de la grilla bento (desde 1024px): calculadora + Stage 2,
@@ -108,7 +111,7 @@ export async function InicioShell({ variante }: InicioShellProps) {
                 titulo="Formación: armá tu tienda"
                 descripcion="3 videos para vender lo que importaste (Tienda Nube, Shopify)."
               >
-                <VideoGrid videos={stage2} />
+                <VideoGrid videos={stage2} reordenable={reordenable} />
               </SeccionSlot>
             </div>
           </div>
@@ -118,7 +121,7 @@ export async function InicioShell({ variante }: InicioShellProps) {
             titulo="Agentes de compra en China"
             descripcion="6 agentes verificados con los que ya opera Jota."
           >
-            <VideoGrid videos={stage3} />
+            <VideoGrid videos={stage3} reordenable={reordenable} />
             <AgentesGrid />
           </SeccionSlot>
 

@@ -107,7 +107,9 @@ const videoSchema = z.object({
   // Ver comment de columna en la migración: existe por paridad de schema,
   // VGRP-29 documenta que no se aplica gating real sobre la formación.
   nivel_requerido: z.enum(NIVELES),
-  orden: z.number().int(),
+  // El admin ya no tipea el orden de un video: lo define arrastrando en el
+  // listado (reordenarVideos). Al crear, si no viene, queda al final.
+  orden: z.number().int().optional(),
   publicado: z.boolean(),
 });
 
@@ -191,12 +193,95 @@ export async function obtenerContenido<E extends Entidad>(
  * ya validó la forma real en runtime, este cast no le agrega ni le saca
  * seguridad a lo que ya se validó.
  */
+async function proximoOrdenVideo(admin: AdminClient): Promise<number> {
+  const { data, error } = await admin
+    .from("videos")
+    .select("orden")
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.orden ?? -1) + 1;
+}
+
+/**
+ * Reparte los "lugares" (valores de `orden`) que hoy ocupa un grupo de videos
+ * entre `ids`, en el orden nuevo: `ids[0]` toma el lugar más bajo, etc. Así se
+ * puede reordenar un subconjunto (un stage) sin pisar el orden del resto, y el
+ * listado completo del panel sigue coherente. Si hay valores repetidos (dos
+ * videos con el mismo `orden`) se desempatan sumando 1: dentro del grupo el
+ * orden queda estricto.
+ */
+export function asignarOrden(ids: string[], ordenActual: number[]): Map<string, number> {
+  const lugares = [...ordenActual].sort((a, b) => a - b);
+  let previo = Number.NEGATIVE_INFINITY;
+  const asignado = new Map<string, number>();
+  ids.forEach((id, i) => {
+    previo = Math.max(lugares[i], previo + 1);
+    asignado.set(id, previo);
+  });
+  return asignado;
+}
+
+/**
+ * Reordena los videos que recibe (todos, o los de un stage): `ids` es el orden
+ * nuevo y cada uno toma un lugar de los que el grupo ya ocupaba (ver
+ * `asignarOrden`). No hay unique sobre `orden`, así que los updates no chocan
+ * entre sí; se validan los ids contra la base antes de escribir para no
+ * reordenar a medias por un id inexistente. No es atómico entre filas (un
+ * update por video), pero reescribir el mismo orden es idempotente: reintentar
+ * converge.
+ */
+export async function reordenarVideos(
+  admin: AdminClient,
+  ids: string[],
+): Promise<ResultadoMutacion<{ id: string; orden: number }[]>> {
+  const { data: anteriores, error: errorLectura } = await admin
+    .from("videos")
+    .select("id, orden")
+    .in("id", ids);
+  if (errorLectura) throw errorLectura;
+
+  const existentes = new Set((anteriores ?? []).map((v) => v.id));
+  const faltante = ids.find((id) => !existentes.has(id));
+  if (faltante) throw new ItemNoEncontrado("videos", faltante);
+
+  const asignado = asignarOrden(
+    ids,
+    (anteriores ?? []).map((v) => v.orden),
+  );
+  const resultados = await Promise.all(
+    ids.map((id) =>
+      admin
+        .from("videos")
+        .update({ orden: asignado.get(id) as number })
+        .eq("id", id),
+    ),
+  );
+  const fallo = resultados.find((r) => r.error);
+  if (fallo?.error) throw fallo.error;
+
+  const nuevo = ids.map((id) => ({ id, orden: asignado.get(id) as number }));
+  return {
+    resultado: nuevo,
+    valorAnterior: (anteriores ?? []) as unknown as Json,
+    valorNuevo: nuevo as unknown as Json,
+    // Afecta a varios videos a la vez: el audit log necesita un entidad_id
+    // (text), así que apunta a la lista completa en vez de a un video.
+    entidadId: "lista",
+  };
+}
+
 export async function crearContenido<E extends Entidad>(
   admin: AdminClient,
   entidad: E,
   valores: unknown,
 ): Promise<ResultadoMutacion<Tables<E>>> {
   const datos = SCHEMAS[entidad].parse(valores) as TablesInsert<E>;
+
+  if (entidad === "videos" && (datos as { orden?: number }).orden === undefined) {
+    (datos as { orden?: number }).orden = await proximoOrdenVideo(admin);
+  }
 
   const { data, error } = await tabla(admin, entidad).insert(datos).select().single();
   if (error) throw error;
