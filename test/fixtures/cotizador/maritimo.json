@@ -1,0 +1,1414 @@
+{
+  "_comentario": "GENERADO por scripts/cotizador/generar-fixtures-maritimo.mjs con calcMaritimo.js y tarifasMaritimo.js ORIGINALES. No editar a mano.",
+  "origen": {
+    "repo": "emilianoverabusiness-blip/vegroup",
+    "commit": "b550803",
+    "archivos": ["src/lib/calcMaritimo.js", "src/lib/tarifasMaritimo.js"]
+  },
+  "constantes": {
+    "SUMA_FIJOS": 1930,
+    "IVA_FIJOS": 405.3,
+    "ARANCEL_SIM": 10,
+    "FLETE": {
+      "porM3": 250,
+      "bl": 300,
+      "declaradoPct": 70,
+      "kgPorTonelada": 1000
+    }
+  },
+  "casos": [
+    {
+      "id": "medidas/manda-volumen",
+      "fn": "medidas",
+      "args": [
+        {
+          "volumenM3": 8.501,
+          "pesoKg": 5500
+        }
+      ],
+      "esperado": {
+        "m3": 8.501,
+        "kg": 5500,
+        "ton": 5.5,
+        "wm": 8.501,
+        "porVolumen": true
+      }
+    },
+    {
+      "id": "medidas/manda-peso",
+      "fn": "medidas",
+      "args": [
+        {
+          "volumenM3": 2,
+          "pesoKg": 20400
+        }
+      ],
+      "esperado": {
+        "m3": 2,
+        "kg": 20400,
+        "ton": 20.4,
+        "wm": 20.4,
+        "porVolumen": false
+      }
+    },
+    {
+      "id": "calcMaritimo/set-de-herramientas",
+      "fn": "calcMaritimo",
+      "args": [
+        {
+          "volumenM3": 8.501,
+          "pesoKg": 5500,
+          "fob": 18000,
+          "unidades": 1,
+          "die": 18,
+          "te": 3,
+          "iva": 21,
+          "tc": 1512
+        }
+      ],
+      "esperado": {
+        "medidas": {
+          "m3": 8.501,
+          "kg": 5500,
+          "ton": 5.5,
+          "wm": 8.501,
+          "porVolumen": true
+        },
+        "tc": 1512,
+        "unidades": 1,
+        "flete": 2425.25,
+        "fletePagado": 2425.25,
+        "fleteDeclarado": 1697.675,
+        "fleteTarifa": 2425.25,
+        "fleteDeclaradoPct": 0.7,
+        "fleteEsOverride": false,
+        "seguro": 204.2525,
+        "despacho": {
+          "fob": 18000,
+          "flete": 1697.675,
+          "fletePagado": 2425.25,
+          "seguro": 204.2525,
+          "cif": 19901.927499999998,
+          "derechos": 3582.3469499999997,
+          "estadistica": 597.0578249999999,
+          "iva": 5057.079777749999,
+          "ivaAdicional": 4816.266454999999,
+          "ganancias": 1444.8799365,
+          "iibb": 602.0333068749999,
+          "arancelSim": 10,
+          "baseIva": 24081.332274999997,
+          "totalGravamenes": 16109.664251124997,
+          "pct": {
+            "derechos": 0.18,
+            "estadistica": 0.03,
+            "iva": 0.21,
+            "ivaAdicional": 0.2,
+            "ganancias": 0.06,
+            "iibb": 0.025
+          }
+        },
+        "operativos": {
+          "lineas": [
+            {
+              "key": "flete",
+              "label": "Flete internacional",
+              "usd": 2425.25,
+              "iva": false
+            },
+            {
+              "key": "seguro",
+              "label": "Seguro internacional",
+              "usd": 204.2525,
+              "iva": false
+            },
+            {
+              "key": "depositoFiscal",
+              "label": "Depósito fiscal",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosBancarios",
+              "label": "Gastos bancarios",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "digitalizacion",
+              "label": "Digitalización",
+              "usd": 30,
+              "iva": true
+            },
+            {
+              "key": "honorarios",
+              "label": "Honorarios despacho",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosOperativos",
+              "label": "Gastos operativos",
+              "usd": 150,
+              "iva": true
+            },
+            {
+              "key": "asesoramiento",
+              "label": "Asesoramiento",
+              "usd": 700,
+              "iva": true
+            },
+            {
+              "key": "verificacion",
+              "label": "Verificación aduanera",
+              "usd": 150,
+              "iva": true
+            }
+          ],
+          "sumaFijos": 1930,
+          "ivaGastos": 405.3,
+          "ivaPct": 21,
+          "total": 4964.802500000001
+        },
+        "totales": {
+          "aPagar": 39074.46675112499,
+          "aPagarArs": 59080593.72770099,
+          "recuperable": 12325.559476124998,
+          "recuperableArs": 18636245.927900996,
+          "costos": 26748.907274999998,
+          "costosArs": 40444347.79979999,
+          "aumentoCostos": 0.48605040416666645,
+          "aumentoAPagar": 1.170803708395833,
+          "costoPorUnidad": 26748.907274999998,
+          "costoPorM3": 3146.560084107752,
+          "costoPorKg": 4.863437686363636
+        }
+      }
+    },
+    {
+      "id": "calcMaritimo/fob-cero",
+      "fn": "calcMaritimo",
+      "args": [
+        {
+          "volumenM3": 1,
+          "pesoKg": 0,
+          "fob": 0,
+          "unidades": 1,
+          "die": 0,
+          "te": 0,
+          "iva": 21,
+          "tc": 1512
+        }
+      ],
+      "esperado": {
+        "medidas": {
+          "m3": 1,
+          "kg": 0,
+          "ton": 0,
+          "wm": 1,
+          "porVolumen": true
+        },
+        "tc": 1512,
+        "unidades": 1,
+        "flete": 550,
+        "fletePagado": 550,
+        "fleteDeclarado": 385,
+        "fleteTarifa": 550,
+        "fleteDeclaradoPct": 0.7,
+        "fleteEsOverride": false,
+        "seguro": 5.5,
+        "despacho": {
+          "fob": 0,
+          "flete": 385,
+          "fletePagado": 550,
+          "seguro": 5.5,
+          "cif": 390.5,
+          "derechos": 0,
+          "estadistica": 0,
+          "iva": 82.005,
+          "ivaAdicional": 78.1,
+          "ganancias": 23.43,
+          "iibb": 9.7625,
+          "arancelSim": 10,
+          "baseIva": 390.5,
+          "totalGravamenes": 203.29749999999999,
+          "pct": {
+            "derechos": 0,
+            "estadistica": 0,
+            "iva": 0.21,
+            "ivaAdicional": 0.2,
+            "ganancias": 0.06,
+            "iibb": 0.025
+          }
+        },
+        "operativos": {
+          "lineas": [
+            {
+              "key": "flete",
+              "label": "Flete internacional",
+              "usd": 550,
+              "iva": false
+            },
+            {
+              "key": "seguro",
+              "label": "Seguro internacional",
+              "usd": 5.5,
+              "iva": false
+            },
+            {
+              "key": "depositoFiscal",
+              "label": "Depósito fiscal",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosBancarios",
+              "label": "Gastos bancarios",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "digitalizacion",
+              "label": "Digitalización",
+              "usd": 30,
+              "iva": true
+            },
+            {
+              "key": "honorarios",
+              "label": "Honorarios despacho",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosOperativos",
+              "label": "Gastos operativos",
+              "usd": 150,
+              "iva": true
+            },
+            {
+              "key": "asesoramiento",
+              "label": "Asesoramiento",
+              "usd": 700,
+              "iva": true
+            },
+            {
+              "key": "verificacion",
+              "label": "Verificación aduanera",
+              "usd": 150,
+              "iva": true
+            }
+          ],
+          "sumaFijos": 1930,
+          "ivaGastos": 405.3,
+          "ivaPct": 21,
+          "total": 2890.8
+        },
+        "totales": {
+          "aPagar": 3094.0975000000003,
+          "aPagarArs": 4678275.420000001,
+          "recuperable": 598.5975,
+          "recuperableArs": 905079.4199999999,
+          "costos": 2495.5000000000005,
+          "costosArs": 3773196.0000000005,
+          "aumentoCostos": 0,
+          "aumentoAPagar": 0,
+          "costoPorUnidad": 2495.5000000000005,
+          "costoPorM3": 2495.5000000000005,
+          "costoPorKg": 0
+        }
+      }
+    },
+    {
+      "id": "calcMaritimo/flete-override",
+      "fn": "calcMaritimo",
+      "args": [
+        {
+          "volumenM3": 8.501,
+          "pesoKg": 5500,
+          "fob": 18000,
+          "unidades": 1,
+          "die": 18,
+          "te": 3,
+          "iva": 21,
+          "tc": 1512,
+          "fleteUsd": 4200
+        }
+      ],
+      "esperado": {
+        "medidas": {
+          "m3": 8.501,
+          "kg": 5500,
+          "ton": 5.5,
+          "wm": 8.501,
+          "porVolumen": true
+        },
+        "tc": 1512,
+        "unidades": 1,
+        "flete": 4200,
+        "fletePagado": 4200,
+        "fleteDeclarado": 2940,
+        "fleteTarifa": 2425.25,
+        "fleteDeclaradoPct": 0.7,
+        "fleteEsOverride": true,
+        "seguro": 222,
+        "despacho": {
+          "fob": 18000,
+          "flete": 2940,
+          "fletePagado": 4200,
+          "seguro": 222,
+          "cif": 21162,
+          "derechos": 3809.16,
+          "estadistica": 634.86,
+          "iva": 5377.2642,
+          "ivaAdicional": 5121.204000000001,
+          "ganancias": 1536.3612,
+          "iibb": 640.1505000000001,
+          "arancelSim": 10,
+          "baseIva": 25606.02,
+          "totalGravamenes": 17128.9999,
+          "pct": {
+            "derechos": 0.18,
+            "estadistica": 0.03,
+            "iva": 0.21,
+            "ivaAdicional": 0.2,
+            "ganancias": 0.06,
+            "iibb": 0.025
+          }
+        },
+        "operativos": {
+          "lineas": [
+            {
+              "key": "flete",
+              "label": "Flete internacional",
+              "usd": 4200,
+              "iva": false
+            },
+            {
+              "key": "seguro",
+              "label": "Seguro internacional",
+              "usd": 222,
+              "iva": false
+            },
+            {
+              "key": "depositoFiscal",
+              "label": "Depósito fiscal",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosBancarios",
+              "label": "Gastos bancarios",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "digitalizacion",
+              "label": "Digitalización",
+              "usd": 30,
+              "iva": true
+            },
+            {
+              "key": "honorarios",
+              "label": "Honorarios despacho",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosOperativos",
+              "label": "Gastos operativos",
+              "usd": 150,
+              "iva": true
+            },
+            {
+              "key": "asesoramiento",
+              "label": "Asesoramiento",
+              "usd": 700,
+              "iva": true
+            },
+            {
+              "key": "verificacion",
+              "label": "Verificación aduanera",
+              "usd": 150,
+              "iva": true
+            }
+          ],
+          "sumaFijos": 1930,
+          "ivaGastos": 405.3,
+          "ivaPct": 21,
+          "total": 6757.3
+        },
+        "totales": {
+          "aPagar": 41886.2999,
+          "aPagarArs": 63332085.4488,
+          "recuperable": 13080.279899999998,
+          "recuperableArs": 19777383.208799995,
+          "costos": 28806.02,
+          "costosArs": 43554702.24,
+          "aumentoCostos": 0.6003344444444445,
+          "aumentoAPagar": 1.3270166611111112,
+          "costoPorUnidad": 28806.02,
+          "costoPorM3": 3388.544877073286,
+          "costoPorKg": 5.237458181818182
+        }
+      }
+    },
+    {
+      "id": "calcMaritimo/sin-iva-usa-21",
+      "fn": "calcMaritimo",
+      "args": [
+        {
+          "volumenM3": 3,
+          "pesoKg": 1200,
+          "fob": 5000,
+          "unidades": 2,
+          "die": 10,
+          "te": 3
+        }
+      ],
+      "esperado": {
+        "medidas": {
+          "m3": 3,
+          "kg": 1200,
+          "ton": 1.2,
+          "wm": 3,
+          "porVolumen": true
+        },
+        "tc": 0,
+        "unidades": 2,
+        "flete": 1050,
+        "fletePagado": 1050,
+        "fleteDeclarado": 735,
+        "fleteTarifa": 1050,
+        "fleteDeclaradoPct": 0.7,
+        "fleteEsOverride": false,
+        "seguro": 60.5,
+        "despacho": {
+          "fob": 5000,
+          "flete": 735,
+          "fletePagado": 1050,
+          "seguro": 60.5,
+          "cif": 5795.5,
+          "derechos": 579.5500000000001,
+          "estadistica": 173.86499999999998,
+          "iva": 1375.27215,
+          "ivaAdicional": 1309.7830000000001,
+          "ganancias": 392.93489999999997,
+          "iibb": 163.72287500000002,
+          "arancelSim": 10,
+          "baseIva": 6548.915,
+          "totalGravamenes": 4005.1279250000002,
+          "pct": {
+            "derechos": 0.1,
+            "estadistica": 0.03,
+            "iva": 0.21,
+            "ivaAdicional": 0.2,
+            "ganancias": 0.06,
+            "iibb": 0.025
+          }
+        },
+        "operativos": {
+          "lineas": [
+            {
+              "key": "flete",
+              "label": "Flete internacional",
+              "usd": 1050,
+              "iva": false
+            },
+            {
+              "key": "seguro",
+              "label": "Seguro internacional",
+              "usd": 60.5,
+              "iva": false
+            },
+            {
+              "key": "depositoFiscal",
+              "label": "Depósito fiscal",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosBancarios",
+              "label": "Gastos bancarios",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "digitalizacion",
+              "label": "Digitalización",
+              "usd": 30,
+              "iva": true
+            },
+            {
+              "key": "honorarios",
+              "label": "Honorarios despacho",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosOperativos",
+              "label": "Gastos operativos",
+              "usd": 150,
+              "iva": true
+            },
+            {
+              "key": "asesoramiento",
+              "label": "Asesoramiento",
+              "usd": 700,
+              "iva": true
+            },
+            {
+              "key": "verificacion",
+              "label": "Verificación aduanera",
+              "usd": 150,
+              "iva": true
+            }
+          ],
+          "sumaFijos": 1930,
+          "ivaGastos": 405.3,
+          "ivaPct": 21,
+          "total": 3445.8
+        },
+        "totales": {
+          "aPagar": 12450.927925,
+          "aPagarArs": 0,
+          "recuperable": 3647.0129250000005,
+          "recuperableArs": 0,
+          "costos": 8803.914999999999,
+          "costosArs": 0,
+          "aumentoCostos": 0.7607829999999998,
+          "aumentoAPagar": 1.4901855849999999,
+          "costoPorUnidad": 4401.9574999999995,
+          "costoPorM3": 2934.638333333333,
+          "costoPorKg": 7.336595833333333
+        }
+      }
+    },
+    {
+      "id": "calcMaritimo/decimales-coma",
+      "fn": "calcMaritimo",
+      "args": [
+        {
+          "volumenM3": "8,501",
+          "pesoKg": "5500",
+          "fob": "18000",
+          "unidades": "1",
+          "die": 18,
+          "te": 3,
+          "iva": 21,
+          "tc": "1512"
+        }
+      ],
+      "esperado": {
+        "medidas": {
+          "m3": 8.501,
+          "kg": 5500,
+          "ton": 5.5,
+          "wm": 8.501,
+          "porVolumen": true
+        },
+        "tc": 1512,
+        "unidades": 1,
+        "flete": 2425.25,
+        "fletePagado": 2425.25,
+        "fleteDeclarado": 1697.675,
+        "fleteTarifa": 2425.25,
+        "fleteDeclaradoPct": 0.7,
+        "fleteEsOverride": false,
+        "seguro": 204.2525,
+        "despacho": {
+          "fob": 18000,
+          "flete": 1697.675,
+          "fletePagado": 2425.25,
+          "seguro": 204.2525,
+          "cif": 19901.927499999998,
+          "derechos": 3582.3469499999997,
+          "estadistica": 597.0578249999999,
+          "iva": 5057.079777749999,
+          "ivaAdicional": 4816.266454999999,
+          "ganancias": 1444.8799365,
+          "iibb": 602.0333068749999,
+          "arancelSim": 10,
+          "baseIva": 24081.332274999997,
+          "totalGravamenes": 16109.664251124997,
+          "pct": {
+            "derechos": 0.18,
+            "estadistica": 0.03,
+            "iva": 0.21,
+            "ivaAdicional": 0.2,
+            "ganancias": 0.06,
+            "iibb": 0.025
+          }
+        },
+        "operativos": {
+          "lineas": [
+            {
+              "key": "flete",
+              "label": "Flete internacional",
+              "usd": 2425.25,
+              "iva": false
+            },
+            {
+              "key": "seguro",
+              "label": "Seguro internacional",
+              "usd": 204.2525,
+              "iva": false
+            },
+            {
+              "key": "depositoFiscal",
+              "label": "Depósito fiscal",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosBancarios",
+              "label": "Gastos bancarios",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "digitalizacion",
+              "label": "Digitalización",
+              "usd": 30,
+              "iva": true
+            },
+            {
+              "key": "honorarios",
+              "label": "Honorarios despacho",
+              "usd": 300,
+              "iva": true
+            },
+            {
+              "key": "gastosOperativos",
+              "label": "Gastos operativos",
+              "usd": 150,
+              "iva": true
+            },
+            {
+              "key": "asesoramiento",
+              "label": "Asesoramiento",
+              "usd": 700,
+              "iva": true
+            },
+            {
+              "key": "verificacion",
+              "label": "Verificación aduanera",
+              "usd": 150,
+              "iva": true
+            }
+          ],
+          "sumaFijos": 1930,
+          "ivaGastos": 405.3,
+          "ivaPct": 21,
+          "total": 4964.802500000001
+        },
+        "totales": {
+          "aPagar": 39074.46675112499,
+          "aPagarArs": 59080593.72770099,
+          "recuperable": 12325.559476124998,
+          "recuperableArs": 18636245.927900996,
+          "costos": 26748.907274999998,
+          "costosArs": 40444347.79979999,
+          "aumentoCostos": 0.48605040416666645,
+          "aumentoAPagar": 1.170803708395833,
+          "costoPorUnidad": 26748.907274999998,
+          "costoPorM3": 3146.560084107752,
+          "costoPorKg": 4.863437686363636
+        }
+      }
+    },
+    {
+      "id": "contenedorSugerido/20-dry",
+      "fn": "contenedorSugerido",
+      "args": [
+        {
+          "m3": 8.5,
+          "kg": 5500
+        }
+      ],
+      "esperado": {
+        "id": "20",
+        "label": "20' Dry",
+        "cbm": 28,
+        "pesoMax": 28000,
+        "ocupacion": 0.30357142857142855,
+        "cantidad": 1,
+        "limita": "volumen"
+      }
+    },
+    {
+      "id": "contenedorSugerido/40-dry",
+      "fn": "contenedorSugerido",
+      "args": [
+        {
+          "m3": 40,
+          "kg": 8000
+        }
+      ],
+      "esperado": {
+        "id": "40",
+        "label": "40' Dry",
+        "cbm": 58,
+        "pesoMax": 26500,
+        "ocupacion": 0.6896551724137931,
+        "cantidad": 1,
+        "limita": "volumen"
+      }
+    },
+    {
+      "id": "contenedorSugerido/40hq",
+      "fn": "contenedorSugerido",
+      "args": [
+        {
+          "m3": 62,
+          "kg": 9000
+        }
+      ],
+      "esperado": {
+        "id": "40hq",
+        "label": "40' High Cube",
+        "cbm": 66,
+        "pesoMax": 26500,
+        "ocupacion": 0.9393939393939394,
+        "cantidad": 1,
+        "limita": "volumen"
+      }
+    },
+    {
+      "id": "contenedorSugerido/limita-peso",
+      "fn": "contenedorSugerido",
+      "args": [
+        {
+          "m3": 5,
+          "kg": 27000
+        }
+      ],
+      "esperado": {
+        "id": "20",
+        "label": "20' Dry",
+        "cbm": 28,
+        "pesoMax": 28000,
+        "ocupacion": 0.17857142857142858,
+        "cantidad": 1,
+        "limita": "peso"
+      }
+    },
+    {
+      "id": "contenedorSugerido/necesita-3",
+      "fn": "contenedorSugerido",
+      "args": [
+        {
+          "m3": 150,
+          "kg": 5000
+        }
+      ],
+      "esperado": {
+        "id": "40hq",
+        "label": "40' High Cube",
+        "cbm": 66,
+        "pesoMax": 26500,
+        "ocupacion": 0.7575757575757576,
+        "cantidad": 3,
+        "limita": "volumen"
+      }
+    },
+    {
+      "id": "sugerirPuerto/jinan-shandong",
+      "fn": "sugerirPuerto",
+      "args": ["No. 128 Jinshui Road, Jinan, Shandong, China"],
+      "esperado": {
+        "puerto": "qingdao",
+        "motivo": "Shandong — norte de China"
+      }
+    },
+    {
+      "id": "sugerirPuerto/tianjin",
+      "fn": "sugerirPuerto",
+      "args": ["Beichen District, Tianjin"],
+      "esperado": {
+        "puerto": "qingdao",
+        "motivo": "Tianjin — norte de China"
+      }
+    },
+    {
+      "id": "sugerirPuerto/yiwu-zhejiang",
+      "fn": "sugerirPuerto",
+      "args": ["Futian Market, Yiwu, Zhejiang"],
+      "esperado": {
+        "puerto": "shanghai",
+        "motivo": "Zhejiang — centro y cuenca del Yangtsé"
+      }
+    },
+    {
+      "id": "sugerirPuerto/suzhou-jiangsu",
+      "fn": "sugerirPuerto",
+      "args": ["Wuzhong District, Suzhou, Jiangsu Province"],
+      "esperado": {
+        "puerto": "shanghai",
+        "motivo": "Jiangsu — centro y cuenca del Yangtsé"
+      }
+    },
+    {
+      "id": "sugerirPuerto/dongguan-guangdong",
+      "fn": "sugerirPuerto",
+      "args": ["Houjie Town, Dongguan, Guangdong"],
+      "esperado": {
+        "puerto": "shenzhen",
+        "motivo": "Guangdong — sur de China"
+      }
+    },
+    {
+      "id": "sugerirPuerto/xiamen-fujian",
+      "fn": "sugerirPuerto",
+      "args": ["Huli District, Xiamen, Fujian"],
+      "esperado": {
+        "puerto": "shenzhen",
+        "motivo": "Fujian — sur de China"
+      }
+    },
+    {
+      "id": "sugerirPuerto/shanghai-con-tilde",
+      "fn": "sugerirPuerto",
+      "args": ["Pudong, Shanghái"],
+      "esperado": {
+        "puerto": "shanghai",
+        "motivo": "Shanghai — centro y cuenca del Yangtsé"
+      }
+    },
+    {
+      "id": "sugerirPuerto/desconocida",
+      "fn": "sugerirPuerto",
+      "args": ["Calle Falsa 123, Springfield"],
+      "esperado": null
+    },
+    {
+      "id": "sugerirPuerto/vacio",
+      "fn": "sugerirPuerto",
+      "args": [""],
+      "esperado": null
+    },
+    {
+      "id": "calcAmbas/sin-tarifa-full-estimado",
+      "fn": "calcAmbas",
+      "args": [
+        {
+          "volumenM3": 8.501,
+          "pesoKg": 5500,
+          "fob": 18000,
+          "unidades": 1,
+          "die": 18,
+          "te": 3,
+          "iva": 21,
+          "tc": 1512
+        }
+      ],
+      "esperado": {
+        "consolidado": {
+          "medidas": {
+            "m3": 8.501,
+            "kg": 5500,
+            "ton": 5.5,
+            "wm": 8.501,
+            "porVolumen": true
+          },
+          "tc": 1512,
+          "unidades": 1,
+          "flete": 2425.25,
+          "fletePagado": 2425.25,
+          "fleteDeclarado": 1697.675,
+          "fleteTarifa": 2425.25,
+          "fleteDeclaradoPct": 0.7,
+          "fleteEsOverride": false,
+          "seguro": 204.2525,
+          "despacho": {
+            "fob": 18000,
+            "flete": 1697.675,
+            "fletePagado": 2425.25,
+            "seguro": 204.2525,
+            "cif": 19901.927499999998,
+            "derechos": 3582.3469499999997,
+            "estadistica": 597.0578249999999,
+            "iva": 5057.079777749999,
+            "ivaAdicional": 4816.266454999999,
+            "ganancias": 1444.8799365,
+            "iibb": 602.0333068749999,
+            "arancelSim": 10,
+            "baseIva": 24081.332274999997,
+            "totalGravamenes": 16109.664251124997,
+            "pct": {
+              "derechos": 0.18,
+              "estadistica": 0.03,
+              "iva": 0.21,
+              "ivaAdicional": 0.2,
+              "ganancias": 0.06,
+              "iibb": 0.025
+            }
+          },
+          "operativos": {
+            "lineas": [
+              {
+                "key": "flete",
+                "label": "Flete internacional",
+                "usd": 2425.25,
+                "iva": false
+              },
+              {
+                "key": "seguro",
+                "label": "Seguro internacional",
+                "usd": 204.2525,
+                "iva": false
+              },
+              {
+                "key": "depositoFiscal",
+                "label": "Depósito fiscal",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosBancarios",
+                "label": "Gastos bancarios",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "digitalizacion",
+                "label": "Digitalización",
+                "usd": 30,
+                "iva": true
+              },
+              {
+                "key": "honorarios",
+                "label": "Honorarios despacho",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosOperativos",
+                "label": "Gastos operativos",
+                "usd": 150,
+                "iva": true
+              },
+              {
+                "key": "asesoramiento",
+                "label": "Asesoramiento",
+                "usd": 700,
+                "iva": true
+              },
+              {
+                "key": "verificacion",
+                "label": "Verificación aduanera",
+                "usd": 150,
+                "iva": true
+              }
+            ],
+            "sumaFijos": 1930,
+            "ivaGastos": 405.3,
+            "ivaPct": 21,
+            "total": 4964.802500000001
+          },
+          "totales": {
+            "aPagar": 39074.46675112499,
+            "aPagarArs": 59080593.72770099,
+            "recuperable": 12325.559476124998,
+            "recuperableArs": 18636245.927900996,
+            "costos": 26748.907274999998,
+            "costosArs": 40444347.79979999,
+            "aumentoCostos": 0.48605040416666645,
+            "aumentoAPagar": 1.170803708395833,
+            "costoPorUnidad": 26748.907274999998,
+            "costoPorM3": 3146.560084107752,
+            "costoPorKg": 4.863437686363636
+          }
+        },
+        "full": {
+          "medidas": {
+            "m3": 8.501,
+            "kg": 5500,
+            "ton": 5.5,
+            "wm": 8.501,
+            "porVolumen": true
+          },
+          "tc": 1512,
+          "unidades": 1,
+          "flete": 2425.25,
+          "fletePagado": 2425.25,
+          "fleteDeclarado": 1697.675,
+          "fleteTarifa": 2425.25,
+          "fleteDeclaradoPct": 0.7,
+          "fleteEsOverride": false,
+          "seguro": 204.2525,
+          "despacho": {
+            "fob": 18000,
+            "flete": 1697.675,
+            "fletePagado": 2425.25,
+            "seguro": 204.2525,
+            "cif": 19901.927499999998,
+            "derechos": 3582.3469499999997,
+            "estadistica": 597.0578249999999,
+            "iva": 5057.079777749999,
+            "ivaAdicional": 4816.266454999999,
+            "ganancias": 1444.8799365,
+            "iibb": 602.0333068749999,
+            "arancelSim": 10,
+            "baseIva": 24081.332274999997,
+            "totalGravamenes": 16109.664251124997,
+            "pct": {
+              "derechos": 0.18,
+              "estadistica": 0.03,
+              "iva": 0.21,
+              "ivaAdicional": 0.2,
+              "ganancias": 0.06,
+              "iibb": 0.025
+            }
+          },
+          "operativos": {
+            "lineas": [
+              {
+                "key": "flete",
+                "label": "Flete internacional",
+                "usd": 2425.25,
+                "iva": false
+              },
+              {
+                "key": "seguro",
+                "label": "Seguro internacional",
+                "usd": 204.2525,
+                "iva": false
+              },
+              {
+                "key": "depositoFiscal",
+                "label": "Depósito fiscal",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosBancarios",
+                "label": "Gastos bancarios",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "digitalizacion",
+                "label": "Digitalización",
+                "usd": 30,
+                "iva": true
+              },
+              {
+                "key": "honorarios",
+                "label": "Honorarios despacho",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosOperativos",
+                "label": "Gastos operativos",
+                "usd": 150,
+                "iva": true
+              },
+              {
+                "key": "asesoramiento",
+                "label": "Asesoramiento",
+                "usd": 700,
+                "iva": true
+              },
+              {
+                "key": "verificacion",
+                "label": "Verificación aduanera",
+                "usd": 150,
+                "iva": true
+              }
+            ],
+            "sumaFijos": 1930,
+            "ivaGastos": 405.3,
+            "ivaPct": 21,
+            "total": 4964.802500000001
+          },
+          "totales": {
+            "aPagar": 39074.46675112499,
+            "aPagarArs": 59080593.72770099,
+            "recuperable": 12325.559476124998,
+            "recuperableArs": 18636245.927900996,
+            "costos": 26748.907274999998,
+            "costosArs": 40444347.79979999,
+            "aumentoCostos": 0.48605040416666645,
+            "aumentoAPagar": 1.170803708395833,
+            "costoPorUnidad": 26748.907274999998,
+            "costoPorM3": 3146.560084107752,
+            "costoPorKg": 4.863437686363636
+          }
+        },
+        "contenedor": {
+          "id": "20",
+          "label": "20' Dry",
+          "cbm": 28,
+          "pesoMax": 28000,
+          "ocupacion": 0.30360714285714285,
+          "cantidad": 1,
+          "limita": "volumen"
+        },
+        "fullEsEstimado": true
+      }
+    },
+    {
+      "id": "calcAmbas/con-tarifa-full",
+      "fn": "calcAmbas",
+      "args": [
+        {
+          "volumenM3": 8.501,
+          "pesoKg": 5500,
+          "fob": 18000,
+          "unidades": 1,
+          "die": 18,
+          "te": 3,
+          "iva": 21,
+          "tc": 1512,
+          "fleteFullUsd": 4200
+        }
+      ],
+      "esperado": {
+        "consolidado": {
+          "medidas": {
+            "m3": 8.501,
+            "kg": 5500,
+            "ton": 5.5,
+            "wm": 8.501,
+            "porVolumen": true
+          },
+          "tc": 1512,
+          "unidades": 1,
+          "flete": 2425.25,
+          "fletePagado": 2425.25,
+          "fleteDeclarado": 1697.675,
+          "fleteTarifa": 2425.25,
+          "fleteDeclaradoPct": 0.7,
+          "fleteEsOverride": false,
+          "seguro": 204.2525,
+          "despacho": {
+            "fob": 18000,
+            "flete": 1697.675,
+            "fletePagado": 2425.25,
+            "seguro": 204.2525,
+            "cif": 19901.927499999998,
+            "derechos": 3582.3469499999997,
+            "estadistica": 597.0578249999999,
+            "iva": 5057.079777749999,
+            "ivaAdicional": 4816.266454999999,
+            "ganancias": 1444.8799365,
+            "iibb": 602.0333068749999,
+            "arancelSim": 10,
+            "baseIva": 24081.332274999997,
+            "totalGravamenes": 16109.664251124997,
+            "pct": {
+              "derechos": 0.18,
+              "estadistica": 0.03,
+              "iva": 0.21,
+              "ivaAdicional": 0.2,
+              "ganancias": 0.06,
+              "iibb": 0.025
+            }
+          },
+          "operativos": {
+            "lineas": [
+              {
+                "key": "flete",
+                "label": "Flete internacional",
+                "usd": 2425.25,
+                "iva": false
+              },
+              {
+                "key": "seguro",
+                "label": "Seguro internacional",
+                "usd": 204.2525,
+                "iva": false
+              },
+              {
+                "key": "depositoFiscal",
+                "label": "Depósito fiscal",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosBancarios",
+                "label": "Gastos bancarios",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "digitalizacion",
+                "label": "Digitalización",
+                "usd": 30,
+                "iva": true
+              },
+              {
+                "key": "honorarios",
+                "label": "Honorarios despacho",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosOperativos",
+                "label": "Gastos operativos",
+                "usd": 150,
+                "iva": true
+              },
+              {
+                "key": "asesoramiento",
+                "label": "Asesoramiento",
+                "usd": 700,
+                "iva": true
+              },
+              {
+                "key": "verificacion",
+                "label": "Verificación aduanera",
+                "usd": 150,
+                "iva": true
+              }
+            ],
+            "sumaFijos": 1930,
+            "ivaGastos": 405.3,
+            "ivaPct": 21,
+            "total": 4964.802500000001
+          },
+          "totales": {
+            "aPagar": 39074.46675112499,
+            "aPagarArs": 59080593.72770099,
+            "recuperable": 12325.559476124998,
+            "recuperableArs": 18636245.927900996,
+            "costos": 26748.907274999998,
+            "costosArs": 40444347.79979999,
+            "aumentoCostos": 0.48605040416666645,
+            "aumentoAPagar": 1.170803708395833,
+            "costoPorUnidad": 26748.907274999998,
+            "costoPorM3": 3146.560084107752,
+            "costoPorKg": 4.863437686363636
+          }
+        },
+        "full": {
+          "medidas": {
+            "m3": 8.501,
+            "kg": 5500,
+            "ton": 5.5,
+            "wm": 8.501,
+            "porVolumen": true
+          },
+          "tc": 1512,
+          "unidades": 1,
+          "flete": 4200,
+          "fletePagado": 4200,
+          "fleteDeclarado": 2940,
+          "fleteTarifa": 2425.25,
+          "fleteDeclaradoPct": 0.7,
+          "fleteEsOverride": true,
+          "seguro": 222,
+          "despacho": {
+            "fob": 18000,
+            "flete": 2940,
+            "fletePagado": 4200,
+            "seguro": 222,
+            "cif": 21162,
+            "derechos": 3809.16,
+            "estadistica": 634.86,
+            "iva": 5377.2642,
+            "ivaAdicional": 5121.204000000001,
+            "ganancias": 1536.3612,
+            "iibb": 640.1505000000001,
+            "arancelSim": 10,
+            "baseIva": 25606.02,
+            "totalGravamenes": 17128.9999,
+            "pct": {
+              "derechos": 0.18,
+              "estadistica": 0.03,
+              "iva": 0.21,
+              "ivaAdicional": 0.2,
+              "ganancias": 0.06,
+              "iibb": 0.025
+            }
+          },
+          "operativos": {
+            "lineas": [
+              {
+                "key": "flete",
+                "label": "Flete internacional",
+                "usd": 4200,
+                "iva": false
+              },
+              {
+                "key": "seguro",
+                "label": "Seguro internacional",
+                "usd": 222,
+                "iva": false
+              },
+              {
+                "key": "depositoFiscal",
+                "label": "Depósito fiscal",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosBancarios",
+                "label": "Gastos bancarios",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "digitalizacion",
+                "label": "Digitalización",
+                "usd": 30,
+                "iva": true
+              },
+              {
+                "key": "honorarios",
+                "label": "Honorarios despacho",
+                "usd": 300,
+                "iva": true
+              },
+              {
+                "key": "gastosOperativos",
+                "label": "Gastos operativos",
+                "usd": 150,
+                "iva": true
+              },
+              {
+                "key": "asesoramiento",
+                "label": "Asesoramiento",
+                "usd": 700,
+                "iva": true
+              },
+              {
+                "key": "verificacion",
+                "label": "Verificación aduanera",
+                "usd": 150,
+                "iva": true
+              }
+            ],
+            "sumaFijos": 1930,
+            "ivaGastos": 405.3,
+            "ivaPct": 21,
+            "total": 6757.3
+          },
+          "totales": {
+            "aPagar": 41886.2999,
+            "aPagarArs": 63332085.4488,
+            "recuperable": 13080.279899999998,
+            "recuperableArs": 19777383.208799995,
+            "costos": 28806.02,
+            "costosArs": 43554702.24,
+            "aumentoCostos": 0.6003344444444445,
+            "aumentoAPagar": 1.3270166611111112,
+            "costoPorUnidad": 28806.02,
+            "costoPorM3": 3388.544877073286,
+            "costoPorKg": 5.237458181818182
+          }
+        },
+        "contenedor": {
+          "id": "20",
+          "label": "20' Dry",
+          "cbm": 28,
+          "pesoMax": 28000,
+          "ocupacion": 0.30360714285714285,
+          "cantidad": 1,
+          "limita": "volumen"
+        },
+        "fullEsEstimado": false
+      }
+    }
+  ]
+}

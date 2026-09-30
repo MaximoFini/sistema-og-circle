@@ -1,0 +1,307 @@
+/*
+ * VGRP-58 — cotizador marítimo (CotizadorMaritimo + MaritimoResultado), en
+ * Liquid Glass. Ex clases de vegroup@b550803 src/index.css: no se copia nada
+ * de ese CSS, cada pieza se mapea a una primitiva (mismo criterio que
+ * cotizador.module.css / RouteBreakdown.module.css de VGRP-57) —
+ * specs/bloque-12-calculadoras/design-vgrp58.md → "UI: port a Liquid Glass".
+ *
+ * La mayoría de las piezas (tarjeta, selector de puerto, avisos, chips de
+ * alícuota, alternativas) reusan directamente las clases de
+ * cotizador.module.css — mismo patrón visual, sin duplicar CSS. Acá sólo lo
+ * específico del marítimo: el panel de carga manual y las dos cotizaciones
+ * lado a lado con su desglose.
+ *
+ *   .panelManual                → inset (detalle de posición a mano)
+ *   .dos / .opcion / .activa    → grid de 2 `surface`, la activa con `accent`
+ *                                  (ex .mar-dos / .mar-opt.activa)
+ *   .estimado                   → chip
+ *   .seccion                    → cardTitle chico + inset fino
+ *   .tabla / .filaVerde/.filaTotal → misma tabla que RouteBreakdown: `data` a
+ *                                  la derecha, `chipAccent`-like para lo
+ *                                  recuperable, `raised` para los totales
+ *   .totalBox                   → raised + display, 3 columnas
+ *
+ * REGLA (CLAUDE.md / DESIGN.md): quien compone una primitiva no redeclara sus
+ * propiedades. Se ajusta con --g-*, --rim, --t-* o con un selector más
+ * específico. Mobile first.
+ */
+
+.panelManual {
+  composes: inset from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Las dos cotizaciones lado a lado (ex .mar-dos)                       */
+/* ------------------------------------------------------------------ */
+
+.dos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .dos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.opcion {
+  composes: surface from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcionActiva {
+  composes: accent from "../ui/glass.module.css";
+}
+
+.opcionCabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.opcionTitulo {
+  composes: headline from "../ui/type.module.css";
+}
+
+.estimado {
+  composes: chip from "../ui/glass.module.css";
+  font-size: var(--fs-footnote);
+  font-style: italic;
+}
+
+.opcionSub {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+}
+
+.opcionMonto {
+  composes: display from "../ui/type.module.css";
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.opcionArs {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.opcionDl {
+  display: grid;
+  /* auto-fit en vez de repeat(3, ...) fijo: en mobile (B12-15) las 3 columnas
+     no entraban en el ancho de la tarjeta y "Aumento s/FOB" (la etiqueta más
+     larga) se superponía con el valor de al lado. Con un mínimo de 90px por
+     columna, el grid baja solo a 2 o 1 columnas cuando no entran, sin media
+     query — y en desktop sigue mostrando las 3 en una fila. */
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--separator);
+}
+
+.opcionDt {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.opcionDd {
+  composes: data from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Meta (volumen, peso, TN/m³, posición, TC, tránsito)                  */
+/* ------------------------------------------------------------------ */
+
+.meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px 20px;
+  min-width: 0;
+}
+
+@media (min-width: 560px) {
+  .meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.metaClave {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.metaValor {
+  composes: headline from "../ui/type.module.css";
+  font-variant-numeric: tabular-nums;
+}
+
+.metaNota {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Encabezado de sub-bloque (ex .mar-section)                           */
+/* ------------------------------------------------------------------ */
+
+.seccion {
+  composes: cardTitle from "../ui/type.module.css";
+  --t-size: var(--fs-subhead);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.seccionNota {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tabla de desglose (ex .mar-table / .mar-scroll)                      */
+/* ------------------------------------------------------------------ */
+
+.scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  font-size: var(--fs-callout);
+}
+
+.tabla tr {
+  border-top: 1px solid var(--separator);
+}
+
+.tabla tbody:first-of-type tr:first-child {
+  border-top: 0;
+}
+
+.tabla th,
+.tabla td {
+  padding: 9px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.encabezadoCol {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-muted);
+  padding: 6px 10px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.tabla .centro {
+  text-align: center;
+}
+
+.der {
+  composes: data from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  white-space: nowrap;
+}
+
+.tabla .der {
+  text-align: right;
+}
+
+.nota {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-muted);
+}
+
+.filaSub td {
+  font-weight: 600;
+}
+
+.filaVerde td {
+  color: var(--success);
+}
+
+.filaVerde .der {
+  --t-color: var(--success);
+}
+
+.filaTotal td {
+  font-weight: 700;
+  border-top: 1.5px solid var(--separator-strong);
+  border-bottom: 1.5px solid var(--separator-strong);
+}
+
+/* ------------------------------------------------------------------ */
+/* Cierre — 3 columnas (ex .total-box.mar-box)                          */
+/* ------------------------------------------------------------------ */
+
+.totalBox {
+  composes: raised from "../ui/glass.module.css";
+  --g-radius: var(--radius-card);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  padding: 22px;
+}
+
+@media (min-width: 560px) {
+  .totalBox {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.totalBoxClave {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.totalBoxValor {
+  composes: display from "../ui/type.module.css";
+  --t-color: var(--accent);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalBoxNota {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Flete full / diferencia                                              */
+/* ------------------------------------------------------------------ */
+
+.grilla2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .grilla2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

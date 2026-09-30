@@ -1,0 +1,31 @@
+/* VGRP-57 — página de la calculadora. Mismo ancho, gutters y encabezado
+   (eyebrow + Large Title + lede, sin tarjeta) que Inicio y Perfil. El
+   cotizador en sí trae sus estilos en components/cotizador. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: var(--layout-wrap-max-width);
+  margin-inline: auto;
+  padding: 40px var(--layout-wrap-padding-inline) 0;
+}
+
+.encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 4px 20px;
+}
+
+.eyebrow {
+  composes: eyebrow from "../../../components/ui/type.module.css";
+}
+
+.titulo {
+  composes: largeTitle from "../../../components/ui/type.module.css";
+}
+
+.lede {
+  composes: lede from "../../../components/ui/type.module.css";
+}

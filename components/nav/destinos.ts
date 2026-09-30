@@ -25,7 +25,9 @@ export interface DestinoNav {
 // agrega acá un "próximamente" que el ticket no pidió (evitar scope creep).
 export const DESTINOS_NAV: readonly DestinoNav[] = [
   { href: "/dashboard", label: "Inicio", icono: "inicio" },
-  { href: "https://vegroup.vercel.app/calculadora", label: "Calculadora", icono: "calculadora" },
+  // VGRP-57: la calculadora vive adentro de la app (antes era un link externo a
+  // vegroup.vercel.app). Destino interno: el drawer la marca activa y muestra chevron.
+  { href: "/calculadora", label: "Calculadora", icono: "calculadora" },
   { href: "/comunidad", label: "Comunidad", icono: "comunidad", proximamente: true },
   { href: "/tracking", label: "Tracking", icono: "tracking", proximamente: true },
   { href: "/perfil", label: "Perfil", icono: "perfil" },

@@ -1,0 +1,392 @@
+/*
+ * VGRP-57 — RouteBreakdown (ex vegroup@b550803 RouteBreakdown.jsx). No se
+ * copia CSS del original: cada pieza compone una primitiva.
+ *
+ *   .card / .section-num      → surface + cardTitle, paso en chip
+ *   .route-card               → radio group de inset; la elegida con rim ámbar
+ *   .breakdown .line          → <table>: concepto a la izquierda, `data` a la derecha
+ *   .line.red / .line.green   → punto + montos en --danger / --success
+ *   .alert.info               → inset + footnote
+ *   .total-box                → raised + display
+ *
+ * REGLA: quien compone una primitiva no redeclara sus propiedades; se ajusta
+ * con --g-*, --rim, --t-* o con un selector más específico. Mobile first.
+ */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tarjeta (misma receta que las tarjetas de paso del cotizador)        */
+/* ------------------------------------------------------------------ */
+
+.card {
+  composes: surface from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding: 24px 20px;
+  container-type: inline-size;
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 28px;
+  }
+}
+
+.cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.titulo {
+  composes: cardTitle from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.paso {
+  composes: chip from "../ui/glass.module.css";
+  --g-radius: 9px;
+  justify-content: center;
+  min-width: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.subtitulo {
+  composes: body from "../ui/type.module.css";
+  max-width: 64ch;
+}
+
+/* ------------------------------------------------------------------ */
+/* Rutas (sin routeId): radio group                                     */
+/* ------------------------------------------------------------------ */
+
+.rutas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+@container (min-width: 620px) {
+  .rutas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ruta {
+  composes: inset from "../ui/glass.module.css";
+  --g-radius: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  cursor: pointer;
+}
+
+/* `inset` define su propio --rim: se pisa con un selector más específico. */
+.rutas .rutaElegida {
+  --g-bg: var(--accent-05);
+  --rim: var(--glass-rim-accent);
+}
+
+.radio {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) linear;
+}
+
+.radio:checked {
+  border-color: var(--accent);
+  background: radial-gradient(circle, var(--accent) 0 4.5px, transparent 5px);
+}
+
+.radio:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.rutaTexto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.badge {
+  composes: chipAccent from "../ui/glass.module.css";
+  margin-bottom: 6px;
+}
+
+.rutaNombre {
+  composes: headline from "../ui/type.module.css";
+}
+
+.rutaPais {
+  composes: footnote from "../ui/type.module.css";
+  --t-margin: 0 0 10px;
+}
+
+.rutaCosto {
+  composes: title2 from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  font-variant-numeric: tabular-nums;
+}
+
+.rutaUnidad {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------------ */
+/* Desglose                                                             */
+/* ------------------------------------------------------------------ */
+
+.detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.desgloseTitulo {
+  composes: headline from "../ui/type.module.css";
+}
+
+.desgloseTiempo {
+  font-size: var(--fs-footnote);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-footnote);
+  color: var(--text-secondary);
+}
+
+.leyenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.punto {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.noRecuperable .punto {
+  background: var(--danger);
+}
+
+.recuperable .punto {
+  background: var(--success);
+}
+
+.desglose {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-callout);
+}
+
+.desglose tr {
+  border-top: 1px solid var(--separator);
+}
+
+.desglose tbody:first-of-type tr:first-child {
+  border-top: 0;
+}
+
+.concepto {
+  padding: 11px 12px 11px 0;
+  font-weight: 400;
+  text-align: left;
+  color: var(--text-secondary);
+}
+
+.noRecuperable .concepto,
+.recuperable .concepto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.monto {
+  composes: data from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  --t-color: var(--text-primary);
+  padding: 11px 0;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+/* CIF: referencia, no se paga. */
+.referencia .concepto,
+.referencia .monto {
+  opacity: 0.7;
+}
+
+/* Rótulo de grupo (ex texto en mayúsculas del original): sentence case. */
+.grupo {
+  padding: 18px 0 6px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  text-align: left;
+  color: var(--champagne);
+}
+
+.subtotal .concepto {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.desglose .subtotal {
+  border-top-color: var(--separator-strong);
+}
+
+.desglose .montoNoRecuperable {
+  --t-color: var(--danger);
+}
+
+.desglose .montoRecuperable {
+  --t-color: var(--success);
+}
+
+.aviso {
+  composes: inset from "../ui/glass.module.css";
+  --g-radius: var(--radius-control);
+  --g-bg: var(--accent-05);
+  margin: 0;
+  padding: 12px 16px;
+  font-size: var(--fs-callout);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------------ */
+/* Totales (ex .total-box ×2)                                           */
+/* ------------------------------------------------------------------ */
+
+.totales {
+  composes: raised from "../ui/glass.module.css";
+  --g-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 22px 20px;
+}
+
+.totalesPago,
+.totalesResumen,
+.destinoPar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px 24px;
+  margin: 0;
+}
+
+.totalesResumen {
+  padding-top: 20px;
+  border-top: 1px solid var(--separator);
+}
+
+.destinoPar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@container (min-width: 520px) {
+  .totalesPago,
+  .totalesResumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 760px) {
+  .totalesResumen {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* El resto de los <dd> componen una primitiva de tipo (margin 0 vía --t-margin). */
+.destino {
+  margin: 0;
+}
+
+.totalClave {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.totalDestacado {
+  composes: display from "../ui/type.module.css";
+  font-variant-numeric: tabular-nums;
+}
+
+.totalValor {
+  composes: title2 from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Los montos que el original marcaba "gold": los que definen el costo. */
+.totalAcento {
+  composes: title2 from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  --t-color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.totalNota {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.otras {
+  composes: footnote from "../ui/type.module.css";
+}

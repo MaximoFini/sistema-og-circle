@@ -1,0 +1,170 @@
+/*
+ * VGRP-57 — MarketingAnalysis (ex vegroup@b550803 MarketingAnalysis.jsx).
+ *
+ *   .card / .section-num   → surface + cardTitle, paso en chip
+ *   .field textarea        → mismo look que TextField (no hay primitiva de textarea)
+ *   .btn-gold + .spinner   → Button primary con `loading`
+ *   .alert.error           → FormError + Button ghost "Reintentar"
+ *   .mkt-grid / .mkt-block → grilla de inset (1 columna en mobile, 2 desde 560px)
+ *
+ * REGLA: quien compone una primitiva no redeclara sus propiedades.
+ */
+
+.card {
+  composes: surface from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding: 24px 20px;
+  container-type: inline-size;
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 28px;
+  }
+}
+
+.cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.titulo {
+  composes: cardTitle from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.paso {
+  composes: chip from "../ui/glass.module.css";
+  --g-radius: 9px;
+  justify-content: center;
+  min-width: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.subtitulo {
+  composes: body from "../ui/type.module.css";
+  max-width: 64ch;
+}
+
+/* --- Contexto: textarea con el look de TextField --- */
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  padding-inline: 4px;
+  font-size: var(--fs-subhead);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text-secondary);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 14px 16px;
+  font-family: var(--font-sans);
+  /* 16px: por debajo iOS Safari hace zoom al enfocar. */
+  font-size: 16px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  caret-color: var(--accent);
+  background: var(--fill);
+  border: 0;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  resize: vertical;
+  transition:
+    background-color var(--duration-fast) linear,
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.textarea::placeholder {
+  color: var(--text-faint);
+}
+
+@media (hover: hover) {
+  .textarea:hover:not(:focus) {
+    background-color: var(--fill-hover);
+  }
+}
+
+.textarea:focus-visible {
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 0 0 1px rgba(245, 184, 19, 0.6),
+    0 0 0 4px rgba(245, 184, 19, 0.16);
+}
+
+/* --- Error + reintentar --- */
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* --- Resultado --- */
+
+.grilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+@container (min-width: 560px) {
+  .grilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bloqueCompleto {
+    grid-column: 1 / -1;
+  }
+}
+
+.bloque {
+  composes: inset from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px 20px;
+}
+
+.bloqueTitulo {
+  composes: eyebrow from "../ui/type.module.css";
+}
+
+.texto {
+  composes: body from "../ui/type.module.css";
+  --t-color: var(--text-primary);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--fs-callout);
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.lista li::marker {
+  color: var(--text-muted);
+}

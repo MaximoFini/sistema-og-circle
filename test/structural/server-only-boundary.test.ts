@@ -26,6 +26,11 @@ const ARCHIVOS = [
   "lib/data/agentes.ts",
   "lib/data/videos.ts",
   "lib/data/admin/contenido.ts",
+  // VGRP-57 — calculadora: el cliente de Anthropic lee ANTHROPIC_API_KEY; el
+  // guard y las respuestas son la cadena de gating de /api/cotizador/*.
+  "lib/cotizador/server/anthropic.ts",
+  "lib/cotizador/server/guard.ts",
+  "lib/cotizador/server/respuestas.ts",
 ];
 
 /** Primeras líneas de código real: se descartan comentarios de línea (`//`),

@@ -1,0 +1,766 @@
+/*
+ * VGRP-57 — cotizador courier (CotizadorCourier + ProformaUpload), en
+ * Liquid Glass. Ex clases del cotizador de vegroup@b550803 src/index.css:
+ * no se copia nada de ese CSS, cada pieza se mapea a una primitiva
+ * (specs/bloque-12-calculadoras/design-vgrp57.md → "UI: port a Liquid Glass").
+ *
+ *   .card / .section-num        → surface + cardTitle, paso en chip
+ *   .regime-option / .route-card → radio groups (surface / inset), elegida con accent
+ *   .ncm-hit / .confidence-bar  → inset + data, barra con el ámbar de la app
+ *   .chip verde / rojo          → chip con --success / --danger
+ *   .alert.info / .alert.error  → inset + footnote / FormError
+ *   .total-box                  → raised + display
+ *   .spinner                    → el anillo de Button
+ *
+ * REGLA (CLAUDE.md / DESIGN.md): quien compone una primitiva no redeclara sus
+ * propiedades. Se ajusta con --g-*, --rim, --t-* o con un selector más
+ * específico.
+ *
+ * Mobile first: todo arranca en una columna; las grillas de 2/3 columnas del
+ * original aparecen desde 640px (datos) y 720px (opciones).
+ */
+
+.cotizador {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Radio groups (régimen y depósito)                                    */
+/* ------------------------------------------------------------------ */
+
+/* <fieldset> sin el marco nativo. */
+.grupoOpciones {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+@media (min-width: 720px) {
+  .grupoOpciones {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Leyenda visible de un grupo dentro de un formulario: mismo rol que el
+   label de TextField. (Una <legend> queda fuera de la grilla del fieldset.) */
+.leyenda {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0 4px 8px;
+  font-size: var(--fs-subhead);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text-secondary);
+}
+
+/* Radio real (foco y teclado nativos), dibujado como el Checkbox de la app:
+   círculo que se llena de ámbar al elegirse. */
+.radio {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) linear,
+    background-color var(--duration-fast) linear;
+}
+
+.radio:checked {
+  border-color: var(--accent);
+  background: radial-gradient(circle, var(--accent) 0 4.5px, transparent 5px);
+}
+
+.radio:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .radio:hover:not(:checked) {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.opcionTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+/* --- Régimen: tarjetas sueltas sobre el fondo → surface --- */
+
+.regimen {
+  composes: surface from "../ui/glass.module.css";
+  --g-radius: var(--radius-card);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+/* Se aplica junto con .regimen (un solo `composes` por regla). */
+.regimenElegido {
+  composes: accent from "../ui/glass.module.css";
+}
+
+@media (hover: hover) {
+  .regimen:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.opcionTitulo {
+  composes: headline from "../ui/type.module.css";
+}
+
+.opcionDesc {
+  composes: footnote from "../ui/type.module.css";
+}
+
+/* --- Depósito: dentro de la tarjeta de datos → inset (sin blur propio) --- */
+
+.deposito {
+  composes: inset from "../ui/glass.module.css";
+  --g-radius: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.depositoElegido {
+  composes: deposito;
+  --g-bg: var(--accent-05);
+}
+
+/* `inset` define su propio --rim: se pisa con un selector más específico. */
+.grupoOpciones .depositoElegido {
+  --rim: var(--glass-rim-accent);
+}
+
+.depositoDireccion {
+  composes: footnote from "../ui/type.module.css";
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.depositoDireccion svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.depositoTarifa {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+  --t-margin: 4px 0 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tarjeta de paso                                                      */
+/* ------------------------------------------------------------------ */
+
+.card {
+  composes: surface from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding: 24px 20px;
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 28px;
+  }
+}
+
+.cardCabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardTitulo {
+  composes: cardTitle from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Número de paso (ex .section-num). */
+.paso {
+  composes: chip from "../ui/glass.module.css";
+  --g-radius: 9px;
+  justify-content: center;
+  min-width: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardSubtitulo {
+  composes: body from "../ui/type.module.css";
+  max-width: 64ch;
+}
+
+/* ------------------------------------------------------------------ */
+/* Producto y posición NCM                                              */
+/* ------------------------------------------------------------------ */
+
+.toggleProforma {
+  align-self: flex-start;
+}
+
+/* Button es `nowrap` a propósito, pero el label de este botón ("Subir
+   proforma / packing list (autocompleta)") no entra en una tarjeta de 375px y
+   se salía del borde. Selector más específico (no se redeclara la clase de
+   Button en el mismo nivel — CLAUDE.md, orden de carga de CSS Modules). */
+.card > .toggleProforma {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
+.ncmHit {
+  composes: inset from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+.ncmCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+/* Código SIM: dato tabular, a tamaño de título. */
+.ncmCodigo {
+  composes: data from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  --t-color: var(--text-primary);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.ncmMeta {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.ncmMeta strong {
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.ncmDescripcion {
+  composes: body from "../ui/type.module.css";
+  --t-color: var(--text-primary);
+}
+
+/* Barra de confianza (ex .confidence-bar). Decorativa: el porcentaje ya
+   está en texto al lado del código. */
+.confianza {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+  overflow: hidden;
+}
+
+.confianza::-webkit-progress-bar {
+  background: var(--fill);
+  border-radius: var(--radius-pill);
+}
+
+.confianza::-webkit-progress-value {
+  background: var(--accent-fill);
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.confianza::-moz-progress-bar {
+  background: var(--accent-fill);
+  border-radius: var(--radius-pill);
+}
+
+/* Alícuotas: verde lo que no encarece (franquicia, IVA recuperable), rojo
+   lo que sí (DIE, TE, internos). */
+.alicuotas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chipOk {
+  composes: chip from "../ui/glass.module.css";
+  --g-bg: var(--success-soft);
+}
+
+.chipCosto {
+  composes: chip from "../ui/glass.module.css";
+  --g-bg: var(--danger-soft);
+}
+
+/* `chip` define color y --rim: se pisan con un selector más específico. */
+.alicuotas .chipOk {
+  color: var(--success);
+  --rim: linear-gradient(180deg, rgba(99, 230, 164, 0.4), rgba(99, 230, 164, 0.1));
+}
+
+.alicuotas .chipCosto {
+  color: var(--danger);
+  --rim: linear-gradient(180deg, rgba(255, 105, 97, 0.4), rgba(255, 105, 97, 0.1));
+}
+
+.razonamiento {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.razonamiento svg {
+  flex-shrink: 0;
+  color: var(--champagne);
+}
+
+.alternativas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.alternativasTitulo {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Alternativa de la IA: fila tocable (ex .candidate). */
+.alternativa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 16px;
+  width: 100%;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: var(--fs-callout);
+  line-height: 1.45;
+  text-align: left;
+  color: var(--text-secondary);
+  background: var(--fill-quiet);
+  border: 0;
+  border-radius: var(--radius-row);
+  box-shadow: inset 0 0 0 1px var(--separator);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) linear,
+    box-shadow var(--duration-fast) linear;
+}
+
+@media (min-width: 560px) {
+  .alternativa {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
+}
+
+@media (hover: hover) {
+  .alternativa:hover {
+    background: var(--fill);
+  }
+}
+
+.alternativa:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.alternativa[aria-pressed="true"] {
+  background: var(--accent-05);
+  box-shadow: inset 0 0 0 1px var(--accent-40);
+}
+
+.alternativaCodigo {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-soft);
+}
+
+.alternativaTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.alternativaMotivo {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.alternativaAlicuotas {
+  composes: footnote from "../ui/type.module.css";
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Avisos                                                               */
+/* ------------------------------------------------------------------ */
+
+/* Info (ex .alert.info): inset + footnote. Los errores van con FormError. */
+.aviso {
+  composes: inset from "../ui/glass.module.css";
+  --g-radius: var(--radius-control);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.avisoTexto {
+  composes: footnote from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  --t-color: var(--text-secondary);
+}
+
+.spinner {
+  composes: spinner from "../ui/Button.module.css";
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.ayuda {
+  composes: footnote from "../ui/type.module.css";
+  --t-margin: 0 4px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Formulario de datos del envío                                        */
+/* ------------------------------------------------------------------ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.grilla2,
+.grilla3 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .grilla2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .grilla3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+/* Fieldset de un grupo de campos (dimensiones). */
+.grupoCampos {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Largo / ancho / alto: tres campos cortos, entran en una fila incluso en
+   mobile. */
+.medidas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Resultado                                                            */
+/* ------------------------------------------------------------------ */
+
+.resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scroll-margin-top: calc(var(--header-height) + 16px);
+}
+
+.resultado:empty {
+  display: none;
+}
+
+/* Foco programático al cotizar (para lectores de pantalla): sin anillo, el
+   usuario no llegó acá con el teclado. */
+.resultado:focus {
+  outline: none;
+}
+
+/* Desglose (ex .breakdown .line). */
+.desglose {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.linea {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  font-size: var(--fs-callout);
+  color: var(--text-secondary);
+}
+
+.linea + .linea {
+  border-top: 1px solid var(--separator);
+}
+
+.lineaMonto {
+  composes: data from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  --t-color: var(--text-primary);
+  flex-shrink: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Total (ex .total-box). */
+.total {
+  composes: raised from "../ui/glass.module.css";
+  --g-radius: var(--radius-card);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px 24px;
+  margin: 0;
+  padding: 22px 22px 20px;
+}
+
+@media (min-width: 640px) {
+  .total {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .total {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.totalItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.totalClave {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.totalDestacado {
+  composes: display from "../ui/type.module.css";
+  --t-color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.totalValor {
+  composes: title2 from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+  font-variant-numeric: tabular-nums;
+}
+
+.referencia {
+  composes: footnote from "../ui/type.module.css";
+}
+
+/* Barra de acciones del resultado (PDF, WhatsApp, N° de cotización). */
+.barraAcciones {
+  composes: surface from "../ui/glass.module.css";
+  --g-radius: var(--radius-card);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+/* Link con look de botón: compone el botón (no anida <button> en <a>). */
+.linkWhatsapp {
+  composes: button ghost from "../ui/Button.module.css";
+}
+
+.numeroCotizacion {
+  composes: footnote from "../ui/type.module.css";
+  flex: 1 1 240px;
+}
+
+/* Placeholder mientras baja el chunk de un panel diferido. */
+.panelCargando {
+  composes: surface from "../ui/glass.module.css";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 140px;
+  padding: 24px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Proforma / packing list (ProformaUpload)                             */
+/* ------------------------------------------------------------------ */
+
+/* Anidada en la tarjeta de producto → inset. */
+.proforma {
+  composes: inset from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.proformaTitulo {
+  composes: headline from "../ui/type.module.css";
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.proformaIcono {
+  composes: chip from "../ui/glass.module.css";
+  --g-radius: 9px;
+}
+
+/* `chip` define su padding: cuadrado para un ícono solo. */
+.proformaTitulo .proformaIcono {
+  padding: 5px;
+}
+
+.proformaDesc {
+  composes: footnote from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  --t-color: var(--text-secondary);
+}
+
+/* Zona de arrastre: un <button> (teclado y foco nativos) que abre el
+   selector de archivos. */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 132px;
+  padding: 24px 16px;
+  font-family: inherit;
+  text-align: center;
+  color: var(--text-primary);
+  background: var(--fill-quiet);
+  border: 1.5px dashed var(--separator-strong);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) linear,
+    border-color var(--duration-fast) linear;
+}
+
+@media (hover: hover) {
+  .dropzone:hover:not(:disabled) {
+    background: var(--fill);
+  }
+}
+
+.dropzone:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dropzone:disabled {
+  cursor: progress;
+}
+
+.dropzoneActiva {
+  background: var(--accent-05);
+  border-color: var(--accent-40);
+}
+
+.dropzoneIcono {
+  color: var(--text-secondary);
+}
+
+.dropzoneTitulo {
+  font-size: var(--fs-callout);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dropzoneAyuda {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.dropzoneCargando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-callout);
+  color: var(--text-secondary);
+}
+
+.inputArchivo {
+  display: none;
+}

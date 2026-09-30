@@ -12,14 +12,17 @@
 // Envuelve todo en <ProgresoVideosProvider> porque el contador de stats del header y
 // las dos grillas comparten el mismo estado de "videos vistos".
 //
-// VGRP-31: suma el CTA de la calculadora (link desde Edge Config, lib/config) y el
-// video explicativo del directorio de agentes (stage 3, mismo mecanismo de VGRP-29).
+// VGRP-31: suma el CTA de la calculadora y el video explicativo del directorio de
+// agentes (stage 3, mismo mecanismo de VGRP-29).
+//
+// VGRP-57: la calculadora pasa a ser una página de la app (`/calculadora`). El CTA
+// deja de leer `links.calculadora` de Edge Config y, como era lo único que este
+// componente leía de ahí, ya no llama a `getLinks()`.
 
-import { Icon } from "@/components/ui/Icon";
+import NextLink from "next/link";
 import { ProgresoVideosProvider } from "@/components/video/ProgresoVideosProvider";
 import { StatsVideos } from "@/components/video/StatsVideos";
 import { VideoGrid } from "@/components/video/VideoGrid";
-import { getLinks } from "@/lib/config";
 import {
   obtenerVideosStage1,
   obtenerVideosStage2,
@@ -37,11 +40,10 @@ export interface InicioShellProps {
 }
 
 export async function InicioShell({ variante }: InicioShellProps) {
-  const [stage1, stage2, stage3, links] = await Promise.all([
+  const [stage1, stage2, stage3] = await Promise.all([
     obtenerVideosStage1(),
     obtenerVideosStage2(),
     obtenerVideosStage3(),
-    getLinks(),
   ]);
 
   // Solo en Avanzado el admin puede reordenar los videos arrastrando (ver VideoGrid).
@@ -93,17 +95,11 @@ export async function InicioShell({ variante }: InicioShellProps) {
                 variante="banner"
                 icono="calculadora"
               >
-                {/* <a> y no <TextLink>: es una URL externa con look de botón primario, y
-              TextLink le sumaría su propio estilo de link de texto encima. */}
-                <a
-                  href={links.calculadora}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.ctaBanner}
-                >
+                {/* NextLink y no <TextLink>: navegación interna con look de botón
+                    primario, y TextLink le sumaría su propio estilo de link de texto. */}
+                <NextLink href="/calculadora" className={styles.ctaBanner}>
                   Abrir calculadora
-                  <Icon name="externo" size={16} />
-                </a>
+                </NextLink>
               </SeccionSlot>
 
               <SeccionSlot
