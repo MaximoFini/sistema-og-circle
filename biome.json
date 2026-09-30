@@ -7,7 +7,15 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!.claude", "!.mcp.json", "!supabase", "!node_modules", "!.next"]
+    "includes": [
+      "**",
+      "!.claude",
+      "!.mcp.json",
+      "!supabase",
+      "!node_modules",
+      "!.next",
+      "!public/cotizador"
+    ]
   },
   "formatter": {
     "enabled": true,

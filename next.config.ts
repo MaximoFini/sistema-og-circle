@@ -50,6 +50,25 @@ const nextConfig: NextConfig = {
         source: "/api/(agentes|profesionales|servicios-financieros|perfil)",
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
+      {
+        // VGRP-57 — endpoints de la calculadora: por-usuario (gateados por
+        // plan con requierePlan()) y con respuestas de IA que no se repiten.
+        // Prefijo entero: VGRP-58 suma endpoints acá sin tocar esto.
+        source: "/api/cotizador/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
+      {
+        // VGRP-57 — base NCM de la calculadora (public/cotizador/). El nombre
+        // lleva la versión de la base (`ncm-2026-1.json`): una base nueva es
+        // un archivo nuevo, y eso es lo que habilita `immutable`. `.json` no
+        // está en la regla de extensiones de arriba, por eso va aparte. Sigue
+        // exigiendo sesión: el matcher del middleware no excluye `.json`, y
+        // en Vercel el middleware corre antes que la caché del CDN. `private`
+        // y no `public`: el archivo exige sesión, así que ningún proxy
+        // intermedio lo debería guardar para servirlo a otro.
+        source: "/cotizador/:path*.json",
+        headers: [{ key: "Cache-Control", value: "private, max-age=31536000, immutable" }],
+      },
     ];
   },
 };

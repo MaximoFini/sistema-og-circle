@@ -168,7 +168,10 @@ test.describe("Texto estático de envíos (VGRP-28)", () => {
 });
 
 test.describe("Banner calculadora (VGRP-31)", () => {
-  test("el CTA 'Abrir calculadora' usa links.calculadora de getLinks() (no un string hardcodeado en el componente) y abre en pestaña nueva de forma segura (target=_blank + rel=noopener noreferrer)", async ({
+  // VGRP-57 reemplazó el link externo (links.calculadora de getLinks(), a
+  // vegroup.vercel.app, en pestaña nueva) por la página interna `/calculadora`:
+  // el CTA ahora es un link interno de la app, sin target ni rel.
+  test("el CTA 'Abrir calculadora' es un link interno a /calculadora (VGRP-57), sin target", async ({
     page,
   }) => {
     const created = await createAuthenticatedUser("principiante");
@@ -177,14 +180,8 @@ test.describe("Banner calculadora (VGRP-31)", () => {
 
       const link = page.getByRole("link", { name: "Abrir calculadora" });
       await expect(link).toBeVisible();
-      await expect(link).toHaveAttribute("target", "_blank");
-      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
-      // Este entorno no tiene un store de Edge Config vinculado (VGRP-39, ver
-      // docs/TESTING.md), así que getLinks() cae al default hardcodeado en
-      // lib/config/index.ts (DEFAULT_LINKS.calculadora) — es el valor exacto que
-      // TextLink debería recibir de `links.calculadora`, nunca un placeholder distinto
-      // escrito a mano en InicioShell.
-      await expect(link).toHaveAttribute("href", "https://vegroup.vercel.app/calculadora");
+      await expect(link).toHaveAttribute("href", "/calculadora");
+      await expect(link).not.toHaveAttribute("target", /.*/);
     } finally {
       await cleanupUser(created.userId);
     }

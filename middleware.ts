@@ -46,7 +46,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import type { AppMetadataClaims } from "./lib/auth/claims";
-import { getNivel, getRol } from "./lib/auth/claims";
+import { getNivel, getRol, hasNivel } from "./lib/auth/claims";
 import { CLAIMS_HEADER, encodeClaims } from "./lib/auth/claims-header";
 import type { Database } from "./lib/database.types";
 
@@ -135,6 +135,27 @@ const ADMIN_PREFIXES = ["/admin", "/api/admin"];
 
 function isAdminArea(pathname: string): boolean {
   return ADMIN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+// -----------------------------------------------------------------------------
+// VGRP-57 — capa de NIVEL por ruta de página.
+//
+// Páginas que exigen plan pago (`principiante` o más). Sin plan: redirect a
+// `/comprar`. Match exacto o por subruta (`/calculadora`, `/calculadora/…`,
+// nunca `/calculadoras`), mismo criterio que `esActual()` de
+// components/nav/NavDrawer.tsx.
+//
+// Sólo PÁGINAS: las rutas `/api/` de la calculadora las gatea
+// `requierePlan()` (lib/cotizador/server/guard.ts) con 401/403 JSON, porque un
+// redirect a HTML no le sirve a un `fetch`. Por eso esta lista no lleva
+// prefijos `/api/…`.
+//
+// VGRP-58 suma "/maritimo" acá.
+// -----------------------------------------------------------------------------
+const RUTAS_CON_PLAN = ["/calculadora"] as const;
+
+function esRutaConPlan(pathname: string): boolean {
+  return RUTAS_CON_PLAN.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 }
 
 /**
@@ -287,6 +308,13 @@ export async function middleware(request: NextRequest) {
       }
       return withRefreshedCookies(new NextResponse("Not Found", { status: 404 }), response);
     }
+  }
+
+  // VGRP-57 — capa de nivel por página. Cero query nueva: usa el mismo
+  // `claims` que `getClaims()` ya resolvió arriba en este request. La página
+  // en sí queda estática (no lee claims): el gating vive acá.
+  if (esRutaConPlan(pathname) && !hasNivel(claims, "principiante")) {
+    return withRefreshedCookies(NextResponse.redirect(new URL("/comprar", request.url)), response);
   }
 
   // -----------------------------------------------------------------------

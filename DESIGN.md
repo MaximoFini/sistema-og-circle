@@ -47,7 +47,7 @@ Anatomía: relleno translúcido + brillo sutil arriba + `backdrop-filter` (blur 
 | `FormError` | Franja teñida de rojo, sin borde duro. |
 | `TextLink` | Link de texto mudo (`--fs-footnote`). Trae su propio color y transición: ver la regla de abajo. |
 | `ContenidoBloqueado` | Fila compacta: candado + "Disponible desde nivel X" + CTA `sm`. Nunca oculta la sección (PRD §6). |
-| `Icon` | 13 íconos propios: `inicio`, `calculadora`, `comunidad`, `tracking`, `perfil`, `chevron`, `externo`, `candado`, `check`, `salir`, `mensaje`, `documento`, `play`. Un ícono nuevo se agrega en `PATHS` (grilla de 24px, trazo 1.7px) y aparece tipado en `IconName`. |
+| `Icon` | 17 íconos propios: `inicio`, `calculadora`, `comunidad`, `tracking`, `perfil`, `chevron`, `externo`, `candado`, `escudo`, `check`, `salir`, `mensaje`, `documento`, `play`, `ubicacion`, `idea`, `subir` (los tres últimos, de la calculadora — VGRP-57). Un ícono nuevo se agrega en `PATHS` (grilla de 24px, trazo 1.7px) y aparece tipado en `IconName`. |
 
 **Patrones**
 

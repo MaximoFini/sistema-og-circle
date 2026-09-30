@@ -1,0 +1,700 @@
+/*
+ * VGRP-57 — PriceStrategy (ex vegroup@b550803 PriceStrategy.jsx, que traía
+ * ~100 `style={{…}}` inline y un <style> propio). Nada de eso entra: cada
+ * pieza compone una primitiva.
+ *
+ *   contenedor papel + título     → surface + eyebrow + cardTitle
+ *   Campo / Selector              → TextField / <select> con el look de TextField
+ *   Pestañas / botones de margen  → radio segmentado / toggles en chip
+ *   bloque negro "más barato"     → raised + display
+ *   lote (3 fichas)               → inset + data
+ *   avisos                        → inset con punto del tono (--danger / --success / champán)
+ *   ranking de canales            → radio group de filas; la elegida con rim ámbar
+ *   Renglon                       → <table>, montos en `data` a la derecha
+ *
+ * Layout por container query (el ancho lo decide CotizadorCourier): una
+ * columna; desde 780px de tarjeta, preguntas (320px) | resultado, como el
+ * original.
+ *
+ * REGLA: quien compone una primitiva no redeclara sus propiedades; se ajusta
+ * con --g-*, --rim, --t-* o con un selector más específico.
+ */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tarjeta                                                              */
+/* ------------------------------------------------------------------ */
+
+.card {
+  composes: surface from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  padding: 24px 20px;
+  container-type: inline-size;
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 28px;
+  }
+}
+
+.cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eyebrow {
+  composes: eyebrow from "../ui/type.module.css";
+}
+
+.titulo {
+  composes: cardTitle from "../ui/type.module.css";
+  --t-size: var(--fs-title3);
+}
+
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+}
+
+@container (min-width: 780px) {
+  .columnas {
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+    gap: 32px;
+  }
+}
+
+.preguntas,
+.resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Campos                                                               */
+/* ------------------------------------------------------------------ */
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Mismo rol que el label de TextField (para <select> y <legend>). */
+.label {
+  display: block;
+  padding: 0 4px;
+  font-size: var(--fs-subhead);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text-secondary);
+}
+
+.hint,
+.nota {
+  margin: 0;
+  padding-inline: 4px;
+  font-size: var(--fs-footnote);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.legendNota {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Montos: alineados a la derecha, cifras tabulares (como el Campo original).
+   Más específico que el .input de TextField. */
+.campo .inputNumero,
+.preguntas .inputNumero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.selectCaja {
+  position: relative;
+}
+
+.select {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 44px 0 16px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  background: var(--fill);
+  border: 0;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) linear;
+}
+
+/* Las opciones del desplegable nativo no heredan el vidrio. */
+.select option {
+  color: var(--text-primary);
+  background: var(--surface-1);
+}
+
+@media (hover: hover) {
+  .select:hover:not(:focus) {
+    background-color: var(--fill-hover);
+  }
+}
+
+.select:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(245, 184, 19, 0.6),
+    0 0 0 4px rgba(245, 184, 19, 0.16);
+}
+
+.selectFlecha {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  color: var(--text-muted);
+  transform: translateY(-50%) rotate(90deg);
+  pointer-events: none;
+}
+
+/* <fieldset> sin el marco nativo. */
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Monotributo / Resp. inscripto: control segmentado (radios reales). */
+.segmentado {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  background: var(--fill-quiet);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.segmento {
+  position: relative;
+  display: flex;
+}
+
+.segmentoInput {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmentoTexto {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  text-align: center;
+  color: var(--text-secondary);
+  border-radius: 10px;
+  transition:
+    background-color var(--duration-fast) linear,
+    color var(--duration-fast) linear;
+}
+
+.segmentoInput:checked + .segmentoTexto {
+  font-weight: 600;
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+.segmentoInput:focus-visible + .segmentoTexto {
+  box-shadow: var(--focus-ring);
+}
+
+/* Margen rápido 20/30/40/50 (<fieldset> sin marco). */
+.atajos {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.atajo {
+  composes: chip from "../ui/glass.module.css";
+}
+
+.atajoActivo {
+  composes: chipAccent from "../ui/glass.module.css";
+}
+
+/* `chip` define display/padding/fuente: se ajusta con un selector más específico. */
+.atajos .atajo,
+.atajos .atajoActivo {
+  justify-content: center;
+  min-height: 36px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  border: 0;
+  cursor: pointer;
+}
+
+.atajos .atajo:focus-visible,
+.atajos .atajoActivo:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.avanzadoToggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--separator);
+}
+
+.avanzado {
+  composes: inset from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 16px;
+}
+
+.dosCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+@container (min-width: 420px) {
+  .dosCol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+/* En dos columnas del layout, el panel de preguntas mide 320px: una columna. */
+@container (min-width: 780px) {
+  .dosCol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.casillas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Resultado                                                            */
+/* ------------------------------------------------------------------ */
+
+.mejor {
+  composes: raised from "../ui/glass.module.css";
+  --g-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px;
+}
+
+.mejorClave {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.mejorPrecio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+.mejorMonto {
+  composes: display from "../ui/type.module.css";
+  --t-color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.mejorCanal {
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+
+.mejorPie {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+  --t-margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--separator);
+}
+
+.lote {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+@container (min-width: 520px) {
+  .lote {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.loteItem {
+  composes: inset from "../ui/glass.module.css";
+  --g-radius: var(--radius-row);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.loteClave {
+  composes: footnote from "../ui/type.module.css";
+}
+
+.loteValor {
+  composes: title2 from "../ui/type.module.css";
+  --t-size: var(--fs-headline);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Avisos --- */
+
+.avisos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aviso {
+  composes: inset from "../ui/glass.module.css";
+  --g-radius: var(--radius-row);
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.avisos .tono_riesgo {
+  --g-bg: var(--danger-soft);
+  color: var(--danger);
+}
+
+.avisos .tono_ojo {
+  --g-bg: var(--success-soft);
+  color: var(--success);
+}
+
+.avisos .tono_dato {
+  color: var(--champagne);
+}
+
+.avisoPunto {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.avisoCuerpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.avisoTitulo {
+  margin: 0;
+  font-size: var(--fs-callout);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.avisoTexto {
+  composes: footnote from "../ui/type.module.css";
+  --t-size: var(--fs-subhead);
+  --t-color: var(--text-secondary);
+}
+
+.avisoAccion {
+  margin-top: 6px;
+}
+
+/* --- Ranking de canales --- */
+
+.seccion {
+  display: block;
+  margin: 0 0 8px;
+  padding: 0 4px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  text-align: left;
+  color: var(--champagne);
+}
+
+.ranking {
+  composes: inset from "../ui/glass.module.css";
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+.fila {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: var(--radius-row);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) linear;
+}
+
+.fila + .fila::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 12px;
+  left: 12px;
+  height: 1px;
+  background: var(--separator);
+}
+
+@media (hover: hover) {
+  .fila:hover {
+    background: var(--fill-quiet);
+  }
+}
+
+.filaActiva {
+  background: var(--accent-05);
+  box-shadow: inset 0 0 0 1px var(--accent-40);
+}
+
+.filaActiva::before,
+.filaActiva + .fila::before {
+  display: none;
+}
+
+.fila:has(:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.filaTexto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.filaNombre {
+  font-size: var(--fs-callout);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.filaActiva .filaNombre {
+  font-weight: 650;
+}
+
+.filaDetalle {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.filaMontos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.filaPrecio {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.filaGanancia {
+  font-size: var(--fs-caption);
+  color: var(--success);
+}
+
+.noDa {
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  color: var(--danger);
+}
+
+.filaCheck {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.filaCheckOculto {
+  flex-shrink: 0;
+  visibility: hidden;
+}
+
+/* --- No da margen --- */
+
+.imposible {
+  composes: inset from "../ui/glass.module.css";
+  --g-bg: var(--danger-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+}
+
+.imposibleTitulo {
+  margin: 0;
+  font-size: var(--fs-callout);
+  font-weight: 650;
+  color: var(--danger);
+}
+
+.imposibleTexto {
+  composes: body from "../ui/type.module.css";
+  --t-color: var(--text-primary);
+}
+
+/* --- Tablas: detalle y medios de pago --- */
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-callout);
+}
+
+.concepto {
+  padding: 8px 12px 8px 0;
+  font-weight: 400;
+  text-align: left;
+  color: var(--text-secondary);
+}
+
+.conceptoDetalle,
+.medioPeso {
+  display: block;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.monto {
+  composes: data from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  --t-color: var(--text-secondary);
+  padding: 8px 0;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.tabla .negativo {
+  --t-color: var(--danger);
+}
+
+.borde {
+  border-top: 1px solid var(--separator-strong);
+}
+
+.fuerte .concepto {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tabla .fuerte .monto {
+  --t-size: var(--fs-body);
+  font-weight: 650;
+}
+
+.tabla .fuerte .monto:not(.negativo) {
+  --t-color: var(--text-primary);
+}
+
+.tenue {
+  opacity: 0.6;
+}
+
+.medio + .medio {
+  border-top: 1px solid var(--separator);
+}
+
+.medioMontos {
+  padding: 8px 0;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+
+.medioGanancia {
+  display: block;
+  font-size: var(--fs-callout);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.medioMargen {
+  display: block;
+  font-size: var(--fs-caption);
+  color: var(--success);
+}
+
+.medioMalo .medioGanancia,
+.medioMalo .medioMargen {
+  color: var(--danger);
+}
+
+.pie {
+  composes: footnote from "../ui/type.module.css";
+  padding-top: 14px;
+  border-top: 1px solid var(--separator);
+}
