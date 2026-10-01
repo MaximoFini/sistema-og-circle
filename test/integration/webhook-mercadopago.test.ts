@@ -7,14 +7,24 @@
 // handler corre de punta a punta.
 //
 // Qué se mockea y qué no (criterio de aceptación del ticket): SÓLO la API de
-// Mercado Pago (`getPaymentClient`, es un tercero) y `@vercel/analytics/server`
-// (evita un POST de red real a Vercel Analytics en cada test). Todo lo demás
-// —`insertarPago`, `proyectarNivel`, `createServiceRoleClient`,
-// `validarFirmaMercadoPago`— corre CON SU CÓDIGO REAL contra el proyecto de
-// Supabase real (no hay proyecto de test separado, ver docs/TESTING.md). La
-// firma HMAC de cada request también es REAL: se firma con
-// `test/helpers/mercadopago-signature.ts`, que reutiliza el mismo manifest
-// documentado en `lib/mercadopago/validarFirma.ts` en vez de reinventarlo.
+// Mercado Pago (`getPaymentClient`, es un tercero), `@vercel/analytics/server`
+// (evita un POST de red real a Vercel Analytics en cada test) y, desde la
+// auditoría de Mercado Pago, `getPrecios()` (Edge Config). Esta última se
+// agregó porque el handler ahora valida el monto pagado contra el precio
+// vigente del nivel — en este entorno de test, `EDGE_CONFIG` no tiene
+// configurada la clave `precios` (sólo algunos devs la tienen vinculada
+// localmente, ver docs/TESTING.md), así que depender del valor real haría
+// que estos tests pasen o fallen según la máquina que los corra. Se mockea
+// con el mismo precio que usan los `transaction_amount` de este archivo
+// (75000/125000 — los precios reales de PRD Fase 2 §1.1), para que la
+// validación de monto nueva no cambie el comportamiento que estos tests ya
+// verificaban. Todo lo demás —`insertarPago`, `proyectarNivel`,
+// `createServiceRoleClient`, `validarFirmaMercadoPago`— corre CON SU CÓDIGO
+// REAL contra el proyecto de Supabase real (no hay proyecto de test
+// separado, ver docs/TESTING.md). La firma HMAC de cada request también es
+// REAL: se firma con `test/helpers/mercadopago-signature.ts`, que reutiliza
+// el mismo manifest documentado en `lib/mercadopago/validarFirma.ts` en vez
+// de reinventarlo.
 //
 // Hallazgo honesto sobre "nunca confiar en el status del body": el payload
 // real que Mercado Pago manda al webhook de tipo `payment` NO trae ningún
@@ -43,6 +53,13 @@ vi.mock("@/lib/mercadopago/client", () => ({
 
 vi.mock("@vercel/analytics/server", () => ({
   track: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/config", () => ({
+  getPrecios: vi.fn().mockResolvedValue({
+    ok: true,
+    precios: { principiante: 75000, avanzado: 125000 },
+  }),
 }));
 
 const admin = createTestAdminClient();
@@ -338,6 +355,36 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
     // No hay filas de este pago para NINGÚN usuario — no hay a quién
     // atribuírselo. userId acá sólo existe para poder limpiar algo en
     // afterEach; el pago sin correlación no lo referencia.
+  });
+
+  it("monto que no coincide con el precio vigente: el pago queda en el ledger pero el nivel NO se proyecta (integración real)", async () => {
+    userId = await crearUsuarioDeTest("webhook-monto-invalido");
+    const paymentId = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+    mockGetPaymentClient.mockReturnValue({
+      get: vi.fn().mockResolvedValue(
+        pagoMp({
+          id: Number(paymentId),
+          external_reference: userId,
+          metadata: { nivel: "avanzado" },
+          // El precio mockeado de 'avanzado' es 125000 (ver vi.mock de
+          // "@/lib/config" arriba) — esto simula una preferencia manipulada
+          // o un precio que cambió a mitad de un checkout en curso.
+          transaction_amount: 1,
+        }),
+      ),
+    });
+
+    const { POST } = await import("../../app/api/webhooks/mercadopago/route");
+    const res = await POST(webhookRequest(paymentId));
+
+    expect(res.status).toBe(200);
+    const pagos = await pagosDe(userId);
+    expect(pagos).toHaveLength(1);
+    expect(pagos[0]).toMatchObject({ estado: "approved", nivel_comprado: "avanzado" });
+    // El pago queda registrado para auditoría, pero nunca se le dio acceso.
+    expect(await nivelDe(userId)).toBe("ninguno");
+    expect(await claimNivelDe(userId)).toBeUndefined();
   });
 
   it("external_reference de un usuario inexistente: 500 (violación de FK real, MP reintenta)", async () => {
