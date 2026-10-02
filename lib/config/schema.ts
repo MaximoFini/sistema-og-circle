@@ -9,9 +9,15 @@ import { z } from "zod";
 export const FASES = ["1", "2", "3", "4"] as const;
 
 export const configSchema = z.object({
+  // VGRP-59/60 (Bloque 13 — plan único): un solo precio, no dos. El nombre
+  // comercial del plan ("Plan X" hasta que el equipo lo defina) también vive
+  // acá — es copy, no esquema, así que cambiarlo no pide ni migración ni
+  // deploy.
   precios: z.object({
-    principiante: z.number().int().positive(), // ARS
-    avanzado: z.number().int().positive(), // ARS
+    plan: z.number().int().positive(), // ARS
+  }),
+  plan: z.object({
+    nombre: z.string().trim().min(1),
   }),
   flags: z.object({
     checkout_habilitado: z.boolean(),

@@ -50,7 +50,10 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
   const tituloOriginal = `Video revalidate ${randomUUID()}`;
   const tituloNuevo = `Video revalidado ${randomUUID()}`;
 
-  const usuario = await createAuthenticatedUser("principiante");
+  // VGRP-59/60 (Bloque 13 — plan único): la policy de RLS de `videos`
+  // (videos_select_con_acceso) ahora exige nivel='completo' — antes
+  // 'principiante' ya alcanzaba.
+  const usuario = await createAuthenticatedUser("completo");
   const contextoAdmin = await browser.newContext();
   const paginaAdmin = await contextoAdmin.newPage();
 

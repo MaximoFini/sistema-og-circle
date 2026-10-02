@@ -33,7 +33,7 @@ import "../test/helpers/load-env";
 //
 // Lo que SÍ se prueba de punta a punta, con navegador real y sin atajos:
 //
-//   1. El checkout es REAL: se click-ea "Comprar nivel principiante" en
+//   1. El checkout es REAL: se click-ea "Comprar acceso" en
 //      `/comprar` con un usuario logueado real, y el Server Action
 //      `crearCheckout` arma una preferencia de verdad contra el sandbox de
 //      Mercado Pago (con las credenciales de prueba reales del proyecto) y
@@ -109,7 +109,7 @@ test.describe("pago aprobado → acceso activado", () => {
     await login(page, creado.email, PASSWORD);
 
     await page.goto("/comprar");
-    await page.getByRole("button", { name: "Comprar nivel principiante" }).click();
+    await page.getByRole("button", { name: "Comprar acceso" }).click();
 
     // Navegación de salida real: `ComprarButton` hace
     // `window.location.assign(result.url)` recién cuando `crearCheckout`
@@ -137,10 +137,13 @@ test.describe("pago aprobado → acceso activado", () => {
     // llama a `armarPreferencia()` desde este archivo: arrastra
     // `import "server-only"`, que explota fuera del runtime de Next —
     // Playwright no tiene el alias que sí usa vitest.config.ts para esto.)
-    await page.goto("/comprar/pendiente?nivel=principiante");
+    await page.goto("/comprar/pendiente?nivel=completo");
 
     await expect(page.getByText("Estamos confirmando tu pago")).toBeVisible();
-    await expect(page.getByText(/Tu compra del nivel/)).toBeVisible();
+    // VGRP-59/60 (Bloque 13 — plan único): el copy ya no nombra el nivel
+    // (antes "Tu compra del nivel {nivel}...") — con un solo plan no hace
+    // falta nombrarlo, ver PendienteClient.tsx.
+    await expect(page.getByText("Tu compra está siendo procesada")).toBeVisible();
 
     // Ver el comentario grande al inicio del archivo: esto reemplaza al
     // webhook real de Mercado Pago (que este entorno no puede disparar de
@@ -152,8 +155,8 @@ test.describe("pago aprobado → acceso activado", () => {
     const insertado = await insertarPago(admin, {
       userId: creado.userId,
       proveedorRef,
-      nivelComprado: "principiante",
-      montoArs: 75000,
+      nivelComprado: "completo",
+      montoArs: 90000,
       estado: "approved",
       payloadRaw: { id: proveedorRef, status: "approved" },
     });
@@ -168,7 +171,7 @@ test.describe("pago aprobado → acceso activado", () => {
     // VGRP-27 reemplazó el placeholder "Tenés acceso {nivel}" (VGRP-18) por
     // el shell real (variante prerenderizada por nivel, vía rewrite de
     // middleware.ts) — el heading que confirma el nivel activo ahora es este.
-    await expect(page.getByRole("heading", { name: "Nivel principiante" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Nivel completo" })).toBeVisible();
   });
 
   // Auditoría de Mercado Pago — bug encontrado: la condición vieja de
@@ -227,15 +230,15 @@ test.describe("pago aprobado → acceso activado", () => {
     const admin = createTestAdminClient();
 
     await login(page, creado.email, PASSWORD);
-    await page.goto("/comprar/pendiente?nivel=principiante");
+    await page.goto("/comprar/pendiente?nivel=completo");
     await expect(page.getByText("Estamos confirmando tu pago")).toBeVisible();
 
     const proveedorRef = `e2e-pago-rechazado-${randomUUID()}`;
     const insertado = await insertarPago(admin, {
       userId: creado.userId,
       proveedorRef,
-      nivelComprado: "principiante",
-      montoArs: 75000,
+      nivelComprado: "completo",
+      montoArs: 90000,
       estado: "rejected",
       payloadRaw: { id: proveedorRef, status: "rejected" },
     });

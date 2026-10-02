@@ -18,7 +18,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
-import type { AppMetadataClaims, NivelAcceso } from "../auth/claims";
+import type { AppMetadataClaims } from "../auth/claims";
 import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { TAG_POR_ENTIDAD } from "./admin/contenido";
@@ -32,9 +32,8 @@ export interface AgentePublico {
   publicMeta: {
     nombre: string;
     especialidad: string;
-    nivelRequerido: NivelAcceso;
   };
-  /** null = bloqueado (nivel insuficiente) — nunca se envía el contacto real. */
+  /** null = bloqueado (sin plan) — nunca se envía el contacto real. */
   contacto: string | null;
 }
 
@@ -42,7 +41,6 @@ interface AgenteFila {
   id: string;
   nombre: string;
   especialidad: string;
-  nivel_requerido: NivelAcceso;
   /** CRUDO, sin resolver por nivel — sólo se cachea esto, nunca el resultado
    *  de `resolverSecreto()`. */
   contacto: string | null;
@@ -51,7 +49,7 @@ interface AgenteFila {
 async function obtenerFilasAgentes(admin: AdminClient): Promise<AgenteFila[]> {
   const { data, error } = await admin
     .from("agentes")
-    .select("id, nombre, especialidad, nivel_requerido, contacto")
+    .select("id, nombre, especialidad, contacto")
     .eq("activo", true)
     .order("orden", { ascending: true });
   if (error) throw error;
@@ -73,9 +71,8 @@ function resolverAgentes(filas: AgenteFila[], claims: AppMetadataClaims | null):
     publicMeta: {
       nombre: fila.nombre,
       especialidad: fila.especialidad,
-      nivelRequerido: fila.nivel_requerido,
     },
-    contacto: resolverSecreto(claims, fila.nivel_requerido, fila.contacto),
+    contacto: resolverSecreto(claims, fila.contacto),
   }));
 }
 

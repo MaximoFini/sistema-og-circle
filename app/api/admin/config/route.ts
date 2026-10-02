@@ -23,7 +23,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { getFlags, getPrecios } from "@/lib/config";
+import { getFlags, getPlan, getPrecios } from "@/lib/config";
 import { configSchema } from "@/lib/config/schema";
 import { escribirEdgeConfig } from "@/lib/config/write";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
@@ -34,6 +34,7 @@ export const dynamic = "force-dynamic";
 
 const patchBodySchema = z.union([
   z.object({ precios: configSchema.shape.precios }).strict(),
+  z.object({ plan: configSchema.shape.plan }).strict(),
   z.object({ flags: configSchema.shape.flags }).strict(),
 ]);
 
@@ -41,8 +42,8 @@ export async function GET(): Promise<Response> {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const [precios, flags] = await Promise.all([getPrecios(), getFlags()]);
-  return Response.json({ precios, flags });
+  const [precios, plan, flags] = await Promise.all([getPrecios(), getPlan(), getFlags()]);
+  return Response.json({ precios, plan, flags });
 }
 
 export async function PATCH(req: Request): Promise<Response> {
@@ -60,11 +61,13 @@ export async function PATCH(req: Request): Promise<Response> {
   const { clave, valorNuevo } =
     "precios" in parsed.data
       ? { clave: "precios" as const, valorNuevo: parsed.data.precios }
-      : { clave: "flags" as const, valorNuevo: parsed.data.flags };
+      : "plan" in parsed.data
+        ? { clave: "plan" as const, valorNuevo: parsed.data.plan }
+        : { clave: "flags" as const, valorNuevo: parsed.data.flags };
 
-  // Sólo se lee la clave que realmente va a cambiar (nunca las tres de
+  // Sólo se lee la clave que realmente va a cambiar (nunca las cuatro de
   // getConfig(), que traería `links` sin usarlo y, en el caso de `flags`,
-  // también `precios` sin necesidad).
+  // también `precios`/`plan` sin necesidad).
   //
   // Si la lectura previa de precios falló, no hay forma de saber el valor
   // anterior real — se audita `null` en vez de bloquear el cambio: no dejar
@@ -73,7 +76,9 @@ export async function PATCH(req: Request): Promise<Response> {
   const valorAnterior =
     clave === "precios"
       ? await getPrecios().then((r) => (r.ok ? r.precios : null))
-      : await getFlags();
+      : clave === "plan"
+        ? await getPlan()
+        : await getFlags();
 
   const escritura = await escribirEdgeConfig([{ key: clave, value: valorNuevo }]);
   if (!escritura.ok) {

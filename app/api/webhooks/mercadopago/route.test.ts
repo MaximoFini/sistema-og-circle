@@ -70,7 +70,7 @@ const PAGO_APROBADO_MP = {
   id: 123456789,
   status: "approved",
   external_reference: "user-123",
-  metadata: { nivel: "principiante" },
+  metadata: { nivel: "completo" },
   transaction_amount: 75000,
 };
 
@@ -195,7 +195,7 @@ describe("POST /api/webhooks/mercadopago", () => {
       inserted: true,
       pago: { id: "pago-1" },
     });
-    mockProyectarNivel.mockResolvedValue("principiante");
+    mockProyectarNivel.mockResolvedValue("completo");
 
     const { POST } = await import("./route");
     const res = await POST(
@@ -262,6 +262,37 @@ describe("POST /api/webhooks/mercadopago", () => {
     );
 
     expect(res.status).toBe(500);
+  });
+
+  // VGRP-59/60 — una preferencia creada ANTES del deploy del plan único
+  // todavía puede traer `metadata.nivel: "avanzado"` literal (el webhook
+  // puede llegar con delay respecto al checkout). normalizarNivelLegacy()
+  // tiene que mapearlo a 'completo' para no perder el pago real.
+  it("normaliza metadata.nivel='avanzado' (preferencia vieja) a 'completo' y procesa el pago", async () => {
+    mockGetPaymentClient.mockReturnValue({
+      get: vi.fn().mockResolvedValue({
+        ...PAGO_APROBADO_MP,
+        metadata: { nivel: "avanzado" },
+      }),
+    });
+    mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
+    mockProyectarNivel.mockResolvedValue("completo");
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockInsertarPago).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ nivelComprado: "completo" }),
+    );
+    expect(mockProyectarNivel).toHaveBeenCalledTimes(1);
+    expect(mockProyectarNivel).toHaveBeenCalledWith(expect.anything(), "user-123");
   });
 
   it("responde 200 sin insertar cuando falta external_reference o metadata.nivel", async () => {
@@ -513,7 +544,7 @@ describe("POST /api/webhooks/mercadopago — observabilidad (VGRP-41)", () => {
 
   it("track('pago_aprobado', {nivel}) se llama sólo cuando el pago está aprobado y proyectarNivel resuelve sin tirar", async () => {
     mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
-    mockProyectarNivel.mockResolvedValue("principiante");
+    mockProyectarNivel.mockResolvedValue("completo");
 
     const { POST } = await import("./route");
     const res = await POST(
@@ -525,7 +556,7 @@ describe("POST /api/webhooks/mercadopago — observabilidad (VGRP-41)", () => {
 
     expect(res.status).toBe(200);
     expect(mockTrack).toHaveBeenCalledTimes(1);
-    expect(mockTrack).toHaveBeenCalledWith("pago_aprobado", { nivel: "principiante" });
+    expect(mockTrack).toHaveBeenCalledWith("pago_aprobado", { nivel: "completo" });
   });
 
   it("no llama a track('pago_aprobado', ...) cuando el pago no queda approved (ej. refunded)", async () => {

@@ -7,18 +7,28 @@ import { createTestAdminClient } from "../test/helpers/db-client";
 import "../test/helpers/load-env";
 
 // =============================================================================
-// VGRP-52 — EL CANARIO SWIFT: la garantía más importante del ticket. Un servicio
-// financiero nivel_requerido='avanzado' con datos SWIFT en `descripcion` nunca debe
-// llegar, ni al HTML ni al cuerpo de NINGUNA respuesta de red, a un usuario que no
-// pagó ese nivel. El TÍTULO sí tiene que verse siempre (PRD §6: una fila bloqueada
-// nunca desaparece sin explicación) — sólo la `descripcion` (donde vive el dato SWIFT,
-// ver lib/data/servicios.ts) es lo que se gatea.
+// VGRP-52 — EL CANARIO SWIFT: la garantía más importante del ticket. Un dato
+// SWIFT en la `descripcion` de un servicio financiero nunca debe llegar, ni
+// al HTML ni al cuerpo de NINGUNA respuesta de red, a un usuario que no tiene
+// el plan completo.
+//
+// VGRP-59/60 (Bloque 13 — plan único): antes el gating era por FILA
+// (nivel_requerido='avanzado' en ese servicio en particular) y un usuario
+// 'principiante' SÍ veía la fila (con el título visible y la descripción
+// gateada por <ContenidoBloqueado>, PRD §6). Con un solo plan eso ya no
+// existe: `servicios_financieros` ahora filtra TODA la fila por RLS para
+// quien no tiene `nivel = 'completo'` (ver supabase/migrations/
+// 20261002190000_plan_unico.sql, policy "servicios_financieros_select_con_
+// acceso") — y un usuario 'ninguno' ni siquiera llega a la pantalla que monta
+// <ServiciosFinancierosGrid> (ve app/(app)/dashboard/page.tsx, VGRP-18, que
+// no la usa). El canario pasa a probar eso: 'ninguno' nunca ve el dato en
+// ningún lado, 'completo' lo ve entero (título + descripción, ya sin ningún
+// candado).
 //
 // `page.on("response")` acumula el cuerpo de CADA respuesta (documento HTML, fetch de
 // /api/servicios-financieros, todo) durante el recorrido — mirar sólo el DOM final no
 // alcanza: si el canario viajara en la respuesta de red y el cliente simplemente no lo
-// pintara, un chequeo de sólo-DOM no lo vería. Server Component (ContenidoBloqueado) +
-// Route Handler dinámico son cosas separadas; este test cubre las dos capas a la vez.
+// pintara, un chequeo de sólo-DOM no lo vería.
 //
 // No hay helper de canario compartido en este worktree (rama aislada de los tickets
 // hermanos del mismo bloque, VGRP-50 entre ellos) — se escribe acá mismo; si otro
@@ -44,36 +54,32 @@ async function crearServicioCanario(
   titulo: string,
   descripcion: string,
 ): Promise<string> {
-  const servicio = await sembrarServicioViaAdmin(browser, {
-    titulo,
-    descripcion,
-    nivel_requerido: "avanzado",
-  });
+  const servicio = await sembrarServicioViaAdmin(browser, { titulo, descripcion });
   return servicio.id;
 }
 
-test.describe("canario SWIFT — VGRP-52", () => {
+test.describe("canario SWIFT — VGRP-52/59", () => {
   const canario = `SWIFT-CANARIO-${randomUUID()}`;
   const titulo = `Pagos vía SWIFT (canario ${randomUUID()})`;
   let servicioId: string;
-  let principiante: Awaited<ReturnType<typeof createAuthenticatedUser>>;
-  let avanzado: Awaited<ReturnType<typeof createAuthenticatedUser>>;
+  let sinAcceso: Awaited<ReturnType<typeof createAuthenticatedUser>>;
+  let completo: Awaited<ReturnType<typeof createAuthenticatedUser>>;
 
   test.beforeAll(async ({ browser }) => {
     servicioId = await crearServicioCanario(browser, titulo, canario);
-    principiante = await createAuthenticatedUser("principiante");
-    avanzado = await createAuthenticatedUser("avanzado");
+    sinAcceso = await createAuthenticatedUser("ninguno");
+    completo = await createAuthenticatedUser("completo");
   });
 
   test.afterAll(async () => {
     // La fila sembrada para el canario se limpia siempre, gane o pierda el test de
     // arriba — ninguna otra corrida debe encontrarla.
     await admin.from("servicios_financieros").delete().eq("id", servicioId);
-    await cleanupUser(principiante.userId);
-    await cleanupUser(avanzado.userId);
+    await cleanupUser(sinAcceso.userId);
+    await cleanupUser(completo.userId);
   });
 
-  test("'principiante': el dato SWIFT NO aparece ni en el HTML ni en ninguna respuesta de red; el título y el CTA correcto sí", async ({
+  test("sin el plan completo: ni el título ni el dato SWIFT aparecen, ni en el HTML ni en ninguna respuesta de red", async ({
     page,
   }) => {
     const cuerpos: Promise<string>[] = [];
@@ -81,28 +87,26 @@ test.describe("canario SWIFT — VGRP-52", () => {
       cuerpos.push(response.text().catch(() => ""));
     });
 
-    await loginComo(page, principiante.email);
-    await expect(page.getByText(titulo)).toBeVisible();
+    await loginComo(page, sinAcceso.email);
+    // Un usuario 'ninguno' cae en el dashboard bare (VGRP-18) — nunca monta
+    // <ServiciosFinancierosGrid>, así que ni el título es el ancla acá.
+    await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
     await page.waitForLoadState("networkidle");
 
     const html = await page.content();
     expect(html).not.toContain(canario);
+    expect(html).not.toContain(titulo);
 
     const bodies = await Promise.all(cuerpos);
     for (const body of bodies) {
       expect(body).not.toContain(canario);
     }
-
-    // Regla dura PRD §6: la fila nunca desaparece entera — título visible + mensaje de
-    // nivel + CTA correcto para un nivelActual != 'ninguno' ("Mejorar mi nivel", no
-    // "Comprar acceso").
-    const card = page.getByText(titulo).locator("..");
-    await expect(card.getByText("Disponible desde nivel", { exact: false })).toBeVisible();
-    await expect(card.getByRole("link", { name: "Mejorar mi nivel" })).toBeVisible();
   });
 
-  test("'avanzado': el dato SWIFT SÍ aparece", async ({ page }) => {
-    await loginComo(page, avanzado.email);
+  test("con el plan completo: título y dato SWIFT aparecen los dos, sin ningún candado", async ({
+    page,
+  }) => {
+    await loginComo(page, completo.email);
     await expect(page.getByText(titulo)).toBeVisible();
     await expect(page.getByText(canario)).toBeVisible();
   });
@@ -112,7 +116,7 @@ test.describe("ProfesionalesGrid / ServiciosFinancierosGrid — estados de carga
   test("ambas grillas muestran 'Cargando…' antes de resolver el fetch, y 'Todavía no hay… cargados.' si la tabla vuelve vacía", async ({
     page,
   }) => {
-    const usuario = await createAuthenticatedUser("avanzado");
+    const usuario = await createAuthenticatedUser("completo");
     try {
       let liberarServicios: () => void = () => {};
       let liberarProfesionales: () => void = () => {};
@@ -128,7 +132,7 @@ test.describe("ProfesionalesGrid / ServiciosFinancierosGrid — estados de carga
       // después — sin tocar la tabla real (compartida con el resto del equipo).
       await page.route("**/api/servicios-financieros", async (route) => {
         await frenoServicios;
-        await route.fulfill({ json: { servicios: [], nivelActual: "avanzado" } });
+        await route.fulfill({ json: { servicios: [], nivelActual: "completo" } });
       });
       await page.route("**/api/profesionales", async (route) => {
         await frenoProfesionales;

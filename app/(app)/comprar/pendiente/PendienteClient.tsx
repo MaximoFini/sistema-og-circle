@@ -46,7 +46,13 @@ const POLL_INTERVAL_MS = 2500;
 const TIMEOUT_MS = 2 * 60 * 1000;
 
 export interface PendienteClientProps {
-  /** Sólo informativo — nunca una confirmación de que el nivel ya está activo. */
+  /**
+   * VGRP-59/60 (Bloque 13 — plan único): ya no se muestra en pantalla (con un
+   * solo plan, nombrarlo no agrega información) — se sigue recibiendo sólo
+   * para no tener que tocar cómo `page.tsx` lee el query param `nivel`
+   * (ver el comentario ahí). Nunca una confirmación de que el nivel ya está
+   * activo, se haya mostrado o no.
+   */
   nivelEsperado: NivelAcceso | null;
   /** Resuelto server-side vía `getLinks()` (Edge Config) — nunca hardcodeado acá. */
   whatsappUrl: string;
@@ -54,7 +60,7 @@ export interface PendienteClientProps {
 
 type EstadoPantalla = "esperando" | "confirmado" | "timeout";
 
-export function PendienteClient({ nivelEsperado, whatsappUrl }: PendienteClientProps) {
+export function PendienteClient({ whatsappUrl }: PendienteClientProps) {
   const router = useRouter();
   const [estado, setEstado] = useState<EstadoPantalla>("esperando");
   // Evita el clásico "setState después de desmontar" si el componente se
@@ -135,15 +141,8 @@ export function PendienteClient({ nivelEsperado, whatsappUrl }: PendienteClientP
         <div className={styles.spinner} aria-hidden="true" />
         <h1 className={styles.title}>Estamos confirmando tu pago</h1>
         <p className={styles.copy}>
-          {nivelEsperado && nivelEsperado !== "ninguno" ? (
-            <>
-              Tu compra del nivel <span className={styles.nivelDestacado}>{nivelEsperado}</span>{" "}
-              está siendo procesada por Mercado Pago.
-            </>
-          ) : (
-            "Tu compra está siendo procesada por Mercado Pago."
-          )}{" "}
-          En cuanto se confirme, te llevamos a tu panel — no hace falta que hagas nada.
+          Tu compra está siendo procesada por Mercado Pago. En cuanto se confirme, te llevamos a tu
+          panel — no hace falta que hagas nada.
         </p>
       </div>
     </div>

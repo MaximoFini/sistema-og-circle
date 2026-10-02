@@ -52,9 +52,9 @@ const CLAIMS_OK = { sub: "user-123", app_metadata: { nivel: "ninguno" } };
 const PREFERENCIA_OK = {
   ok: true as const,
   preferenceData: {
-    items: [{ id: "principiante", title: "Nivel Principiante", quantity: 1, unit_price: 75000 }],
+    items: [{ id: "completo", title: "Nivel Completo", quantity: 1, unit_price: 75000 }],
     external_reference: "user-123",
-    metadata: { nivel: "principiante" },
+    metadata: { nivel: "completo" },
   },
 };
 
@@ -83,7 +83,7 @@ describe("crearCheckout", () => {
     mockGetVerifiedClaims.mockResolvedValue(null);
 
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result.ok).toBe(false);
     expect(mockArmarPreferencia).not.toHaveBeenCalled();
@@ -104,7 +104,7 @@ describe("crearCheckout", () => {
     mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "ninguno" } });
 
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("no debería ser ok:true");
@@ -116,7 +116,7 @@ describe("crearCheckout", () => {
     mockGetVerifiedClaims.mockResolvedValue({ sub: 12345, app_metadata: { nivel: "ninguno" } });
 
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result.ok).toBe(false);
     expect(mockArmarPreferencia).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe("crearCheckout", () => {
     });
 
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result).toEqual({
       ok: false,
@@ -142,7 +142,7 @@ describe("crearCheckout", () => {
     mockCreate.mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
 
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("no debería ser ok:true");
@@ -153,25 +153,25 @@ describe("crearCheckout", () => {
     mockCreate.mockResolvedValue({});
 
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result.ok).toBe(false);
   });
 
   it("happy path: devuelve ok:true con la url de init_point y llama a track('checkout_iniciado', {nivel}) una vez", async () => {
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
     expect(mockTrack).toHaveBeenCalledTimes(1);
-    expect(mockTrack).toHaveBeenCalledWith("checkout_iniciado", { nivel: "principiante" });
+    expect(mockTrack).toHaveBeenCalledWith("checkout_iniciado", { nivel: "completo" });
   });
 
   it("si track() tira una excepción, el checkout igual devuelve ok:true (fail-open)", async () => {
     mockTrack.mockRejectedValue(new Error("analytics caído"));
 
     const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("principiante");
+    const result = await crearCheckout("completo");
 
     expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
   });
@@ -240,12 +240,12 @@ describe("consultarNivelActual", () => {
 
   it("devuelve el nivel que resuelve getNivel(claims) cuando hay sesión", async () => {
     mockGetVerifiedClaims.mockResolvedValue(CLAIMS_OK);
-    mockGetNivel.mockReturnValue("principiante" satisfies NivelAcceso);
+    mockGetNivel.mockReturnValue("completo" satisfies NivelAcceso);
 
     const { consultarNivelActual } = await import("./_actions");
     const result = await consultarNivelActual();
 
-    expect(result).toEqual({ nivel: "principiante" });
+    expect(result).toEqual({ nivel: "completo" });
     expect(mockGetNivel).toHaveBeenCalledWith(CLAIMS_OK);
   });
 

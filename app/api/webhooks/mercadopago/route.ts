@@ -3,7 +3,7 @@ import { track } from "@vercel/analytics/server";
 import { z } from "zod";
 import { getPrecios } from "@/lib/config";
 import { insertarPago, proyectarNivel } from "@/lib/data/pagos";
-import type { Json, NivelAcceso } from "@/lib/database.types";
+import type { Json } from "@/lib/database.types";
 import { notificarPagoAprobado } from "@/lib/email/pago-aprobado";
 import { getEnv } from "@/lib/env";
 import { getPaymentClient } from "@/lib/mercadopago/client";
@@ -215,11 +215,17 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const userId = pago.external_reference;
-    const nivelComprado = (pago.metadata as Record<string, unknown> | undefined)?.nivel;
+    const nivelCrudo = (pago.metadata as Record<string, unknown> | undefined)?.nivel;
+    // VGRP-59/60 — una preferencia creada ANTES del deploy del plan único
+    // todavía puede traer `metadata.nivel: "principiante"`/`"avanzado"`
+    // (el webhook puede llegar con delay respecto al checkout). Se normaliza
+    // ANTES de validar que sea comprable, para no perder un pago real: con
+    // el enum nuevo, el único nivel comprable es "completo".
+    const nivelComprado = normalizarNivelLegacy(nivelCrudo);
 
-    if (!userId || typeof userId !== "string" || !esNivelComprable(nivelComprado)) {
+    if (!userId || typeof userId !== "string" || nivelComprado !== "completo") {
       reportarPagoSinCorrelacion(
-        `paymentId=${paymentId} external_reference=${String(userId)} metadata.nivel=${String(nivelComprado)}`,
+        `paymentId=${paymentId} external_reference=${String(userId)} metadata.nivel=${String(nivelCrudo)}`,
       );
       return Response.json({}, { status: 200 });
     }

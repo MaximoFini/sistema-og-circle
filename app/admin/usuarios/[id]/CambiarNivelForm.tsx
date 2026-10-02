@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button, FormError } from "@/components/ui";
-import { Constants, type NivelAcceso } from "@/lib/database.types";
+import type { NivelAcceso } from "@/lib/database.types";
 import styles from "../../admin.module.css";
 
 // VGRP-36 — cambio manual de nivel. Client Component: `fetch` POST a
@@ -14,8 +14,17 @@ import styles from "../../admin.module.css";
 // pero no se espera: el botón vuelve a estado normal de inmediato y la pantalla
 // se ve sin cambios hasta que Next repinta solo — parece que no hizo nada.
 // Muestra los `fieldErrors` del 400 con `FormError`.
+//
+// VGRP-59/60 (Bloque 13 — plan único): con sólo dos valores en el enum
+// (ninguno/completo) ya no tiene sentido un <select> de niveles — la acción
+// es binaria: "Dar acceso" (POST nivel='completo') / "Quitar acceso" (POST
+// nivel='ninguno'). El contrato HTTP de /api/admin/usuarios/[id]/nivel no
+// cambió (sigue aceptando { nivel, motivo } contra el enum real vía
+// Constants.public.Enums.nivel_acceso) — esto es sólo una simplificación de
+// la UI.
 
-const NIVELES = Constants.public.Enums.nivel_acceso;
+const NIVEL_CON_ACCESO: NivelAcceso = "completo";
+const NIVEL_SIN_ACCESO: NivelAcceso = "ninguno";
 
 interface RespuestaError {
   error?: string;
@@ -38,8 +47,7 @@ export function CambiarNivelForm({
   const [errorMotivo, setErrorMotivo] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function aplicar(nivelElegido: NivelAcceso) {
     setEnviando(true);
     setErrorGeneral(null);
     setErrorMotivo(null);
@@ -49,15 +57,15 @@ export function CambiarNivelForm({
       const res = await fetch(`/api/admin/usuarios/${userId}/nivel`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nivel, motivo }),
+        body: JSON.stringify({ nivel: nivelElegido, motivo }),
       });
 
       if (res.ok) {
         const data = (await res.json()) as { nivelAnterior: string; nivelNuevo: NivelAcceso };
         setOk(`Nivel actualizado: ${data.nivelAnterior} → ${data.nivelNuevo}.`);
         setMotivo("");
-        // Resincronizar el <select> con el nivel que quedó vigente: puede
-        // diferir del elegido (p. ej. un pago posterior al override gana).
+        // Resincronizar con el nivel que quedó vigente: puede diferir del
+        // elegido (p. ej. un pago posterior al override gana).
         setNivel(data.nivelNuevo);
         // Re-fetch de la ficha (Server Component). En una transición para que
         // `refrescando` siga true hasta que el re-render termine.
@@ -79,22 +87,13 @@ export function CambiarNivelForm({
     }
   }
 
+  const tieneAccesoActual = nivel === "completo";
+
   return (
-    <form className={styles.formCambiarNivel} onSubmit={onSubmit}>
-      <label className={styles.formCampo}>
-        <span className={styles.formLabel}>Nivel</span>
-        <select
-          className={styles.selectNativo}
-          value={nivel}
-          onChange={(e) => setNivel(e.target.value as NivelAcceso)}
-        >
-          {NIVELES.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
-      </label>
+    <div className={styles.formCambiarNivel}>
+      <p className={styles.lede}>
+        Acceso actual: <strong>{tieneAccesoActual ? "con acceso" : "sin acceso"}</strong>.
+      </p>
 
       <label className={styles.formCampo}>
         <span className={styles.formLabel}>Motivo</span>
@@ -102,7 +101,7 @@ export function CambiarNivelForm({
           className={styles.textareaNativo}
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
-          placeholder="Por qué se cambia el nivel a mano (obligatorio)"
+          placeholder="Por qué se cambia el acceso a mano (obligatorio)"
           aria-invalid={errorMotivo ? true : undefined}
         />
         {errorMotivo ? <FormError>{errorMotivo}</FormError> : null}
@@ -111,9 +110,25 @@ export function CambiarNivelForm({
       <FormError>{errorGeneral}</FormError>
       {ok ? <p className={styles.formOk}>{ok}</p> : null}
 
-      <Button type="submit" loading={enviando || refrescando}>
-        Aplicar cambio
-      </Button>
-    </form>
+      <div className={styles.formAcciones}>
+        <Button
+          type="button"
+          onClick={() => aplicar(NIVEL_CON_ACCESO)}
+          loading={enviando || refrescando}
+          disabled={tieneAccesoActual}
+        >
+          Dar acceso
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => aplicar(NIVEL_SIN_ACCESO)}
+          loading={enviando || refrescando}
+          disabled={!tieneAccesoActual}
+        >
+          Quitar acceso
+        </Button>
+      </div>
+    </div>
   );
 }

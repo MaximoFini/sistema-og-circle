@@ -39,7 +39,7 @@ describe("admin_pagos_ledger: no legible por anon ni por authenticated (VGRP-47 
   });
 
   it("un usuario común logueado (rol='user', authenticated) no puede leer la vista — nunca datos reales", async () => {
-    const created = await createAuthenticatedUser("avanzado");
+    const created = await createAuthenticatedUser("completo");
     userId = created.userId;
 
     const client = createTestAnonClient();

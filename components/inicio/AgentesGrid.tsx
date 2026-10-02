@@ -12,29 +12,26 @@
 
 import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
-import type { NivelAcceso } from "@/lib/auth/claims";
 import { iniciales } from "./iniciales";
 import styles from "./inicio.module.css";
 
 interface AgenteRespuesta {
   id: string;
-  publicMeta: { nombre: string; especialidad: string; nivelRequerido: NivelAcceso };
+  publicMeta: { nombre: string; especialidad: string };
   contacto: string | null;
 }
 
 export function AgentesGrid() {
   const [agentes, setAgentes] = useState<AgenteRespuesta[] | null>(null);
-  const [nivelActual, setNivelActual] = useState<NivelAcceso>("ninguno");
 
   useEffect(() => {
     let cancelado = false;
 
     fetch("/api/agentes")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { agentes: AgenteRespuesta[]; nivelActual: NivelAcceso } | null) => {
+      .then((data: { agentes: AgenteRespuesta[] } | null) => {
         if (cancelado || !data) return;
         setAgentes(data.agentes);
-        setNivelActual(data.nivelActual);
       })
       .catch(() => {
         // Fallo silencioso: la sección queda en su estado de carga vacío —
@@ -75,11 +72,7 @@ export function AgentesGrid() {
               <span className={styles.meta}>{agente.publicMeta.especialidad}</span>
             </span>
           </span>
-          <ContenidoBloqueado
-            bloqueado={agente.contacto === null}
-            nivelRequerido={agente.publicMeta.nivelRequerido}
-            nivelActual={nivelActual}
-          >
+          <ContenidoBloqueado bloqueado={agente.contacto === null}>
             <p className={styles.contacto}>{agente.contacto}</p>
           </ContenidoBloqueado>
         </div>

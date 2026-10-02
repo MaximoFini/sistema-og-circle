@@ -44,7 +44,6 @@ describe("crearContenido / actualizarContenido / listarContenido (agentes)", () 
     const creado = await crearContenido(admin, "agentes", {
       nombre: `Test Agente ${Date.now()}`,
       especialidad: "Test",
-      nivel_requerido: "avanzado",
       contacto: "contacto-de-test",
       orden: 999,
       activo: true,
@@ -91,7 +90,6 @@ describe("videos: provider_ref", () => {
       crearContenido(admin, "videos", {
         stage: 1,
         titulo: "Video de test",
-        nivel_requerido: "principiante",
         orden: 999,
         publicado: true,
         provider_ref: "gy8t0Yy0cOIeXEeQ",
@@ -103,7 +101,6 @@ describe("videos: provider_ref", () => {
     const creado = await crearContenido(admin, "videos", {
       stage: 1,
       titulo: "Video de test",
-      nivel_requerido: "principiante",
       orden: 999,
       publicado: false,
       provider_ref: "  ",
@@ -118,7 +115,6 @@ describe("borrarContenido", () => {
     const creado = await crearContenido(admin, "videos", {
       stage: 1,
       titulo: "Video de test",
-      nivel_requerido: "principiante",
       orden: 999,
       publicado: true,
       // Link de Compartir con `?si=`: se guarda sólo el id.
@@ -146,7 +142,6 @@ describe("borrarContenido", () => {
     const creado = await crearContenido(admin, "agentes", {
       nombre: "Agente a borrar",
       especialidad: "Test",
-      nivel_requerido: "principiante",
       orden: 999,
       activo: true,
     });

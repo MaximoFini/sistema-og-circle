@@ -7,28 +7,25 @@
 
 import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
-import type { NivelAcceso } from "@/lib/auth/claims";
 import styles from "./inicio.module.css";
 
 interface ServicioRespuesta {
   id: string;
-  publicMeta: { titulo: string; nivelRequerido: NivelAcceso };
+  publicMeta: { titulo: string };
   descripcion: string | null;
 }
 
 export function ServiciosFinancierosGrid() {
   const [servicios, setServicios] = useState<ServicioRespuesta[] | null>(null);
-  const [nivelActual, setNivelActual] = useState<NivelAcceso>("ninguno");
 
   useEffect(() => {
     let cancelado = false;
 
     fetch("/api/servicios-financieros")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { servicios: ServicioRespuesta[]; nivelActual: NivelAcceso } | null) => {
+      .then((data: { servicios: ServicioRespuesta[] } | null) => {
         if (cancelado || !data) return;
         setServicios(data.servicios);
-        setNivelActual(data.nivelActual);
       })
       .catch(() => {
         // Fallo silencioso: mismo criterio que AgentesGrid.
@@ -54,11 +51,7 @@ export function ServiciosFinancierosGrid() {
           {/* Hijo directo de la tarjeta: e2e/inicio-canario-swift.spec.ts busca el
               bloqueo en el padre del título. */}
           <strong className={styles.servicioTitulo}>{servicio.publicMeta.titulo}</strong>
-          <ContenidoBloqueado
-            bloqueado={servicio.descripcion === null}
-            nivelRequerido={servicio.publicMeta.nivelRequerido}
-            nivelActual={nivelActual}
-          >
+          <ContenidoBloqueado bloqueado={servicio.descripcion === null}>
             <p className={styles.textoTarjeta}>{servicio.descripcion}</p>
           </ContenidoBloqueado>
         </div>

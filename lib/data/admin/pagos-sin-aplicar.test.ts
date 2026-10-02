@@ -55,13 +55,13 @@ describe("admin_pagos_ledger.sin_aplicar — matriz de casos faltantes (VGRP-47 
     const refOriginal = `test-ref-${randomUUID()}`;
     const refDistinta = `test-ref-otra-${randomUUID()}`;
 
-    // Pago approved que sube a "avanzado" — el usuario arranca en "ninguno",
+    // Pago approved que sube a "completo" — el usuario arranca en "ninguno",
     // así que nivel_comprado > nivel actual del perfil se cumple.
     const { error: insertOriginalError } = await admin.from("pagos").insert({
       user_id: userId,
       proveedor: "mercadopago",
       proveedor_ref: refOriginal,
-      nivel_comprado: "avanzado",
+      nivel_comprado: "completo",
       monto_ars: 5000,
       estado: "approved",
       payload_raw: {},
@@ -75,7 +75,7 @@ describe("admin_pagos_ledger.sin_aplicar — matriz de casos faltantes (VGRP-47 
       user_id: userId,
       proveedor: "mercadopago",
       proveedor_ref: refDistinta,
-      nivel_comprado: "principiante",
+      nivel_comprado: "completo",
       monto_ars: 1000,
       estado: "refunded",
       payload_raw: {},
@@ -101,27 +101,27 @@ describe("admin_pagos_ledger.sin_aplicar — matriz de casos faltantes (VGRP-47 
     const refAvanzado = `test-ref-${randomUUID()}`;
     const refPrincipiante = `test-ref-${randomUUID()}`;
 
-    // El perfil sube a "avanzado" primero (pago real + proyección).
+    // El perfil sube a "completo" primero (pago real + proyección).
     const { error: insertAvanzadoError } = await admin.from("pagos").insert({
       user_id: userId,
       proveedor: "mercadopago",
       proveedor_ref: refAvanzado,
-      nivel_comprado: "avanzado",
+      nivel_comprado: "completo",
       monto_ars: 5000,
       estado: "approved",
       payload_raw: {},
     });
     if (insertAvanzadoError) throw insertAvanzadoError;
     const nivelTrasAvanzado = await proyectarNivel(admin, userId);
-    expect(nivelTrasAvanzado).toBe("avanzado");
+    expect(nivelTrasAvanzado).toBe("completo");
 
     // Ahora llega (o se sembró para el test) un pago approved de un nivel
-    // MENOR — "principiante" — para el mismo usuario, sin re-proyectar.
+    // MENOR — "completo" — para el mismo usuario, sin re-proyectar.
     const { error: insertPrincipianteError } = await admin.from("pagos").insert({
       user_id: userId,
       proveedor: "mercadopago",
       proveedor_ref: refPrincipiante,
-      nivel_comprado: "principiante",
+      nivel_comprado: "completo",
       monto_ars: 1000,
       estado: "approved",
       payload_raw: {},
@@ -134,7 +134,7 @@ describe("admin_pagos_ledger.sin_aplicar — matriz de casos faltantes (VGRP-47 
     // que este pago NO debe marcarse sin_aplicar aunque nunca se haya
     // proyectado individualmente.
     expect(filaPrincipiante.sin_aplicar).toBe(false);
-    expect(filaPrincipiante.user_nivel_actual).toBe("avanzado");
+    expect(filaPrincipiante.user_nivel_actual).toBe("completo");
 
     // Control: el pago de avanzado sí quedó aplicado (ya se proyectó).
     const filaAvanzado = await buscarFilaLedger(userId, refAvanzado);

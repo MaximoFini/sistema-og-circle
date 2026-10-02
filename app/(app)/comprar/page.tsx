@@ -4,7 +4,6 @@ import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
 import { getPrecios } from "@/lib/config";
 import { formatearPrecio } from "@/lib/format";
-import type { NivelComprable } from "@/lib/mercadopago/preferencia";
 import { ComprarButton } from "./ComprarButton";
 import styles from "./comprar.module.css";
 
@@ -30,10 +29,14 @@ import styles from "./comprar.module.css";
 // app/(auth)/registro/page.tsx (mismo patrón exacto); acá se había repetido,
 // y encima sobre el número que cobra: cambiar un precio en Edge Config no
 // tenía ningún efecto hasta el próximo deploy.
+//
+// VGRP-59/60 (Bloque 13 — plan único): antes esta página iteraba dos niveles
+// comprables (Principiante/Avanzado) mostrando dos cards, una de ellas
+// "destacada" como la opción completa. Con un solo plan ya no hay nada que
+// elegir ni destacar — una sola card, con el nombre comercial del plan
+// (`getPlan()`, Edge Config) y el precio único (`precios.plan`).
 // =============================================================================
 export const dynamic = "force-dynamic";
-
-const NIVELES_COMPRABLES: readonly NivelComprable[] = ["principiante", "avanzado"];
 
 export default async function ComprarPage() {
   // Auditoría de Mercado Pago (decisión del equipo): un usuario no debe ver
@@ -67,7 +70,7 @@ export default async function ComprarPage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.heading}>
-        <p className={styles.eyebrow}>Elegí tu nivel</p>
+        <p className={styles.eyebrow}>Comprá tu acceso</p>
         <h1 className={styles.title}>Comprar acceso</h1>
       </div>
 
