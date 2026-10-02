@@ -168,3 +168,32 @@
 .lista li::marker {
   color: var(--text-muted);
 }
+
+/* --- Streaming: bloque al que el modelo todavía no llegó ---
+   Mismo latido que .skeletonBar (video.module.css) y .skeleton (nav). Dos
+   líneas a la altura del texto real, para que el bloque no salte al llenarse. */
+
+.esqueleto {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-block: 4px;
+}
+
+.esqueletoLinea {
+  display: block;
+  height: 0.85em;
+  border-radius: 4px;
+  background: var(--fill);
+  animation: latido 1.4s ease-in-out infinite;
+}
+
+.esqueletoLinea:last-child {
+  width: 62%;
+}
+
+@keyframes latido {
+  50% {
+    opacity: 0.45;
+  }
+}

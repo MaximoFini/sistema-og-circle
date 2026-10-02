@@ -66,8 +66,26 @@ function crearCliente(): Anthropic {
   return new Anthropic({ apiKey, maxRetries: 0 });
 }
 
-/** `rawCall()` del original: una request, y los errores de la API pasados a
- *  `ErrorCotizador` con el mismo mapeo de status (401 → 500, resto → 502). */
+/** Errores de la API pasados a `ErrorCotizador` con el mismo mapeo de status
+ *  que `rawCall()` del original (401 → 500, resto → 502). */
+function traducirError(e: unknown): unknown {
+  if (e instanceof AuthenticationError) {
+    // Clave inválida: problema de config, no de la IA. El original lo
+    // mapeaba a 500 para que el loop no reintente.
+    return new ErrorCotizador(500, "Error de configuración del servidor.", { cause: e });
+  }
+  if (e instanceof APIConnectionError) {
+    // En el original un `fetch` que tiraba no era HttpError → 500 con el
+    // mensaje crudo. Acá se trata como falla del servicio externo (502).
+    return new ErrorCotizador(502, "No se pudo contactar a la API de Anthropic.", { cause: e });
+  }
+  if (e instanceof APIError) {
+    return new ErrorCotizador(502, `Error de la API de Anthropic (${e.status}).`, { cause: e });
+  }
+  return e;
+}
+
+/** `rawCall()` del original: una request. */
 async function llamadaCruda(
   params: Anthropic.Messages.MessageCreateParamsNonStreaming,
 ): Promise<Anthropic.Messages.Message> {
@@ -75,20 +93,7 @@ async function llamadaCruda(
   try {
     return await client.messages.create(params);
   } catch (e) {
-    if (e instanceof AuthenticationError) {
-      // Clave inválida: problema de config, no de la IA. El original lo
-      // mapeaba a 500 para que el loop no reintente.
-      throw new ErrorCotizador(500, "Error de configuración del servidor.", { cause: e });
-    }
-    if (e instanceof APIConnectionError) {
-      // En el original un `fetch` que tiraba no era HttpError → 500 con el
-      // mensaje crudo. Acá se trata como falla del servicio externo (502).
-      throw new ErrorCotizador(502, "No se pudo contactar a la API de Anthropic.", { cause: e });
-    }
-    if (e instanceof APIError) {
-      throw new ErrorCotizador(502, `Error de la API de Anthropic (${e.status}).`, { cause: e });
-    }
-    throw e;
+    throw traducirError(e);
   }
 }
 
@@ -116,6 +121,43 @@ export async function llamarTexto({
 
   if (!text) throw new ErrorCotizador(502, "Respuesta vacía del modelo.");
   return text;
+}
+
+/**
+ * Como `llamarTexto()`, pero en streaming: cada fragmento de texto a medida
+ * que el modelo lo escribe. Mismo mapeo de errores y sin reintentos. Los
+ * errores de conexión o de la API salen del primer `next()` (no hay que
+ * esperar al final para enterarse); `signal` corta la request a Anthropic
+ * —p. ej. con el `req.signal` del Route Handler, si el usuario se va.
+ */
+export async function* transmitirTexto(
+  { model, max_tokens, system, content }: OpcionesLlamada,
+  signal?: AbortSignal,
+): AsyncGenerator<string> {
+  const stream = crearCliente().messages.stream(
+    {
+      model,
+      max_tokens,
+      ...(system ? { system } : {}),
+      messages: [{ role: "user", content }],
+    },
+    { signal },
+  );
+  let terminado = false;
+  try {
+    for await (const evento of stream) {
+      if (evento.type === "content_block_delta" && evento.delta.type === "text_delta") {
+        yield evento.delta.text;
+      }
+    }
+    terminado = true;
+  } catch (e) {
+    throw traducirError(e);
+  } finally {
+    // Quien consume cortó antes del final (canceló la respuesta): no seguir
+    // pagando tokens que nadie va a leer.
+    if (!terminado) stream.abort();
+  }
 }
 
 /**

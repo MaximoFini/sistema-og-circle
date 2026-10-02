@@ -38,9 +38,17 @@ export async function leerCuerpo<T extends z.ZodType>(
  * genérico — mismo criterio que `/api/agentes`.
  */
 export function responderError(e: unknown, detalle: string): NextResponse {
+  const { status, mensaje } = reportarError(e, detalle);
+  return NextResponse.json({ error: mensaje }, { status });
+}
+
+/**
+ * Lo mismo que `responderError()` sin armar la respuesta: para un error que
+ * aparece cuando la respuesta ya empezó a transmitirse (streaming) y el
+ * status HTTP ya no se puede cambiar.
+ */
+export function reportarError(e: unknown, detalle: string): { status: number; mensaje: string } {
   Sentry.captureException(e, { extra: { detalle } });
-  if (e instanceof ErrorCotizador) {
-    return NextResponse.json({ error: e.message }, { status: e.status });
-  }
-  return NextResponse.json({ error: "Error interno." }, { status: 500 });
+  if (e instanceof ErrorCotizador) return { status: e.status, mensaje: e.message };
+  return { status: 500, mensaje: "Error interno." };
 }
