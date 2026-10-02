@@ -126,6 +126,14 @@ describe("POST /api/admin/usuarios/[id]/nivel", () => {
     expect(mockActivarNivel).not.toHaveBeenCalled();
   });
 
+  it("un admin no puede cambiarse SU PROPIO nivel (id === actorId) -> 403, sin audit", async () => {
+    mockRequireAdmin.mockResolvedValue({ ok: true, actorId: UUID });
+    const res = await call({ nivel: "ninguno", motivo: "me bajo yo mismo" }, UUID);
+    expect(res.status).toBe(403);
+    expect(mockActivarNivel).not.toHaveBeenCalled();
+    expect(mockRegistrar).not.toHaveBeenCalled();
+  });
+
   it("usuario inexistente (activarNivel lanza UsuarioNoEncontrado) -> 404 sin audit", async () => {
     mockActivarNivel.mockRejectedValue(new UsuarioNoEncontradoMock());
     const res = await call({ nivel: "avanzado", motivo: "x" });

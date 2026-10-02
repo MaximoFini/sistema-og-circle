@@ -38,7 +38,7 @@ async function loginComo(
 ): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -61,12 +61,6 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     await paginaAdmin.goto("/admin/contenido/videos/nuevo");
     await paginaAdmin.getByLabel("Stage").selectOption("2");
     await paginaAdmin.getByLabel("Título").fill(tituloOriginal);
-    // Orden bien negativo a propósito: la grilla de stage 2 es de tamaño FIJO (3,
-    // CANTIDAD_STAGE — lib/data/videos.ts) y corta por "orden" ascendente. Sin esto,
-    // si ya hay 3+ videos de stage 2 reales cargados (contenido real de producción,
-    // no sólo de test), este video quedaría afuera de la grilla por orden y el test
-    // fallaría por una razón que no tiene nada que ver con revalidateTag.
-    await paginaAdmin.getByLabel("Orden").fill("-999999");
     await paginaAdmin.getByRole("button", { name: "Crear" }).click();
     await paginaAdmin.waitForURL("**/admin/contenido/videos");
 
@@ -79,6 +73,33 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     expect(buscarError).toBeNull();
     const videoId = video?.id as string;
     expect(videoId).toBeTruthy();
+
+    // El form de videos ya no tiene campo "orden" (ContenidoForm.tsx: se
+    // reordena arrastrando en el listado, VideosReordenables.tsx) — el video
+    // nuevo entra al final (proximoOrdenVideo()). La grilla de stage 2 es de
+    // tamaño FIJO (CANTIDAD_STAGE[2]=3, lib/data/videos.ts) y corta por "orden"
+    // ascendente: si ya hay 3+ videos reales de stage 2 en producción, este
+    // video quedaría afuera de la grilla por orden y el resto del test fallaría
+    // por una razón que no tiene nada que ver con revalidateTag.
+    //
+    // Se lo mueve a la primera posición por el MISMO mecanismo que usaría un
+    // admin real (arrastrar en el listado): el endpoint PUT .../videos/orden,
+    // que ya dispara revalidateTag — no un update directo a la base, que no lo
+    // haría y rompería justo la garantía que este test existe para probar.
+    const { data: stage2, error: stage2Error } = await admin
+      .from("videos")
+      .select("id")
+      .eq("stage", 2)
+      .order("orden", { ascending: true });
+    expect(stage2Error).toBeNull();
+    const idsNuevoOrden = [
+      videoId,
+      ...(stage2 ?? []).map((v) => v.id).filter((id) => id !== videoId),
+    ];
+    const reordenRes = await paginaAdmin.request.put("/api/admin/contenido/videos/orden", {
+      data: { ids: idsNuevoOrden },
+    });
+    expect(reordenRes.ok()).toBe(true);
 
     // 2) El usuario carga Inicio: el título ORIGINAL ya tiene que estar (el
     // create de arriba ya revalidó el tag antes de este punto) — ancla: si esto

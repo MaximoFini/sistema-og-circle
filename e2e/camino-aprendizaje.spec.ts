@@ -35,7 +35,7 @@ const PASSWORD = "test-password-1!"; // default de createAuthenticatedUser
 async function loginComo(page: Page, email: string, password: string = PASSWORD): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }

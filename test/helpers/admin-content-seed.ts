@@ -29,7 +29,7 @@ async function crearContenidoViaAdmin<T extends { id: string }>(
     const page = await context.newPage();
     await page.goto("/login");
     await page.getByLabel("Email").fill(SEED_ADMIN_USER.email);
-    await page.getByLabel("Contraseña").fill(SEED_ADMIN_USER.password);
+    await page.getByLabel("Contraseña", { exact: true }).fill(SEED_ADMIN_USER.password);
     await page.getByRole("button", { name: "Iniciar sesión" }).click();
     await page.waitForURL("**/dashboard");
 

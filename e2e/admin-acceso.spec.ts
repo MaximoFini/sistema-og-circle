@@ -17,7 +17,7 @@ const PRINCIPIANTE = SEED_USERS.find((u) => u.nivel === "principiante" && u.rol 
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }

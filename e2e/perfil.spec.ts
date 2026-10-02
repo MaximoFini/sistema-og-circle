@@ -15,7 +15,7 @@ import "../test/helpers/load-env";
 async function loginComo(page: import("@playwright/test").Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill("test-password-1!");
+  await page.getByLabel("Contraseña", { exact: true }).fill("test-password-1!");
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -134,6 +134,11 @@ test.describe("/perfil — VGRP-52", () => {
       await loginComo(page, usuario.email);
       await page.goto("/perfil");
 
+      // El form (PerfilForm) vive dentro del modal "Tus datos" (DatosModal), no
+      // inline en la página — hay que abrirlo antes de poder ver sus campos.
+      await page.getByRole("button", { name: "Ver datos" }).click();
+      await expect(page.getByRole("dialog", { name: "Tus datos" })).toBeVisible();
+
       // createAuthenticatedUser no setea nombre/telefono (sólo email, ver test/helpers/
       // auth.ts) — precargado con los valores reales de profiles (strings vacíos), no
       // con placeholders inventados por el test.
@@ -149,6 +154,7 @@ test.describe("/perfil — VGRP-52", () => {
       await expect(page.getByText("Guardado.")).toBeVisible();
 
       await page.reload();
+      await page.getByRole("button", { name: "Ver datos" }).click();
       await expect(page.getByLabel("Nombre")).toHaveValue(nuevoNombre);
       await expect(page.getByLabel("Teléfono")).toHaveValue(nuevoTelefono);
     } finally {
@@ -164,7 +170,13 @@ test.describe("/perfil — VGRP-52", () => {
       await loginComo(page, usuario.email);
       await page.goto("/perfil");
 
+      // El trigger abre un diálogo de confirmación (CerrarSesionBoton) con un
+      // segundo botón "Cerrar sesión" adentro — hay que confirmarlo, no alcanza
+      // con el primer clic.
       await page.getByRole("button", { name: "Cerrar sesión" }).click();
+      const dialogo = page.getByRole("dialog", { name: "¿Cerrar sesión?" });
+      await expect(dialogo).toBeVisible();
+      await dialogo.getByRole("button", { name: "Cerrar sesión" }).click();
       await page.waitForURL("**/login");
 
       // La sesión quedó realmente cerrada, no sólo la UI: /dashboard sin sesión rebota
