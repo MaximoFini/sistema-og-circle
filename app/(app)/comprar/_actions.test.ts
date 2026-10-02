@@ -24,7 +24,7 @@ vi.mock("@/lib/auth/server", () => ({
 
 vi.mock("@/lib/auth/claims", async (importOriginal) => {
   // `nivelAlcanzaOSupera` NO se mockea: es lógica de negocio pura (el orden
-  // ninguno < principiante < avanzado) que ya tiene su propia suite en
+  // ninguno < completo) que ya tiene su propia suite en
   // `lib/auth/claims.test.ts` — acá corre con su implementación real, sólo
   // alimentada por el `getNivel` mockeado. Sólo `getNivel` necesita mock
   // (lee claims, que este archivo ya simula con `CLAIMS_OK`).
@@ -176,57 +176,28 @@ describe("crearCheckout", () => {
     expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
   });
 
-  // Auditoría de Mercado Pago (decisión del equipo): bloquear la recompra de
-  // un nivel igual o inferior al que el usuario ya tiene.
-  describe("bloqueo de recompra de un nivel ya alcanzado", () => {
-    it("un usuario 'principiante' no puede volver a comprar 'principiante'", async () => {
-      mockGetNivel.mockReturnValue("principiante" satisfies NivelAcceso);
+  // Auditoría de Mercado Pago (decisión del equipo): bloquear la recompra
+  // del plan a quien ya lo tiene.
+  describe("bloqueo de recompra del plan", () => {
+    it("un usuario 'completo' no puede volver a comprar el plan", async () => {
+      mockGetNivel.mockReturnValue("completo" satisfies NivelAcceso);
 
       const { crearCheckout } = await import("./_actions");
-      const result = await crearCheckout("principiante");
+      const result = await crearCheckout("completo");
 
       expect(result.ok).toBe(false);
       expect(mockArmarPreferencia).not.toHaveBeenCalled();
       expect(mockGetPreferenceClient).not.toHaveBeenCalled();
     });
 
-    it("un usuario 'avanzado' no puede comprar 'principiante' (downgrade sin sentido)", async () => {
-      mockGetNivel.mockReturnValue("avanzado" satisfies NivelAcceso);
-
-      const { crearCheckout } = await import("./_actions");
-      const result = await crearCheckout("principiante");
-
-      expect(result.ok).toBe(false);
-      expect(mockArmarPreferencia).not.toHaveBeenCalled();
-    });
-
-    it("un usuario 'avanzado' no puede volver a comprar 'avanzado'", async () => {
-      mockGetNivel.mockReturnValue("avanzado" satisfies NivelAcceso);
-
-      const { crearCheckout } = await import("./_actions");
-      const result = await crearCheckout("avanzado");
-
-      expect(result.ok).toBe(false);
-      expect(mockArmarPreferencia).not.toHaveBeenCalled();
-    });
-
-    it("un usuario 'principiante' SÍ puede comprar el upgrade a 'avanzado'", async () => {
-      mockGetNivel.mockReturnValue("principiante" satisfies NivelAcceso);
-
-      const { crearCheckout } = await import("./_actions");
-      const result = await crearCheckout("avanzado");
-
-      expect(result.ok).toBe(true);
-      expect(mockArmarPreferencia).toHaveBeenCalledWith("avanzado", "user-123");
-    });
-
-    it("un usuario 'ninguno' SÍ puede comprar cualquiera de los dos niveles", async () => {
+    it("un usuario 'ninguno' SÍ puede comprar el plan", async () => {
       mockGetNivel.mockReturnValue("ninguno" satisfies NivelAcceso);
 
       const { crearCheckout } = await import("./_actions");
-      const result = await crearCheckout("principiante");
+      const result = await crearCheckout("completo");
 
       expect(result.ok).toBe(true);
+      expect(mockArmarPreferencia).toHaveBeenCalledWith("completo", "user-123");
     });
   });
 });

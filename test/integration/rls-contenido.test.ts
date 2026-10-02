@@ -224,10 +224,7 @@ describe("con acceso (plan completo) ve el contenido activo/publicado (fila ente
     const { accessToken } = await getTokenWithClaim("completo");
     const cliente = clienteConToken(accessToken);
 
-    const { data } = await cliente
-      .from("servicios_financieros")
-      .select()
-      .eq("id", servicio.id);
+    const { data } = await cliente.from("servicios_financieros").select().eq("id", servicio.id);
     expect(data).toHaveLength(1);
   });
 });

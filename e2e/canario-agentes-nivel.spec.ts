@@ -76,9 +76,7 @@ test.describe("canario de fuga entre niveles — plan único (VGRP-30/50/59)", (
       // que no monta <AgentesGrid> — por eso acá no se espera la respuesta de
       // /api/agentes como ancla (ese fetch nunca sale). El ancla de que la
       // navegación terminó es el propio estado "ninguno" del dashboard.
-      await expect(
-        page.getByText("Todavía no tenés acceso a ningún nivel"),
-      ).toBeVisible();
+      await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
       await page.waitForLoadState("networkidle");
 
       const html = await page.content();

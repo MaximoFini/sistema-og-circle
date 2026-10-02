@@ -107,7 +107,7 @@ describe("POST /api/webhooks/mercadopago", () => {
     mockTrack.mockResolvedValue(undefined);
     mockGetPrecios.mockResolvedValue({
       ok: true,
-      precios: { principiante: 75000, avanzado: 125000 },
+      precios: { plan: 75000 },
     });
   });
 
@@ -127,7 +127,7 @@ describe("POST /api/webhooks/mercadopago", () => {
   // siguiente.
   it("SÍ reintenta proyectarNivel ante un duplicado (recuperación de un fallo anterior)", async () => {
     mockInsertarPago.mockResolvedValue({ inserted: false, motivo: "duplicado" });
-    mockProyectarNivel.mockResolvedValue("principiante");
+    mockProyectarNivel.mockResolvedValue("completo");
 
     const { POST } = await import("./route");
     const res = await POST(
@@ -144,7 +144,7 @@ describe("POST /api/webhooks/mercadopago", () => {
 
   it("un duplicado NO repite track('pago_aprobado') ni notificarPagoAprobado (side effects de una sola vez)", async () => {
     mockInsertarPago.mockResolvedValue({ inserted: false, motivo: "duplicado" });
-    mockProyectarNivel.mockResolvedValue("principiante");
+    mockProyectarNivel.mockResolvedValue("completo");
 
     const { POST } = await import("./route");
     const res = await POST(
@@ -177,7 +177,7 @@ describe("POST /api/webhooks/mercadopago", () => {
     // El reintento de MP: la fila ya existe (23505 → duplicado), pero el
     // nivel nunca llegó a proyectarse la primera vez.
     mockInsertarPago.mockResolvedValue({ inserted: false, motivo: "duplicado" });
-    mockProyectarNivel.mockResolvedValueOnce("principiante");
+    mockProyectarNivel.mockResolvedValueOnce("completo");
 
     const reintento = await POST(
       req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
@@ -396,7 +396,7 @@ describe("POST /api/webhooks/mercadopago", () => {
 
   it("monto que SÍ coincide con el precio vigente: proyecta el nivel con normalidad", async () => {
     mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
-    mockProyectarNivel.mockResolvedValue("principiante");
+    mockProyectarNivel.mockResolvedValue("completo");
 
     const { POST } = await import("./route");
     const res = await POST(
@@ -484,7 +484,7 @@ describe("POST /api/webhooks/mercadopago — observabilidad (VGRP-41)", () => {
     mockTrack.mockResolvedValue(undefined);
     mockGetPrecios.mockResolvedValue({
       ok: true,
-      precios: { principiante: 75000, avanzado: 125000 },
+      precios: { plan: 75000 },
     });
   });
 
@@ -580,7 +580,7 @@ describe("POST /api/webhooks/mercadopago — observabilidad (VGRP-41)", () => {
 
   it("si track('pago_aprobado') tira, el webhook igual responde 200 (fail-open, mismo patrón que notificarPagoAprobado)", async () => {
     mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
-    mockProyectarNivel.mockResolvedValue("principiante");
+    mockProyectarNivel.mockResolvedValue("completo");
     mockTrack.mockRejectedValue(new Error("analytics caído"));
 
     const { POST } = await import("./route");

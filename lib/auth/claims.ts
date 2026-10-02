@@ -116,18 +116,16 @@ export function hasNivel(
 
 /**
  * Compara dos valores de `NivelAcceso` directamente (sin pasar por claims),
- * con el mismo orden 'ninguno' < 'principiante' < 'avanzado' que usa
- * `hasNivel`. Devuelve `true` si `actual` alcanza o supera `requerido`.
+ * con el mismo orden 'ninguno' < 'completo' que usa `hasNivel`. Devuelve
+ * `true` si `actual` alcanza o supera `requerido`.
  *
- * Dos usos reales de esta comparación "nivel contra nivel" (no "claims
- * contra nivel"), que por eso no pueden reusar `hasNivel` tal cual:
- *   - Auditoría de Mercado Pago: bloquear la recompra de un nivel igual o
- *     inferior al que el usuario ya tiene (`app/(app)/comprar/_actions.ts`).
+ * Usos reales de esta comparación "nivel contra nivel" (no "claims contra
+ * nivel"), que por eso no pueden reusar `hasNivel` tal cual:
+ *   - Auditoría de Mercado Pago: bloquear la recompra del plan a alguien que
+ *     ya lo tiene (`app/(app)/comprar/_actions.ts` y `page.tsx`).
  *   - Misma auditoría: la pantalla de espera post-checkout
- *     (`PendienteClient.tsx`) no debe confirmar la compra con sólo ver
- *     `nivel !== 'ninguno'` — eso ya era cierto ANTES de pagar para alguien
- *     que sube de Principiante a Avanzado. Confirma recién cuando el nivel
- *     alcanzado llega al nivel comprado.
+ *     (`PendienteClient.tsx`, vía `compraFueConfirmada`) confirma recién
+ *     cuando el nivel alcanzado llega al nivel comprado.
  */
 export function nivelAlcanzaOSupera(actual: NivelAcceso, requerido: NivelAcceso): boolean {
   return NIVEL_ORDEN[actual] >= NIVEL_ORDEN[requerido];

@@ -68,7 +68,7 @@ describe("armarPreferencia", () => {
     mockGetPrecios.mockResolvedValue({ ok: true, precios: PRECIOS_OK });
 
     const { armarPreferencia } = await import("./preferencia");
-    const result = await armarPreferencia("principiante", "user-123");
+    const result = await armarPreferencia("completo", "user-123");
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("no debería ser ok:false");

@@ -60,7 +60,7 @@ export interface PendienteClientProps {
 
 type EstadoPantalla = "esperando" | "confirmado" | "timeout";
 
-export function PendienteClient({ whatsappUrl }: PendienteClientProps) {
+export function PendienteClient({ nivelEsperado, whatsappUrl }: PendienteClientProps) {
   const router = useRouter();
   const [estado, setEstado] = useState<EstadoPantalla>("esperando");
   // Evita el clásico "setState después de desmontar" si el componente se

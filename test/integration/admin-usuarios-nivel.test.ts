@@ -172,10 +172,7 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
   it("tras el cambio, releer los claims del usuario objetivo (getUserById) ya refleja app_metadata.nivel actualizado", async () => {
     const objetivo = objetivoId as string;
 
-    const res = await req(
-      { nivel: "completo", motivo: "activación manual de prueba" },
-      objetivo,
-    );
+    const res = await req({ nivel: "completo", motivo: "activación manual de prueba" }, objetivo);
     expect(res.status).toBe(200);
 
     // "Releer sus claims" simulado con el Admin API, sin necesitar un login

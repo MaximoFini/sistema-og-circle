@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { track } from "@vercel/analytics/server";
 import { z } from "zod";
+import { normalizarNivelLegacy } from "@/lib/auth/claims";
 import { getPrecios } from "@/lib/config";
 import { insertarPago, proyectarNivel } from "@/lib/data/pagos";
 import type { Json } from "@/lib/database.types";
@@ -8,7 +9,6 @@ import { notificarPagoAprobado } from "@/lib/email/pago-aprobado";
 import { getEnv } from "@/lib/env";
 import { getPaymentClient } from "@/lib/mercadopago/client";
 import { mapearEstadoMercadoPago } from "@/lib/mercadopago/mapEstado";
-import type { NivelComprable } from "@/lib/mercadopago/preferencia";
 import { validarFirmaMercadoPago } from "@/lib/mercadopago/validarFirma";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -118,25 +118,15 @@ function reportarPagoSinCorrelacion(detalle: string): void {
   );
 }
 
-const NIVELES_COMPRABLES = new Set<NivelAcceso>(["principiante", "avanzado"]);
-
-// Nota: narrowea a `NivelComprable` (excluye "ninguno"), no al `NivelAcceso`
-// completo — la auditoría de Mercado Pago agregó la validación de monto más
-// abajo, que indexa `precios.precios[nivelComprado]` y ese objeto sólo tiene
-// las claves `principiante`/`avanzado` (ver `lib/config/schema.ts`).
-function esNivelComprable(valor: unknown): valor is NivelComprable {
-  return typeof valor === "string" && NIVELES_COMPRABLES.has(valor as NivelAcceso);
-}
-
 /**
  * Log de un pago aprobado cuyo monto NO coincide con el precio vigente del
- * nivel comprado (auditoría de Mercado Pago, decisión del equipo).
+ * plan (auditoría de Mercado Pago, decisión del equipo).
  *
  * El pago YA quedó registrado en el ledger (`insertarPago` corrió antes de
  * esta validación) — lo único que se evita es `proyectarNivel`: nunca se le
- * da acceso a alguien por un monto que no coincide con lo que ese nivel
+ * da acceso a alguien por un monto que no coincide con lo que el plan
  * cuesta. Severidad alta (no "warning" como `reportarPagoSinCorrelacion`):
- * folamente puede pasar por una manipulación de la preferencia o un cambio
+ * sólo puede pasar por una manipulación de la preferencia o un cambio
  * de precio en Edge Config a mitad de un checkout en curso, y en ambos casos
  * un admin tiene que mirarlo — por eso se ackea con 200 (no tiene sentido que
  * MP reintente lo mismo) pero se alerta como fallo real, no como aviso.
@@ -280,12 +270,18 @@ export async function POST(request: Request): Promise<Response> {
     // de un fallo transitorio anterior.
     if (estadoInterno === "approved") {
       // Auditoría de Mercado Pago (decisión del equipo): el monto pagado
-      // tiene que coincidir con el precio VIGENTE del nivel comprado. Un
-      // mismatch (preferencia manipulada, o el precio cambió en Edge Config
-      // a mitad de un checkout en curso) deja el pago en el ledger para
+      // tiene que coincidir con el precio VIGENTE del plan. Un mismatch
+      // (preferencia manipulada, o el precio cambió en Edge Config a mitad
+      // de un checkout en curso) deja el pago en el ledger para
       // trazabilidad, pero NUNCA activa el nivel sin que un admin lo mire.
+      //
+      // VGRP-59/60 (plan único): hay un solo precio (`precios.plan`), así
+      // que una preferencia vieja de 'principiante'/'avanzado' creada antes
+      // del deploy, pagada al precio de entonces, cae acá como monto
+      // inesperado y queda para reproceso manual del admin (VGRP-37) — es
+      // preferible a dar acceso por un monto que no es el vigente.
       const precios = await getPrecios();
-      const precioEsperado = precios.ok ? precios.precios[nivelComprado] : undefined;
+      const precioEsperado = precios.ok ? precios.precios.plan : undefined;
       const montoValido = precioEsperado !== undefined && montoArs === precioEsperado;
 
       if (!montoValido) {
