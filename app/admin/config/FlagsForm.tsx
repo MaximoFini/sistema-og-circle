@@ -19,6 +19,9 @@ export function FlagsForm({ flagsIniciales }: { flagsIniciales: Flags }) {
   const [checkoutHabilitado, setCheckoutHabilitado] = useState(flagsIniciales.checkout_habilitado);
   const [registroHabilitado, setRegistroHabilitado] = useState(flagsIniciales.registro_habilitado);
   const [fase, setFase] = useState<Fase>(flagsIniciales.fase);
+  const [mercadopagoHabilitado, setMercadopagoHabilitado] = useState(
+    flagsIniciales.mercadopago_habilitado,
+  );
   const { enviando, refrescando, error, ok, submit } = useAdminMutation<{ flags: Flags }, unknown>({
     url: "/api/admin/config",
     mensajeOk: "Flags actualizados.",
@@ -31,17 +34,36 @@ export function FlagsForm({ flagsIniciales }: { flagsIniciales: Flags }) {
         checkout_habilitado: checkoutHabilitado,
         registro_habilitado: registroHabilitado,
         fase,
+        mercadopago_habilitado: mercadopagoHabilitado,
       },
     });
   }
 
   return (
     <form className={styles.formCambiarNivel} onSubmit={onSubmit}>
-      <Checkbox
-        label="Checkout habilitado"
-        checked={checkoutHabilitado}
-        onChange={(e) => setCheckoutHabilitado(e.target.checked)}
-      />
+      {/* Cada aclaración va agrupada con su checkbox (formCampo, gap chico):
+          con el gap de 16px del form quedaba a la misma distancia del
+          checkbox siguiente y parecía pertenecer a ése. */}
+      <div className={styles.formCampo}>
+        <Checkbox
+          label="Checkout habilitado"
+          checked={checkoutHabilitado}
+          onChange={(e) => setCheckoutHabilitado(e.target.checked)}
+        />
+        <p className={styles.formAyuda}>Hoy no controla nada en la app.</p>
+      </div>
+      {/* VGRP-61 — ver docs/EDGE-CONFIG.md, "Reactivar Mercado Pago". */}
+      <div className={styles.formCampo}>
+        <Checkbox
+          label="Mercado Pago habilitado"
+          checked={mercadopagoHabilitado}
+          onChange={(e) => setMercadopagoHabilitado(e.target.checked)}
+        />
+        <p className={styles.formAyuda}>
+          Hoy el cobro es por transferencia. Prenderlo vuelve a mostrar el botón de Mercado Pago en
+          /comprar.
+        </p>
+      </div>
       <Checkbox
         label="Registro habilitado"
         checked={registroHabilitado}
