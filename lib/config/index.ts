@@ -29,6 +29,13 @@ const DEFAULT_FLAGS: Config["flags"] = {
   fase: "2",
 };
 
+// VGRP-60 — nombre comercial del único plan ("Plan X" hasta que el equipo lo
+// defina). Es copy, no dinero: mismo criterio fail-open que `links` (un
+// nombre viejo no cuesta plata), a diferencia de `precios`.
+const DEFAULT_PLAN: Config["plan"] = {
+  nombre: "Plan X",
+};
+
 const DEFAULT_LINKS: Config["links"] = {
   // VGRP-31 — corregido 2026-09-13: el valor anterior ("ogcircle.com/calculadora")
   // apuntaba a un dominio que no es el real. La PRD y el ticket original documentan
@@ -45,6 +52,7 @@ export type PreciosResult = { ok: true; precios: Config["precios"] } | { ok: fal
 
 export interface ResolvedConfig {
   precios: PreciosResult;
+  plan: Config["plan"];
   flags: Config["flags"];
   links: Config["links"];
 }
@@ -78,6 +86,12 @@ export async function getFlags(): Promise<Config["flags"]> {
   return parsed.success ? parsed.data : DEFAULT_FLAGS;
 }
 
+export async function getPlan(): Promise<Config["plan"]> {
+  const raw = await readKey("plan");
+  const parsed = configSchema.shape.plan.safeParse(raw);
+  return parsed.success ? parsed.data : DEFAULT_PLAN;
+}
+
 async function leerLinks(): Promise<Config["links"]> {
   const raw = await readKey("links");
   const parsed = configSchema.shape.links.safeParse(raw);
@@ -108,6 +122,11 @@ export async function getLinks(): Promise<Config["links"]> {
 // Punto de entrada principal: resuelve las tres secciones de configuración en paralelo,
 // aplicando la regla fail-closed/fail-open documentada arriba a cada una.
 export async function getConfig(): Promise<ResolvedConfig> {
-  const [precios, flags, links] = await Promise.all([getPrecios(), getFlags(), getLinks()]);
-  return { precios, flags, links };
+  const [precios, plan, flags, links] = await Promise.all([
+    getPrecios(),
+    getPlan(),
+    getFlags(),
+    getLinks(),
+  ]);
+  return { precios, plan, flags, links };
 }

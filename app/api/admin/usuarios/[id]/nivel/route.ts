@@ -7,6 +7,7 @@
 //   sin sesión ............................ 401
 //   rol != admin .......................... 404 (sin ejecutar lógica)
 //   id no-uuid ............................ 404
+//   id === el propio admin ................ 403 (sin ejecutar lógica — ver nota abajo)
 //   body sin motivo / motivo en blanco .... 400 (no cambia nada)
 //   nivel fuera del enum ................... 400
 //   id uuid pero sin usuario .............. 404 (SIN audit log)
@@ -14,6 +15,15 @@
 //
 // `requireAdmin()` va PRIMERO, antes de instanciar `createServiceRoleClient()`
 // o llamar a `lib/data/admin/*`. Toda la mutación pasa por `conAuditoria()`.
+//
+// Un admin no puede cambiarse el nivel A SÍ MISMO por acá: hallazgo de la
+// auditoría del Bloque 9 (nada se lo impedía — un admin podía bajarse a
+// 'ninguno' sin ninguna confirmación extra, y en el caso límite de ser el
+// único admin activo, dejar el panel sin nadie con acceso, reparable sólo
+// editando la base a mano). Si un admin necesita que SU PROPIO nivel cambie,
+// lo hace otro admin — mismo criterio que "los admins se dan de alta a mano
+// en la base", nunca una pantalla de autoservicio para algo que puede dejar
+// afuera a quien lo está pidiendo.
 // =============================================================================
 
 import * as Sentry from "@sentry/nextjs";
@@ -42,6 +52,13 @@ export async function POST(
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) {
     return Response.json({ error: "No encontrado." }, { status: 404 });
+  }
+
+  if (id === guard.actorId) {
+    return Response.json(
+      { error: "No podés cambiar tu propio nivel. Pedile a otro admin que lo haga." },
+      { status: 403 },
+    );
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));

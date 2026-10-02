@@ -45,7 +45,7 @@ export function ComprarButton({ nivel }: ComprarButtonProps) {
   return (
     <>
       <Button variant="primary" fullWidth loading={isPending} onClick={handleClick}>
-        Comprar nivel {nivel}
+        Comprar acceso
       </Button>
       <FormError>{error}</FormError>
     </>

@@ -90,7 +90,6 @@ async function crearSesionAdminVideos(browser: Browser): Promise<{
           titulo: valores.titulo,
           descripcion: null,
           provider_ref: valores.provider_ref ?? null,
-          nivel_requerido: "principiante",
           orden: valores.orden ?? 0,
           publicado: valores.publicado ?? false,
         },
@@ -119,7 +118,7 @@ test.describe("StatsVideos — skeleton explícito durante la carga (VGRP-28)", 
   test("mientras la primera lectura de progreso no resolvió se ve el skeleton (role=status), NUNCA '0 / 11'; al resolver, el skeleton desaparece y queda 'vistos / 11 videos completados'", async ({
     page,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     try {
       // Retrasa a propósito toda Server Action (`obtenerProgresoVideos`, VGRP-29 incluido)
       // para tener una ventana determinística donde observar el skeleton — sin este
@@ -155,7 +154,7 @@ test.describe("Texto estático de envíos (VGRP-28)", () => {
   test("'Seguimiento de envíos: próximamente' es texto estático fijo — Fase 2 no tiene módulo de envíos; si alguien lo reemplaza por un contador real este test se rompe", async ({
     page,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, created.email);
       await expect(
@@ -174,7 +173,7 @@ test.describe("Banner calculadora (VGRP-31)", () => {
   test("el CTA 'Abrir calculadora' es un link interno a /calculadora (VGRP-57), sin target", async ({
     page,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, created.email);
 
@@ -192,7 +191,7 @@ test.describe("Orden de secciones de InicioShell (MODULOS.md §2)", () => {
   test("las secciones aparecen en el DOM en el orden fijo: Stage 1 → calculadora → Stage 2 → agentes → comunidad → profesionales → servicios financieros", async ({
     page,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, created.email);
 
@@ -217,7 +216,7 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
     page,
     browser,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     const admin = createTestAdminClient();
     const idsCreados: string[] = [];
     try {
@@ -285,7 +284,7 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
     page,
     browser,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     const admin = createTestAdminClient();
     const idsCreados: string[] = [];
     try {
@@ -330,7 +329,7 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
     page,
     browser,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     const admin = createTestAdminClient();
     const idsCreados: string[] = [];
     try {
@@ -370,7 +369,7 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
     // carga contenido real de stage 3 en el proyecto compartido, este test empieza a ver esa
     // fila real en vez del tile de relleno y hay que revisarlo (no es un fallo silencioso:
     // el primer assert de abajo, "Próximamente" único, ya lo expondría en rojo).
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, created.email);
 

@@ -59,7 +59,7 @@ describe("POST /api/admin/pagos/[id]/reprocesar — dos llamadas concurrentes al
         user_id: userId,
         proveedor: "mercadopago",
         proveedor_ref: `test-ref-${randomUUID()}`,
-        nivel_comprado: "avanzado",
+        nivel_comprado: "completo",
         monto_ars: 5000,
         estado: "approved",
         payload_raw: {},
@@ -99,7 +99,7 @@ describe("POST /api/admin/pagos/[id]/reprocesar — dos llamadas concurrentes al
     // El reproceso es una re-proyección pura: las dos respuestas tienen que
     // coincidir en el resultado final, oscile o no internamente.
     expect(bodyA).toEqual(bodyB);
-    expect(bodyA).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "avanzado" });
+    expect(bodyA).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "completo" });
 
     // Cero filas NUEVAS en `pagos`: el reproceso sólo re-proyecta, nunca
     // inserta. Sigue existiendo exactamente la única fila creada en
@@ -112,7 +112,7 @@ describe("POST /api/admin/pagos/[id]/reprocesar — dos llamadas concurrentes al
     expect(pagosDelUsuario).toHaveLength(1);
     expect(pagosDelUsuario?.[0]?.id).toBe(id);
 
-    // El nivel queda estable (no oscila): termina en "avanzado", el nivel del
+    // El nivel queda estable (no oscila): termina en "completo", el nivel del
     // único pago approved del ledger.
     const { data: profile, error: profileError } = await admin
       .from("profiles")
@@ -120,7 +120,7 @@ describe("POST /api/admin/pagos/[id]/reprocesar — dos llamadas concurrentes al
       .eq("id", usuario)
       .single();
     expect(profileError).toBeNull();
-    expect(profile?.nivel).toBe("avanzado");
+    expect(profile?.nivel).toBe("completo");
 
     // Auditoría: puede haber 1 o 2 filas (ambas aceptables, documentado en el
     // comentario de más abajo con lo que efectivamente se observó) — lo que

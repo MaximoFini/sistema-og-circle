@@ -5,11 +5,16 @@
 // red, a Supabase ni a la API de Vercel — el foco es el contrato HTTP y que
 // la escritura NO se ejecute cuando el guard o la validación fallan, y que el
 // audit log NO se escriba cuando la escritura a Edge Config falla.
+//
+// VGRP-59/60 (Bloque 13 — plan único): el body de PATCH ahora acepta una de
+// TRES claves completas (`precios`, `plan` o `flags`) en vez de dos, y
+// `precios` pasó de { principiante, avanzado } a { plan: number }.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRequireAdmin = vi.fn();
 const mockGetPrecios = vi.fn();
+const mockGetPlan = vi.fn();
 const mockGetFlags = vi.fn();
 const mockEscribirEdgeConfig = vi.fn();
 const mockConAuditoria = vi.fn();
@@ -23,6 +28,7 @@ vi.mock("@/lib/auth/admin", () => ({
 
 vi.mock("@/lib/config", () => ({
   getPrecios: () => mockGetPrecios(),
+  getPlan: () => mockGetPlan(),
   getFlags: () => mockGetFlags(),
 }));
 
@@ -43,7 +49,8 @@ vi.mock("@sentry/nextjs", () => ({
 }));
 
 const CONFIG_OK = {
-  precios: { ok: true as const, precios: { principiante: 75000, avanzado: 125000 } },
+  precios: { ok: true as const, precios: { plan: 90000 } },
+  plan: { nombre: "Plan X" },
   flags: { checkout_habilitado: false, registro_habilitado: true, fase: "2" as const },
   links: {
     calculadora: "https://vegroup.vercel.app/calculadora",
@@ -75,9 +82,11 @@ describe("GET /api/admin/config", () => {
     vi.resetModules();
     mockRequireAdmin.mockReset();
     mockGetPrecios.mockReset();
+    mockGetPlan.mockReset();
     mockGetFlags.mockReset();
     mockRequireAdmin.mockResolvedValue({ ok: true, actorId: "admin-1" });
     mockGetPrecios.mockResolvedValue(CONFIG_OK.precios);
+    mockGetPlan.mockResolvedValue(CONFIG_OK.plan);
     mockGetFlags.mockResolvedValue(CONFIG_OK.flags);
   });
 
@@ -85,7 +94,7 @@ describe("GET /api/admin/config", () => {
     vi.restoreAllMocks();
   });
 
-  it("sin sesión -> 401 y no llama a getPrecios/getFlags", async () => {
+  it("sin sesión -> 401 y no llama a getPrecios/getPlan/getFlags", async () => {
     mockRequireAdmin.mockResolvedValue({
       ok: false,
       response: Response.json({ error: "No autenticado." }, { status: 401 }),
@@ -93,10 +102,11 @@ describe("GET /api/admin/config", () => {
     const res = await callGet();
     expect(res.status).toBe(401);
     expect(mockGetPrecios).not.toHaveBeenCalled();
+    expect(mockGetPlan).not.toHaveBeenCalled();
     expect(mockGetFlags).not.toHaveBeenCalled();
   });
 
-  it("rol != admin -> 404 y no llama a getPrecios/getFlags", async () => {
+  it("rol != admin -> 404 y no llama a getPrecios/getPlan/getFlags", async () => {
     mockRequireAdmin.mockResolvedValue({
       ok: false,
       response: Response.json({ error: "No encontrado." }, { status: 404 }),
@@ -104,14 +114,19 @@ describe("GET /api/admin/config", () => {
     const res = await callGet();
     expect(res.status).toBe(404);
     expect(mockGetPrecios).not.toHaveBeenCalled();
+    expect(mockGetPlan).not.toHaveBeenCalled();
     expect(mockGetFlags).not.toHaveBeenCalled();
   });
 
-  it("admin -> 200 con precios y flags, sin links", async () => {
+  it("admin -> 200 con precios, plan y flags, sin links", async () => {
     const res = await callGet();
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ precios: CONFIG_OK.precios, flags: CONFIG_OK.flags });
+    expect(body).toEqual({
+      precios: CONFIG_OK.precios,
+      plan: CONFIG_OK.plan,
+      flags: CONFIG_OK.flags,
+    });
     expect(body.links).toBeUndefined();
   });
 });
@@ -121,6 +136,7 @@ describe("PATCH /api/admin/config", () => {
     vi.resetModules();
     mockRequireAdmin.mockReset();
     mockGetPrecios.mockReset();
+    mockGetPlan.mockReset();
     mockGetFlags.mockReset();
     mockEscribirEdgeConfig.mockReset();
     mockConAuditoria.mockReset();
@@ -130,6 +146,7 @@ describe("PATCH /api/admin/config", () => {
 
     mockRequireAdmin.mockResolvedValue({ ok: true, actorId: "admin-1" });
     mockGetPrecios.mockResolvedValue(CONFIG_OK.precios);
+    mockGetPlan.mockResolvedValue(CONFIG_OK.plan);
     mockGetFlags.mockResolvedValue(CONFIG_OK.flags);
     mockEscribirEdgeConfig.mockResolvedValue({ ok: true });
     mockCreateServiceRoleClient.mockReturnValue({});
@@ -151,7 +168,7 @@ describe("PATCH /api/admin/config", () => {
       ok: false,
       response: Response.json({ error: "No autenticado." }, { status: 401 }),
     });
-    const res = await callPatch({ precios: { principiante: 75000, avanzado: 130000 } });
+    const res = await callPatch({ precios: { plan: 95000 } });
     expect(res.status).toBe(401);
     expect(mockEscribirEdgeConfig).not.toHaveBeenCalled();
   });
@@ -167,10 +184,10 @@ describe("PATCH /api/admin/config", () => {
   });
 
   it.each([
-    ["cero", { principiante: 0, avanzado: 125000 }],
-    ["negativo", { principiante: -5000, avanzado: 125000 }],
-    ["no numérico", { principiante: "abc", avanzado: 125000 }],
-    ["no entero", { principiante: 75000.5, avanzado: 125000 }],
+    ["cero", { plan: 0 }],
+    ["negativo", { plan: -5000 }],
+    ["no numérico", { plan: "abc" }],
+    ["no entero", { plan: 90000.5 }],
   ])("precios inválido (%s) -> 400, cero llamadas a escribirEdgeConfig", async (_desc, precios) => {
     const res = await callPatch({ precios });
     expect(res.status).toBe(400);
@@ -189,6 +206,18 @@ describe("PATCH /api/admin/config", () => {
     expect(mockEscribirEdgeConfig).not.toHaveBeenCalled();
   });
 
+  it("body con precios Y plan a la vez -> 400 (una sola clave por request)", async () => {
+    const res = await callPatch({ precios: CONFIG_OK.precios.precios, plan: CONFIG_OK.plan });
+    expect(res.status).toBe(400);
+    expect(mockEscribirEdgeConfig).not.toHaveBeenCalled();
+  });
+
+  it("plan.nombre vacío -> 400", async () => {
+    const res = await callPatch({ plan: { nombre: "" } });
+    expect(res.status).toBe(400);
+    expect(mockEscribirEdgeConfig).not.toHaveBeenCalled();
+  });
+
   it("flags.fase fuera del enum -> 400", async () => {
     const res = await callPatch({
       flags: { checkout_habilitado: true, registro_habilitado: true, fase: "5" },
@@ -198,7 +227,7 @@ describe("PATCH /api/admin/config", () => {
   });
 
   it("éxito con precios -> 200, escribirEdgeConfig(key=precios) y audit con entidadId=precios", async () => {
-    const nuevoPrecios = { principiante: 75000, avanzado: 130000 };
+    const nuevoPrecios = { plan: 95000 };
     const res = await callPatch({ precios: nuevoPrecios });
 
     expect(res.status).toBe(200);
@@ -207,7 +236,8 @@ describe("PATCH /api/admin/config", () => {
       valorNuevo: nuevoPrecios,
     });
     expect(mockEscribirEdgeConfig).toHaveBeenCalledWith([{ key: "precios", value: nuevoPrecios }]);
-    expect(mockGetFlags).not.toHaveBeenCalled(); // sólo se lee la clave que cambia
+    expect(mockGetPlan).not.toHaveBeenCalled(); // sólo se lee la clave que cambia
+    expect(mockGetFlags).not.toHaveBeenCalled();
     expect(mockRegistrar).toHaveBeenCalledWith(
       expect.objectContaining({
         actorId: "admin-1",
@@ -215,6 +245,20 @@ describe("PATCH /api/admin/config", () => {
         entidad: "config",
         entidadId: "precios",
       }),
+    );
+  });
+
+  it("éxito con plan -> 200, escribirEdgeConfig(key=plan) y audit con entidadId=plan", async () => {
+    const nuevoPlan = { nombre: "Plan Og Circle" };
+    const res = await callPatch({ plan: nuevoPlan });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ valorAnterior: CONFIG_OK.plan, valorNuevo: nuevoPlan });
+    expect(mockEscribirEdgeConfig).toHaveBeenCalledWith([{ key: "plan", value: nuevoPlan }]);
+    expect(mockGetPrecios).not.toHaveBeenCalled(); // sólo se lee la clave que cambia
+    expect(mockGetFlags).not.toHaveBeenCalled();
+    expect(mockRegistrar).toHaveBeenCalledWith(
+      expect.objectContaining({ entidad: "config", entidadId: "plan" }),
     );
   });
 
@@ -226,6 +270,7 @@ describe("PATCH /api/admin/config", () => {
     expect(await res.json()).toEqual({ valorAnterior: CONFIG_OK.flags, valorNuevo: nuevoFlags });
     expect(mockEscribirEdgeConfig).toHaveBeenCalledWith([{ key: "flags", value: nuevoFlags }]);
     expect(mockGetPrecios).not.toHaveBeenCalled(); // sólo se lee la clave que cambia
+    expect(mockGetPlan).not.toHaveBeenCalled();
     expect(mockRegistrar).toHaveBeenCalledWith(
       expect.objectContaining({ entidad: "config", entidadId: "flags" }),
     );
@@ -233,7 +278,7 @@ describe("PATCH /api/admin/config", () => {
 
   it("precios con lectura previa fallida -> valorAnterior null, no bloquea el cambio", async () => {
     mockGetPrecios.mockResolvedValue({ ok: false, error: "Edge Config no respondió" });
-    const nuevoPrecios = { principiante: 80000, avanzado: 130000 };
+    const nuevoPrecios = { plan: 98000 };
 
     const res = await callPatch({ precios: nuevoPrecios });
 
@@ -248,7 +293,7 @@ describe("PATCH /api/admin/config", () => {
       message: "token inválido y secreto",
     });
 
-    const res = await callPatch({ precios: { principiante: 75000, avanzado: 130000 } });
+    const res = await callPatch({ precios: { plan: 95000 } });
 
     expect(res.status).toBe(502);
     const body = await res.json();

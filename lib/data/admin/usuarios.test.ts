@@ -20,7 +20,7 @@ const admin = createTestAdminClient();
 let actorId = "";
 const creados: string[] = [];
 
-async function nuevoUsuario(nivel: "ninguno" | "principiante" | "avanzado" = "ninguno") {
+async function nuevoUsuario(nivel: "ninguno" | "completo" = "ninguno") {
   const u = await createAuthenticatedUser(nivel);
   creados.push(u.userId);
   return u;
@@ -67,12 +67,12 @@ describe("listarUsuarios", () => {
   });
 
   it("filtra por nivel", async () => {
-    const av = await nuevoUsuario("avanzado");
+    const av = await nuevoUsuario("completo");
     await nuevoUsuario("ninguno");
 
-    const { usuarios } = await listarUsuarios(admin, { nivel: "avanzado", limit: 100 });
+    const { usuarios } = await listarUsuarios(admin, { nivel: "completo", limit: 100 });
     expect(usuarios.some((u) => u.id === av.userId)).toBe(true);
-    expect(usuarios.every((u) => u.nivel === "avanzado")).toBe(true);
+    expect(usuarios.every((u) => u.nivel === "completo")).toBe(true);
   });
 
   it("keyset: dos páginas disjuntas", async () => {
@@ -96,7 +96,7 @@ describe("obtenerUsuario", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -106,7 +106,7 @@ describe("obtenerUsuario", () => {
     expect(detalle).not.toBeNull();
     expect(detalle?.perfil.id).toBe(u.userId);
     expect(detalle?.pagos).toHaveLength(1);
-    expect(detalle?.nivelActivo).toBe("principiante");
+    expect(detalle?.nivelActivo).toBe("completo");
     expect(Array.isArray(detalle?.overrides)).toBe(true);
     expect(detalle?.perfil.progreso).toBeDefined();
   });
@@ -122,38 +122,38 @@ describe("activarNivel", () => {
 
     const out = await activarNivel(admin, {
       userId: u.userId,
-      nivel: "avanzado",
+      nivel: "completo",
       motivo: "activación manual de prueba",
       actorId,
     });
 
-    expect(out.resultado).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "avanzado" });
+    expect(out.resultado).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "completo" });
     expect(out.valorAnterior).toEqual({ nivel: "ninguno" });
-    expect(out.valorNuevo).toEqual({ nivel: "avanzado", motivo: "activación manual de prueba" });
+    expect(out.valorNuevo).toEqual({ nivel: "completo", motivo: "activación manual de prueba" });
 
     const { data: perfil } = await admin
       .from("profiles")
       .select("nivel")
       .eq("id", u.userId)
       .single();
-    expect(perfil?.nivel).toBe("avanzado");
-    expect(await nivelEnMetadata(u.userId)).toBe("avanzado");
+    expect(perfil?.nivel).toBe("completo");
+    expect(await nivelEnMetadata(u.userId)).toBe("completo");
   });
 
   it("es idempotente: mismo nivel dos veces, sin error, anterior == nuevo la segunda vez", async () => {
     const u = await nuevoUsuario("ninguno");
-    await activarNivel(admin, { userId: u.userId, nivel: "principiante", motivo: "m1", actorId });
+    await activarNivel(admin, { userId: u.userId, nivel: "completo", motivo: "m1", actorId });
     const out = await activarNivel(admin, {
       userId: u.userId,
-      nivel: "principiante",
+      nivel: "completo",
       motivo: "m2",
       actorId,
     });
-    expect(out.resultado).toEqual({ nivelAnterior: "principiante", nivelNuevo: "principiante" });
+    expect(out.resultado).toEqual({ nivelAnterior: "completo", nivelNuevo: "completo" });
   });
 
   it("baja a 'ninguno'", async () => {
-    const u = await nuevoUsuario("avanzado");
+    const u = await nuevoUsuario("completo");
     const out = await activarNivel(admin, {
       userId: u.userId,
       nivel: "ninguno",
@@ -174,7 +174,7 @@ describe("activarNivel", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -182,11 +182,11 @@ describe("activarNivel", () => {
 
     const out = await activarNivel(admin, {
       userId: u.userId,
-      nivel: "principiante",
+      nivel: "completo",
       motivo: "ajuste",
       actorId,
     });
-    expect(out.resultado.nivelNuevo).toBe("principiante");
+    expect(out.resultado.nivelNuevo).toBe("completo");
   });
 
   it("opción B: el override gana contra el pago de MAYOR nivel viejo, aunque haya un pago de menor nivel posterior", async () => {
@@ -197,7 +197,7 @@ describe("activarNivel", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: refAvanzado,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -213,17 +213,17 @@ describe("activarNivel", () => {
     // Override manual a 'principiante' — created_at = ahora, POSTERIOR al pago avanzado.
     const out = await activarNivel(admin, {
       userId: u.userId,
-      nivel: "principiante",
+      nivel: "completo",
       motivo: "opción B",
       actorId,
     });
-    expect(out.resultado.nivelNuevo).toBe("principiante");
+    expect(out.resultado.nivelNuevo).toBe("completo");
 
     // Segundo pago approved de 'principiante', insertado DESPUÉS del override.
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -234,14 +234,14 @@ describe("activarNivel", () => {
     // override es posterior a ese pago -> sigue ganando -> 'principiante'.
     // Con la v3 previa este caso daba 'avanzado'.
     const detalle = await obtenerUsuario(admin, u.userId);
-    expect(detalle?.nivelActivo).toBe("principiante");
+    expect(detalle?.nivelActivo).toBe("completo");
   });
 
   it("un pago approved de MP posterior al override lo supera", async () => {
     const u = await nuevoUsuario("ninguno");
     await activarNivel(admin, {
       userId: u.userId,
-      nivel: "principiante",
+      nivel: "completo",
       motivo: "temporal",
       actorId,
     });
@@ -249,18 +249,18 @@ describe("activarNivel", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
     });
     const nivel = await proyectarNivel(admin, u.userId);
-    expect(nivel).toBe("avanzado");
+    expect(nivel).toBe("completo");
   });
 
   it("usuario inexistente -> lanza UsuarioNoEncontrado", async () => {
     await expect(
-      activarNivel(admin, { userId: randomUUID(), nivel: "avanzado", motivo: "x", actorId }),
+      activarNivel(admin, { userId: randomUUID(), nivel: "completo", motivo: "x", actorId }),
     ).rejects.toBeInstanceOf(UsuarioNoEncontrado);
   });
 });

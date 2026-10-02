@@ -21,7 +21,7 @@ describe("notificarPagoAprobado", () => {
     vi.spyOn(console, "info").mockImplementation(() => {});
 
     expect(() =>
-      notificarPagoAprobado({ userId: "user-123", nivel: "principiante", montoArs: 75000 }),
+      notificarPagoAprobado({ userId: "user-123", nivel: "completo", montoArs: 75000 }),
     ).not.toThrow();
 
     vi.restoreAllMocks();

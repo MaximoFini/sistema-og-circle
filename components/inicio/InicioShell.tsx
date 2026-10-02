@@ -1,7 +1,10 @@
 // VGRP-27 — armazón de la pantalla Inicio. Slots en el orden fijo de
-// MODULOS.md §2 (mismo orden para ambas variantes de nivel — lo que cambia
-// entre Principiante y Avanzado lo pinta VGRP-30 sección por sección, no el
-// orden acá). Ver design.md, "InicioShell — slots en el orden de MODULOS.md §2".
+// MODULOS.md §2. Ver design.md, "InicioShell — slots en el orden de MODULOS.md §2".
+//
+// VGRP-59/60 (Bloque 13 — plan único): este componente sólo se renderiza para
+// el plan completo (nivel 'ninguno' ni siquiera llega acá, ver
+// `dashboard/[variante]/page.tsx`) — ya no recibe `variante` como prop ni
+// distingue Principiante/Avanzado.
 //
 // El ticker de depósitos/CUIT de MODULOS.md §2 queda explícitamente fuera
 // (requirements.md, Open questions — es Fase 3 según el roadmap; a confirmar
@@ -35,19 +38,17 @@ import { ProfesionalesGrid } from "./ProfesionalesGrid";
 import { SeccionSlot } from "./SeccionSlot";
 import { ServiciosFinancierosGrid } from "./ServiciosFinancierosGrid";
 
-export interface InicioShellProps {
-  variante: "principiante" | "avanzado";
-}
-
-export async function InicioShell({ variante }: InicioShellProps) {
+export async function InicioShell() {
   const [stage1, stage2, stage3] = await Promise.all([
     obtenerVideosStage1(),
     obtenerVideosStage2(),
     obtenerVideosStage3(),
   ]);
 
-  // Solo en Avanzado el admin puede reordenar los videos arrastrando (ver VideoGrid).
-  const reordenable = variante === "avanzado";
+  // Plan único: el admin siempre puede reordenar los videos arrastrando (ver
+  // VideoGrid) — antes esto dependía de la variante ('avanzado' vs
+  // 'principiante'), ya no hay esa distinción.
+  const reordenable = true;
 
   return (
     <ProgresoVideosProvider totalVideos={TOTAL_VIDEOS}>
@@ -56,7 +57,7 @@ export async function InicioShell({ variante }: InicioShellProps) {
           <div className={styles.heroTexto}>
             <p className={styles.eyebrowNivel}>Tu cuenta</p>
             <h1 className={styles.tituloPrincipal}>
-              Nivel <span className={styles.nivelPalabra}>{variante}</span>
+              Nivel <span className={styles.nivelPalabra}>completo</span>
             </h1>
             <p className={styles.lede}>
               Tu camino para importar: formación paso a paso, herramientas y la red de contactos del

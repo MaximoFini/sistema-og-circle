@@ -46,7 +46,7 @@ describe("insertarPago (VGRP-24a)", () => {
     const primero = await insertarPago(admin, {
       userId,
       proveedorRef,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -56,7 +56,7 @@ describe("insertarPago (VGRP-24a)", () => {
     const segundo = await insertarPago(admin, {
       userId,
       proveedorRef,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -89,7 +89,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
     const resultado = await insertarPago(admin, {
       userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -97,7 +97,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
     expect(resultado.inserted).toBe(true);
 
     const nivel = await proyectarNivel(admin, userId);
-    expect(nivel).toBe("avanzado");
+    expect(nivel).toBe("completo");
 
     const { data: profile, error } = await admin
       .from("profiles")
@@ -105,37 +105,39 @@ describe("proyectarNivel (VGRP-24a)", () => {
       .eq("id", userId)
       .single();
     expect(error).toBeNull();
-    expect(profile?.nivel).toBe("avanzado");
+    expect(profile?.nivel).toBe("completo");
   });
 
-  it("gana el nivel más alto entre pagos approved, no el último cronológico (criterio central de VGRP-24)", async () => {
+  // VGRP-59/60 (Bloque 13 — plan único): con un solo nivel pago ya no hay
+  // "el más alto entre dos niveles distintos" que comparar — este test ahora
+  // confirma que DOS pagos approved del mismo (único) nivel, en cualquier
+  // orden, siguen proyectando 'completo' de forma estable (no "el último
+  // cronológico" ni ningún otro criterio raro).
+  it("dos pagos approved consecutivos dejan al usuario en 'completo' (criterio central de VGRP-24, adaptado a plan único)", async () => {
     userId = await crearUsuarioDeTest("pagos-precedencia");
 
-    // Orden intencional: primero avanzado, después principiante — si
-    // proyectarNivel resolviera por recencia en vez de por nivel más alto,
-    // este test lo detectaría (quedaría en "principiante").
-    const avanzado = await insertarPago(admin, {
+    const primero = await insertarPago(admin, {
       userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
     });
-    expect(avanzado.inserted).toBe(true);
+    expect(primero.inserted).toBe(true);
 
-    const principiante = await insertarPago(admin, {
+    const segundo = await insertarPago(admin, {
       userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
     });
-    expect(principiante.inserted).toBe(true);
+    expect(segundo.inserted).toBe(true);
 
     const nivel = await proyectarNivel(admin, userId);
-    expect(nivel).toBe("avanzado");
+    expect(nivel).toBe("completo");
   });
 
   it("invocar proyectarNivel dos veces seguidas da el mismo resultado (idempotencia)", async () => {
@@ -144,7 +146,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
     const resultado = await insertarPago(admin, {
       userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -154,8 +156,8 @@ describe("proyectarNivel (VGRP-24a)", () => {
     const primeraCorrida = await proyectarNivel(admin, userId);
     const segundaCorrida = await proyectarNivel(admin, userId);
 
-    expect(primeraCorrida).toBe("principiante");
-    expect(segundaCorrida).toBe("principiante");
+    expect(primeraCorrida).toBe("completo");
+    expect(segundaCorrida).toBe("completo");
 
     const { data: profile, error } = await admin
       .from("profiles")
@@ -163,7 +165,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
       .eq("id", userId)
       .single();
     expect(error).toBeNull();
-    expect(profile?.nivel).toBe("principiante");
+    expect(profile?.nivel).toBe("completo");
   });
 
   it("un refunded posterior para el mismo proveedor_ref hace caer el nivel a 'ninguno'", async () => {
@@ -173,7 +175,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
     const aprobado = await insertarPago(admin, {
       userId,
       proveedorRef,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -181,12 +183,12 @@ describe("proyectarNivel (VGRP-24a)", () => {
     expect(aprobado.inserted).toBe(true);
 
     const nivelAntesDelReembolso = await proyectarNivel(admin, userId);
-    expect(nivelAntesDelReembolso).toBe("avanzado");
+    expect(nivelAntesDelReembolso).toBe("completo");
 
     const reembolsado = await insertarPago(admin, {
       userId,
       proveedorRef,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "refunded",
       payloadRaw: {},
@@ -218,7 +220,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
     const resultado = await insertarPago(admin, {
       userId: uid,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -226,7 +228,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
     expect(resultado.inserted).toBe(true);
 
     const nivel = await proyectarNivel(admin, uid);
-    expect(nivel).toBe("principiante");
+    expect(nivel).toBe("completo");
 
     const { data: profile, error } = await admin
       .from("profiles")
@@ -234,7 +236,7 @@ describe("proyectarNivel (VGRP-24a)", () => {
       .eq("id", uid)
       .single();
     expect(error).toBeNull();
-    expect(profile?.nivel).toBe("principiante");
+    expect(profile?.nivel).toBe("completo");
     expect(profile?.rol).toBe("admin");
 
     const { data: authUser, error: authError } = await withAuthRetry(() =>

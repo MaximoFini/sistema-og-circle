@@ -39,7 +39,9 @@ describe("requierePlan()", () => {
     expect(await res?.json()).toEqual({ error: "Necesitás un plan para usar la calculadora." });
   });
 
-  it.each(["principiante", "avanzado"])("nivel '%s': null (pasa)", async (nivel) => {
+  // VGRP-60 — 'avanzado' es un token viejo (transición): tieneAcceso()
+  // también debe darle paso, vía el mapeo de getNivel().
+  it.each(["completo", "avanzado"])("nivel '%s': null (pasa)", async (nivel) => {
     mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel } });
     const { requierePlan } = await import("./guard");
 

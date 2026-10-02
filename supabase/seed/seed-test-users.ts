@@ -47,7 +47,7 @@ async function upsertSeedUser(
   // insertó a un usuario seed sí es residuo; este no). `proveedor_ref`
   // determinístico + upsert con `ignoreDuplicates` -> idempotente.
   if (user.nivel !== "ninguno") {
-    const montoArs = user.nivel === "avanzado" ? 125_000 : 75_000; // PRD §1.1; cosmético en el ledger
+    const montoArs = 90_000; // plan único (VGRP-59/60); cosmético en el ledger
     const { error: pagoError } = await admin.from("pagos").upsert(
       {
         user_id: userId,
@@ -75,7 +75,7 @@ async function upsertSeedUser(
 async function main() {
   const admin = createTestAdminClient();
 
-  // Una sola lectura de auth.users para los 4 usuarios del seed, en vez de
+  // Una sola lectura de auth.users para los usuarios del seed, en vez de
   // una por usuario: la base de test tiene un puñado de usuarios (los del
   // seed + los que cree cada corrida de tests), nunca miles, así que una
   // sola página alcanza sin necesidad de paginar.

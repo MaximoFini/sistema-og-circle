@@ -8,6 +8,9 @@
 // EL TEST MÁS IMPORTANTE de esta parte del ticket: que el nivel usado para gatear
 // (incluido el dato SWIFT en `descripcion`) SIEMPRE sale del claim verificado, nunca de
 // algo que un cliente pudiera mandar en el propio Request.
+//
+// VGRP-59/60 (Bloque 13 — plan único): `nivel_requerido` dejó de existir en la tabla
+// `servicios_financieros` — el gating ahora es binario (con acceso / sin acceso).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TAG_POR_ENTIDAD } from "../../../lib/data/admin/contenido";
@@ -31,7 +34,6 @@ const idsCreados: string[] = [];
 
 async function crearServicioTest(valores: {
   titulo: string;
-  nivel_requerido: "ninguno" | "principiante" | "avanzado";
   descripcion?: string;
   activo?: boolean;
 }) {
@@ -40,7 +42,6 @@ async function crearServicioTest(valores: {
     .insert({
       titulo: valores.titulo,
       descripcion: valores.descripcion ?? "descripcion-secreta-de-test",
-      nivel_requerido: valores.nivel_requerido,
       activo: valores.activo ?? true,
       orden: 0,
     })
@@ -53,7 +54,7 @@ async function crearServicioTest(valores: {
 
 interface ServicioRespuesta {
   id: string;
-  publicMeta: { titulo: string; nivelRequerido: string };
+  publicMeta: { titulo: string };
   descripcion: string | null;
 }
 
@@ -77,11 +78,8 @@ describe("GET /api/servicios-financieros", () => {
     }
   });
 
-  it("sin sesión (claims null): 200, nivelActual:'ninguno' y descripcion:null en la fila gateada", async () => {
-    const servicio = await crearServicioTest({
-      titulo: "Sin sesión VGRP-52",
-      nivel_requerido: "principiante",
-    });
+  it("sin sesión (claims null): 200, nivelActual:'ninguno' y descripcion:null en la fila", async () => {
+    const servicio = await crearServicioTest({ titulo: "Sin sesión VGRP-52" });
     mockGetVerifiedClaims.mockResolvedValue(null);
 
     const { GET } = await import("./route");
@@ -94,18 +92,17 @@ describe("GET /api/servicios-financieros", () => {
     expect(item?.descripcion).toBeNull();
   });
 
-  it("sesión 'principiante' contra fila nivel_requerido='avanzado': descripcion null, publicMeta.titulo siempre presente", async () => {
+  it("sesión sin plan ('ninguno'): descripcion null, publicMeta.titulo siempre presente", async () => {
     const servicio = await crearServicioTest({
       titulo: "SWIFT de prueba VGRP-52",
-      nivel_requerido: "avanzado",
       descripcion: "IBAN-secreto-no-debe-salir",
     });
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "principiante" } });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "ninguno" } });
 
     const { GET } = await import("./route");
     const res = await GET();
     const body = (await res.json()) as { servicios: ServicioRespuesta[]; nivelActual: string };
-    expect(body.nivelActual).toBe("principiante");
+    expect(body.nivelActual).toBe("ninguno");
 
     const item = body.servicios.find((s) => s.id === servicio.id);
     expect(item).toBeDefined();
@@ -114,33 +111,31 @@ describe("GET /api/servicios-financieros", () => {
     expect(JSON.stringify(body)).not.toContain("IBAN-secreto-no-debe-salir");
   });
 
-  it("sesión 'avanzado' contra la misma fila: descripcion real", async () => {
+  it("sesión con plan completo contra la misma fila: descripcion real", async () => {
     const servicio = await crearServicioTest({
-      titulo: "SWIFT de prueba avanzado VGRP-52",
-      nivel_requerido: "avanzado",
-      descripcion: "IBAN-secreto-avanzado",
+      titulo: "SWIFT de prueba completo VGRP-52",
+      descripcion: "IBAN-secreto-completo",
     });
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "completo" } });
 
     const { GET } = await import("./route");
     const res = await GET();
     const body = (await res.json()) as { servicios: ServicioRespuesta[] };
     const item = body.servicios.find((s) => s.id === servicio.id);
-    expect(item?.descripcion).toBe("IBAN-secreto-avanzado");
+    expect(item?.descripcion).toBe("IBAN-secreto-completo");
   });
 
   it("el nivel sale del claim verificado, NUNCA de query param/header/body del propio Request", async () => {
     const servicio = await crearServicioTest({
       titulo: "No debe filtrarse por query VGRP-52",
-      nivel_requerido: "avanzado",
       descripcion: "IBAN-no-debe-salir-por-query",
     });
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "principiante" } });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "ninguno" } });
 
     const reqEnvenenado = new Request(
-      "https://ogcircle.example/api/servicios-financieros?nivel=avanzado",
+      "https://ogcircle.example/api/servicios-financieros?nivel=completo",
       {
-        headers: { "x-nivel": "avanzado", cookie: "nivel=avanzado" },
+        headers: { "x-nivel": "completo", cookie: "nivel=completo" },
       },
     );
 
@@ -162,11 +157,8 @@ describe("GET /api/servicios-financieros", () => {
   // tag — y que revalidateTag() (lo que el panel real llama después de
   // escribir) es lo que lo hace fresco de nuevo.
   it("un update directo queda cacheado (stale) hasta que revalidateTag invalida el tag de la entidad", async () => {
-    const servicio = await crearServicioTest({
-      titulo: "Título viejo VGRP-52",
-      nivel_requerido: "ninguno",
-    });
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
+    const servicio = await crearServicioTest({ titulo: "Título viejo VGRP-52" });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "completo" } });
 
     const { GET } = await import("./route");
 

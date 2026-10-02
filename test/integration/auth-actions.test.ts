@@ -248,7 +248,7 @@ describe("registrarse — VGRP-18", () => {
     // se le toca la password (signUp con email duplicado no la modifica, sólo
     // falla en el intento de creación — confirmado contra el proyecto real:
     // Supabase responde error "User already registered", 422).
-    const seed = findSeedUser("principiante");
+    const seed = findSeedUser("completo");
     const fdDuplicado = formData({
       nombre: "Quien Sea",
       email: seed.email,
@@ -292,7 +292,7 @@ describe("registrarse — VGRP-18", () => {
 
 describe("iniciarSesion — VGRP-18", () => {
   it("credenciales inválidas (usuario inexistente o password incorrecta) devuelven SIEMPRE el mismo mensaje genérico", async () => {
-    const seed = findSeedUser("avanzado");
+    const seed = findSeedUser("completo");
 
     const fdInexistente = formData({
       email: nuevoEmail("no-existe"),
@@ -365,7 +365,7 @@ describe("iniciarSesion — VGRP-18", () => {
 describe("solicitarReset — VGRP-19", () => {
   it("sin enumeración: mensaje idéntico y tiempo comparable exista o no la cuenta", async () => {
     const emailInexistente = nuevoEmail("no-existe-reset");
-    const seed = findSeedUser("avanzado");
+    const seed = findSeedUser("completo");
 
     const t0 = performance.now();
     const resultadoInexistente = await solicitarReset(

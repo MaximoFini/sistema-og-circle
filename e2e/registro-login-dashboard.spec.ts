@@ -51,7 +51,7 @@ test.describe("registro → login → dashboard", () => {
       await page.getByLabel("Nombre").fill("Usuario E2E");
       await page.getByLabel("Email").fill(email);
       await page.getByLabel("Teléfono").fill("+54 9 11 1234-5678");
-      await page.getByLabel("Contraseña").fill(PASSWORD);
+      await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
       // El label del checkbox incluye links inline (Términos/Privacidad), así
       // que `getByLabel` con el texto completo no matchea de forma
       // confiable — el rol accesible alcanza, es el único checkbox del form.
@@ -114,7 +114,7 @@ test.describe("registro → login → dashboard", () => {
       // --- Primera sesión: login real por /login ---------------------------
       await page.goto("/login");
       await page.getByLabel("Email").fill(created.email);
-      await page.getByLabel("Contraseña").fill(PASSWORD);
+      await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
       await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
       await page.waitForURL("**/dashboard");
@@ -149,7 +149,7 @@ test.describe("registro → login → dashboard", () => {
 
       // --- Segunda sesión: login real de nuevo con las mismas credenciales -
       await page.getByLabel("Email").fill(created.email);
-      await page.getByLabel("Contraseña").fill(PASSWORD);
+      await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
       await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
       await page.waitForURL("**/dashboard");
