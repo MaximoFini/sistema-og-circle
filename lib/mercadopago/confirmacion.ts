@@ -5,22 +5,13 @@ import type { NivelAcceso } from "../database.types";
  * Decide si la pantalla de espera post-checkout (`/comprar/pendiente`,
  * `PendienteClient.tsx`) puede dar la compra por confirmada.
  *
- * ---------------------------------------------------------------------------
- * Bug que esta función corrige (auditoría de Mercado Pago)
- * ---------------------------------------------------------------------------
- * La condición anterior era simplemente `nivel !== "ninguno"`. Eso es
- * correcto para alguien que compra desde `nivel = 'ninguno'`, pero es FALSO
- * para un usuario Principiante que compra un upgrade a Avanzado: su nivel YA
- * es distinto de `'ninguno'` ANTES de que el webhook de Mercado Pago (VGRP-23)
- * confirme el pago nuevo. Con la condición vieja, esta pantalla redirigía al
- * dashboard de inmediato, sin haber esperado la confirmación real de la
- * compra de Avanzado.
- *
- * La función compara el nivel ALCANZADO contra el nivel ESPERADO (el que
- * `/comprar` le pasó a esta pantalla por query param, ver `page.tsx`) usando
- * el mismo orden de precedencia que `nivel_vigente()` en la base
- * ('ninguno' < 'principiante' < 'avanzado'): sólo confirma cuando el nivel
- * alcanzado llega, como mínimo, al nivel que se esperaba comprar.
+ * Auditoría de Mercado Pago: la condición vieja era `nivel !== "ninguno"`,
+ * que con dos niveles confirmaba un upgrade (Principiante → Avanzado) antes
+ * de que el webhook proyectara el pago nuevo. Con el plan único
+ * (VGRP-59/60) ese upgrade ya no existe, pero se mantiene la comparación
+ * contra el nivel ESPERADO (el query param `nivel` que `/comprar` le pasa
+ * a esta pantalla) con el mismo orden que `nivel_vigente()`: confirma
+ * recién cuando el nivel alcanzado llega, como mínimo, al esperado.
  *
  * `nivelEsperado` puede ser `null` (el query param faltaba o venía con un
  * valor inesperado — ver `esNivelAcceso()` en `page.tsx`): en ese caso se

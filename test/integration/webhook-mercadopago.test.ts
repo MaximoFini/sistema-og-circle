@@ -16,7 +16,7 @@
 // localmente, ver docs/TESTING.md), así que depender del valor real haría
 // que estos tests pasen o fallen según la máquina que los corra. Se mockea
 // con el mismo precio que usan los `transaction_amount` de este archivo
-// (75000/125000 — los precios reales de PRD Fase 2 §1.1), para que la
+// (125000 — VGRP-59/60: un solo plan, `precios.plan`), para que la
 // validación de monto nueva no cambie el comportamiento que estos tests ya
 // verificaban. Todo lo demás —`insertarPago`, `proyectarNivel`,
 // `createServiceRoleClient`, `validarFirmaMercadoPago`— corre CON SU CÓDIGO
@@ -58,7 +58,7 @@ vi.mock("@vercel/analytics/server", () => ({
 vi.mock("@/lib/config", () => ({
   getPrecios: vi.fn().mockResolvedValue({
     ok: true,
-    precios: { principiante: 75000, avanzado: 125000 },
+    precios: { plan: 125000 },
   }),
 }));
 
@@ -157,7 +157,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
           id: Number(paymentId),
           external_reference: userId,
           metadata: { nivel: "completo" },
-          transaction_amount: 75000,
+          transaction_amount: 125000,
         }),
       ),
     });
@@ -262,7 +262,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
           id: Number(paymentIdPrincipiante),
           external_reference: userId,
           metadata: { nivel: "principiante" },
-          transaction_amount: 75000,
+          transaction_amount: 125000,
         }),
       ),
     });
@@ -372,8 +372,8 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
         pagoMp({
           id: Number(paymentId),
           external_reference: userId,
-          metadata: { nivel: "avanzado" },
-          // El precio mockeado de 'avanzado' es 125000 (ver vi.mock de
+          metadata: { nivel: "completo" },
+          // El precio mockeado del plan es 125000 (ver vi.mock de
           // "@/lib/config" arriba) — esto simula una preferencia manipulada
           // o un precio que cambió a mitad de un checkout en curso.
           transaction_amount: 1,
@@ -387,7 +387,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
     expect(res.status).toBe(200);
     const pagos = await pagosDe(userId);
     expect(pagos).toHaveLength(1);
-    expect(pagos[0]).toMatchObject({ estado: "approved", nivel_comprado: "avanzado" });
+    expect(pagos[0]).toMatchObject({ estado: "approved", nivel_comprado: "completo" });
     // El pago queda registrado para auditoría, pero nunca se le dio acceso.
     expect(await nivelDe(userId)).toBe("ninguno");
     expect(await claimNivelDe(userId)).toBeUndefined();
