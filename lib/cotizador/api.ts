@@ -15,6 +15,9 @@
 // Client-safe: sin "server-only". Lo importan los Client Components del
 // cotizador (CotizadorCourier, ProformaUpload, MarketingAnalysis).
 
+import { type EventoAnalisis, normalizarAnalisis } from "./analisis";
+import { parsearJSONParcial } from "./jsonParcial";
+
 // ── Contratos de los endpoints ───────────────────────────────────────────
 
 /** Candidato que se manda a identificar: `ncm` es el SIM (`c.sim`), como el original. */
@@ -122,34 +125,57 @@ export class ErrorApi extends Error {
 export const DESTINO_SIN_SESION = "/login?next=/calculadora";
 export const DESTINO_SIN_PLAN = "/comprar";
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+/** POST con JSON. Devuelve la respuesta si es 2xx (sin leer el cuerpo); si no,
+ *  lanza `ErrorApi` con el `error` del JSON. */
+async function enviar(path: string, body: unknown, signal?: AbortSignal): Promise<Response> {
   let resp: Response;
   try {
     resp = await fetch(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
+      signal,
     });
-  } catch {
+  } catch (e) {
+    if (signal?.aborted) throw e;
     throw new ErrorApi("No se pudo contactar al servidor de IA. Verificá tu conexión o el deploy.");
   }
-  let data: unknown = null;
+  if (resp.ok) return resp;
+
+  // Sesión vencida o plan perdido a mitad de uso: fuera de la calculadora.
+  if (resp.status === 401) window.location.assign(DESTINO_SIN_SESION);
+  else if (resp.status === 403) window.location.assign(DESTINO_SIN_PLAN);
+  const data: unknown = await resp.json().catch(() => null);
+  const mensaje =
+    data && typeof data === "object" && "error" in data && typeof data.error === "string"
+      ? data.error
+      : `Error ${resp.status} al llamar a ${path}.`;
+  throw new ErrorApi(mensaje, resp.status);
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const resp = await enviar(path, body);
+  return (await resp.json().catch(() => null)) as T;
+}
+
+/** Las líneas no vacías de un cuerpo NDJSON, a medida que llegan. */
+async function* lineas(cuerpo: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const lector = cuerpo.pipeThrough(new TextDecoderStream()).getReader();
+  let pendiente = "";
   try {
-    data = await resp.json();
-  } catch {
-    /* respuesta sin JSON */
+    for (;;) {
+      const { value, done } = await lector.read();
+      if (done) break;
+      pendiente += value;
+      const completas = pendiente.split("\n");
+      pendiente = completas.pop() ?? "";
+      for (const l of completas) if (l.trim()) yield l;
+    }
+    if (pendiente.trim()) yield pendiente;
+  } finally {
+    // Si quien lee cortó antes (ya llegó el `fin`), liberar la conexión.
+    lector.cancel().catch(() => {});
   }
-  if (!resp.ok) {
-    // Sesión vencida o plan perdido a mitad de uso: fuera de la calculadora.
-    if (resp.status === 401) window.location.assign(DESTINO_SIN_SESION);
-    else if (resp.status === 403) window.location.assign(DESTINO_SIN_PLAN);
-    const mensaje =
-      data && typeof data === "object" && "error" in data && typeof data.error === "string"
-        ? data.error
-        : `Error ${resp.status} al llamar a ${path}.`;
-    throw new ErrorApi(mensaje, resp.status);
-  }
-  return data as T;
 }
 
 // ── Endpoints (mismos nombres que el original) ──────────────────────────
@@ -172,9 +198,40 @@ export function getDolarBNA(): Promise<RespuestaDolar> {
   return post("/api/cotizador/dolar", {});
 }
 
-/** Análisis de marketing/comercialización post-cálculo. */
-export function analyzeProduct(payload: PedidoAnalisis): Promise<AnalisisMarketing> {
-  return post("/api/cotizador/analisis-marketing", payload);
+/**
+ * Análisis de marketing/comercialización post-cálculo. El endpoint lo
+ * transmite mientras el modelo lo escribe: `onParcial` recibe el análisis a
+ * medio armar con cada fragmento, y la promesa resuelve con el definitivo
+ * (validado por el servidor). Con `signal` se cancela en cualquier momento;
+ * en ese caso rechaza con el `AbortError` del navegador, no con `ErrorApi`.
+ */
+export async function analyzeProduct(
+  payload: PedidoAnalisis,
+  {
+    onParcial,
+    signal,
+  }: { onParcial?: (parcial: AnalisisMarketing) => void; signal?: AbortSignal } = {},
+): Promise<AnalisisMarketing> {
+  const resp = await enviar("/api/cotizador/analisis-marketing", payload, signal);
+  const cortado = "Se cortó la conexión mientras se generaba el análisis. Probá de nuevo.";
+  if (!resp.body) throw new ErrorApi(cortado);
+
+  let texto = "";
+  try {
+    for await (const l of lineas(resp.body)) {
+      const evento = JSON.parse(l) as EventoAnalisis;
+      if (evento.tipo === "fin") return evento.analisis;
+      if (evento.tipo === "error") throw new ErrorApi(evento.error, resp.status);
+      texto += evento.texto;
+      const parcial = parsearJSONParcial(texto);
+      if (parcial !== undefined) onParcial?.(normalizarAnalisis(parcial));
+    }
+  } catch (e) {
+    if (e instanceof ErrorApi || signal?.aborted) throw e;
+    throw new ErrorApi(cortado);
+  }
+  // Terminó sin `fin` ni `error`: el servidor o la red cortaron a mitad.
+  throw new ErrorApi(cortado);
 }
 
 /** Extrae datos de una proforma/packing list (imagen o PDF en base64). */

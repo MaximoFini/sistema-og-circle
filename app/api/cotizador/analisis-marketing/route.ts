@@ -7,15 +7,25 @@
 // tool use: pide texto y lo parsea con `extraerJSON()` (el `extractJSON()`
 // original), sin reintentos.
 //
+// Diferencia con el original: la respuesta se transmite en streaming (NDJSON,
+// ver `EventoAnalisis`) para que la UI muestre el análisis mientras el modelo
+// lo escribe, en vez de esperar ~20 s a que termine. Se espera el PRIMER
+// fragmento antes de responder, así los errores de entrada (clave, API caída)
+// siguen saliendo con su status HTTP; lo que falle después (JSON inválido, se
+// corta la conexión) ya va dentro del 200, como evento `error`.
+//
 //   sin sesión ... 401    sin plan ... 403    falta producto ... 400
-//   IA falla / JSON inválido ......... 502
-//   ok ........... 200 { publicoObjetivo, angulosVenta[], ideasContenido[],
-//                        campanaSugerida, precioSugerido, riesgoPrincipal }
+//   IA falla al arrancar / respuesta vacía ... 502
+//   ok ........... 200 NDJSON: { tipo: "texto" }* y al final { tipo: "fin",
+//                  analisis: { publicoObjetivo, angulosVenta[], ideasContenido[],
+//                  campanaSugerida, precioSugerido, riesgoPrincipal } }
+//                  o { tipo: "error", error }
 
 import { z } from "zod";
-import { extraerJSON, llamarTexto } from "@/lib/cotizador/server/anthropic";
+import { type EventoAnalisis, normalizarAnalisis } from "@/lib/cotizador/analisis";
+import { ErrorCotizador, extraerJSON, transmitirTexto } from "@/lib/cotizador/server/anthropic";
 import { requierePlan } from "@/lib/cotizador/server/guard";
-import { leerCuerpo, responderError } from "@/lib/cotizador/server/respuestas";
+import { leerCuerpo, reportarError, responderError } from "@/lib/cotizador/server/respuestas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,26 +80,68 @@ export async function POST(req: Request): Promise<Response> {
     .filter(Boolean)
     .join("\n");
 
-  try {
-    const text = await llamarTexto({
-      model: MODEL,
-      max_tokens: 1600,
-      system,
-      content: [{ type: "text", text: prompt }],
-    });
+  const fragmentos = transmitirTexto(
+    { model: MODEL, max_tokens: 1600, system, content: [{ type: "text", text: prompt }] },
+    req.signal,
+  );
 
-    const parsed = extraerJSON(text);
-    // Normalizamos arrays por si el modelo devolvió strings sueltos.
-    parsed.angulosVenta = toArray(parsed.angulosVenta);
-    parsed.ideasContenido = toArray(parsed.ideasContenido);
-    return Response.json(parsed);
+  let primero: IteratorResult<string>;
+  try {
+    primero = await fragmentos.next();
   } catch (e) {
     return responderError(e, "analisisMarketing");
   }
+  if (primero.done) {
+    return responderError(
+      new ErrorCotizador(502, "Respuesta vacía del modelo."),
+      "analisisMarketing",
+    );
+  }
+
+  return new Response(transmitirEventos(primero.value, fragmentos), {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "private, no-store",
+    },
+  });
 }
 
-function toArray(v: unknown): unknown[] {
-  if (Array.isArray(v)) return v.filter(Boolean);
-  if (typeof v === "string" && v.trim()) return [v.trim()];
-  return [];
+/** Un evento por fragmento del modelo, y al final el análisis validado (o el error). */
+function transmitirEventos(
+  primero: string,
+  resto: AsyncGenerator<string>,
+): ReadableStream<Uint8Array> {
+  const codificador = new TextEncoder();
+  const linea = (evento: EventoAnalisis) => codificador.encode(`${JSON.stringify(evento)}\n`);
+  let texto = primero;
+
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(linea({ tipo: "texto", texto: primero }));
+    },
+    async pull(controller) {
+      try {
+        const { value, done } = await resto.next();
+        if (!done) {
+          texto += value;
+          controller.enqueue(linea({ tipo: "texto", texto: value }));
+          return;
+        }
+        // El resultado definitivo es el de siempre: el texto completo, por
+        // `extraerJSON()` y normalizado.
+        controller.enqueue(
+          linea({ tipo: "fin", analisis: normalizarAnalisis(extraerJSON(texto)) }),
+        );
+      } catch (e) {
+        controller.enqueue(
+          linea({ tipo: "error", error: reportarError(e, "analisisMarketing").mensaje }),
+        );
+      }
+      controller.close();
+    },
+    async cancel() {
+      // El usuario se fue: corta también la request a Anthropic.
+      await resto.return(undefined);
+    },
+  });
 }
