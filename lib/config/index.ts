@@ -13,7 +13,8 @@ import { configSchema } from "./schema";
  *   fallback hardcodeado. `getPrecios()` devuelve `{ ok: false, error }` para que el
  *   caller pueda deshabilitar el checkout. Nunca se devuelve un número adivinado.
  * - `flags`: si falla, se usa un default conservador que deja todo apagado
- *   (`checkout_habilitado: false`, `registro_habilitado: false`, `fase: "2"`).
+ *   (`checkout_habilitado: false`, `registro_habilitado: false`, `fase: "2"`,
+ *   `mercadopago_habilitado: false` — VGRP-61: sin config, MP queda apagado).
  * - `links`: si falla, se usa un default razonable hardcodeado en este mismo módulo
  *   (un link viejo no cuesta plata).
  *
@@ -27,6 +28,7 @@ const DEFAULT_FLAGS: Config["flags"] = {
   checkout_habilitado: false,
   registro_habilitado: false,
   fase: "2",
+  mercadopago_habilitado: false,
 };
 
 // VGRP-60 — nombre comercial del único plan ("Plan X" hasta que el equipo lo

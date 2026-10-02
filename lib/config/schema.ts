@@ -23,6 +23,10 @@ export const configSchema = z.object({
     checkout_habilitado: z.boolean(),
     registro_habilitado: z.boolean(),
     fase: z.enum(FASES),
+    // VGRP-61: si se puede iniciar un pago con MP (ver docs/EDGE-CONFIG.md).
+    // `.default(false)`: el valor de prod no trae la clave, y un campo
+    // requerido invalidaría TODO `flags` (caería a DEFAULT_FLAGS).
+    mercadopago_habilitado: z.boolean().default(false),
   }),
   links: z.object({
     calculadora: z.string().url(),

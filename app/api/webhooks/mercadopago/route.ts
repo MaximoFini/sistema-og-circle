@@ -136,6 +136,9 @@ function reportarMontoInesperado(detalle: string): void {
   Sentry.captureMessage(`[mercadopago-webhook] monto inesperado: ${detalle}`, "error");
 }
 
+// VGRP-61 — NO lee `flags.mercadopago_habilitado` a propósito: sólo procesa
+// notificaciones firmadas y consulta el estado real a MP, así que no abre
+// nada; apagarlo perdería pagos tardíos o refunds legítimos.
 export async function POST(request: Request): Promise<Response> {
   let secret: string;
   try {

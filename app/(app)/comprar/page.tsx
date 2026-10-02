@@ -2,7 +2,7 @@ import { Button } from "@/components/ui";
 import { Icon } from "@/components/ui/Icon";
 import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
-import { getPlan, getPrecios } from "@/lib/config";
+import { getFlags, getPlan, getPrecios } from "@/lib/config";
 import { formatearPrecio } from "@/lib/format";
 import { ComprarButton } from "./ComprarButton";
 import styles from "./comprar.module.css";
@@ -44,11 +44,24 @@ export default async function ComprarPage() {
   // `crearCheckout` (_actions.ts) ya lo bloquea del lado del servidor, esto
   // es sólo para que la UI no ofrezca algo que va a fallar.
   //
-  // Las tres lecturas (JWT, precios y nombre del plan en Edge Config) son
-  // independientes — en paralelo en vez de en serie, ya que esta página es
-  // `force-dynamic` y ninguna depende del resultado de otra.
-  const [claims, precios, plan] = await Promise.all([getVerifiedClaims(), getPrecios(), getPlan()]);
+  // Las cuatro lecturas (JWT, y precios, nombre del plan y flags en Edge
+  // Config) son independientes — en paralelo en vez de en serie, ya que esta
+  // página es `force-dynamic` y ninguna depende del resultado de otra.
+  const [claims, precios, plan, flags] = await Promise.all([
+    getVerifiedClaims(),
+    getPrecios(),
+    getPlan(),
+    getFlags(),
+  ]);
   const yaTienePlan = nivelAlcanzaOSupera(getNivel(claims), "completo");
+  // VGRP-61 — con MP apagado no se ofrece el botón ni se nombra a MP. Sólo
+  // UI: la barrera real está en `crearCheckout`. Qué se muestra en su lugar
+  // lo resuelve VGRP-64.
+  const copy = yaTienePlan
+    ? "Ya tenés acceso completo a la plataforma."
+    : flags.mercadopago_habilitado
+      ? "Acceso completo a la plataforma. Se activa apenas Mercado Pago confirma el pago."
+      : "Acceso completo a la plataforma.";
 
   if (!precios.ok) {
     return (
@@ -80,17 +93,13 @@ export default async function ComprarPage() {
           {formatearPrecio.format(precios.precios.plan)}
           <span>pago único</span>
         </p>
-        <p className={styles.copy}>
-          {yaTienePlan
-            ? "Ya tenés acceso completo a la plataforma."
-            : "Acceso completo a la plataforma. Se activa apenas Mercado Pago confirma el pago."}
-        </p>
+        <p className={styles.copy}>{copy}</p>
         {yaTienePlan ? (
           <Button variant="ghost" fullWidth disabled>
             Ya tenés este plan
           </Button>
         ) : (
-          <ComprarButton nivel="completo" />
+          flags.mercadopago_habilitado && <ComprarButton nivel="completo" />
         )}
       </div>
     </div>
