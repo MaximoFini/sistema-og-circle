@@ -46,7 +46,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import type { AppMetadataClaims } from "./lib/auth/claims";
-import { getNivel, getRol, hasNivel } from "./lib/auth/claims";
+import { getNivel, getRol, tieneAcceso } from "./lib/auth/claims";
 import { CLAIMS_HEADER, encodeClaims } from "./lib/auth/claims-header";
 import type { Database } from "./lib/database.types";
 
@@ -140,8 +140,8 @@ function isAdminArea(pathname: string): boolean {
 // -----------------------------------------------------------------------------
 // VGRP-57 — capa de NIVEL por ruta de página.
 //
-// Páginas que exigen plan pago (`principiante` o más). Sin plan: redirect a
-// `/comprar`. Match exacto o por subruta (`/calculadora`, `/calculadora/…`,
+// Páginas que exigen el plan pago (VGRP-59/60 — un solo plan: `completo`).
+// Sin plan: redirect a `/comprar`. Match exacto o por subruta (`/calculadora`, `/calculadora/…`,
 // nunca `/calculadoras`), mismo criterio que `esActual()` de
 // components/nav/NavDrawer.tsx.
 //
@@ -313,7 +313,7 @@ export async function middleware(request: NextRequest) {
   // VGRP-57 — capa de nivel por página. Cero query nueva: usa el mismo
   // `claims` que `getClaims()` ya resolvió arriba en este request. La página
   // en sí queda estática (no lee claims): el gating vive acá.
-  if (esRutaConPlan(pathname) && !hasNivel(claims, "principiante")) {
+  if (esRutaConPlan(pathname) && !tieneAcceso(claims)) {
     return withRefreshedCookies(NextResponse.redirect(new URL("/comprar", request.url)), response);
   }
 

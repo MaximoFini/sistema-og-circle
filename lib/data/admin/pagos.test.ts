@@ -36,7 +36,7 @@ const creados: string[] = [];
 // una llamada de auth menos por usuario que `createAuthenticatedUser`, para no
 // castigar el rate limit de Supabase Auth cuando este archivo corre dentro de
 // la suite completa. Mismo patrón que `test/integration/pagos.test.ts`.
-async function nuevoUsuario(nivel: "ninguno" | "principiante" | "avanzado" = "ninguno") {
+async function nuevoUsuario(nivel: "ninguno" | "completo" | "completo" = "ninguno") {
   const email = `pagos-adm-${randomUUID()}${TEST_EMAIL_SUFFIX}`;
   const { data, error } = await withAuthRetry(() =>
     admin.auth.admin.createUser({ email, password: "test-password-1!", email_confirm: true }),
@@ -95,7 +95,7 @@ describe("sanitizarPayloadRaw", () => {
     status_detail: "accredited",
     transaction_amount: 75000,
     currency_id: "ARS",
-    metadata: { nivel: "avanzado", internal_token: "abc123" },
+    metadata: { nivel: "completo", internal_token: "abc123" },
     // fuera de la allowlist:
     card: { last_four_digits: "4242", cardholder: { name: "Test" } },
     token: "tok_live_secret",
@@ -134,7 +134,7 @@ describe("sanitizarPayloadRaw", () => {
 
   it("redacta claves sensibles anidadas dentro de un campo permitido (metadata)", () => {
     const out = sanitizarPayloadRaw(RAW) as { metadata: Record<string, unknown> };
-    expect(out.metadata.nivel).toBe("avanzado");
+    expect(out.metadata.nivel).toBe("completo");
     expect(out.metadata.internal_token).toBe("[redactado]");
   });
 
@@ -158,7 +158,7 @@ describe("listarPagos", () => {
       await insertarPago(admin, {
         userId: u.userId,
         proveedorRef: `${token}-approved-${i}`,
-        nivelComprado: "principiante",
+        nivelComprado: "completo",
         montoArs: 1000,
         estado: "approved",
         payloadRaw: {},
@@ -167,7 +167,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `${token}-rejected-0`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "rejected",
       payloadRaw: {},
@@ -210,7 +210,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: ref,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -229,7 +229,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `${tokenPrefix}-princ`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -237,7 +237,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `${tokenPrefix}-avanz`,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -257,7 +257,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: ref,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -265,7 +265,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: ref,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "refunded",
       payloadRaw: {},
@@ -288,7 +288,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: ref,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -301,7 +301,7 @@ describe("listarPagos", () => {
     // El admin baja el nivel a mano DESPUÉS del pago (override.created_at >= pago).
     const { error } = await admin.from("nivel_overrides").insert({
       user_id: u.userId,
-      nivel: "principiante",
+      nivel: "completo",
       motivo: "baja manual",
       actor_id: actorId,
     });
@@ -322,7 +322,7 @@ describe("listarPagos", () => {
     // Override viejo primero...
     const { error } = await admin.from("nivel_overrides").insert({
       user_id: u.userId,
-      nivel: "principiante",
+      nivel: "completo",
       motivo: "activacion vieja",
       actor_id: actorId,
     });
@@ -333,7 +333,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: ref,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -350,7 +350,7 @@ describe("listarPagos", () => {
     await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -371,7 +371,7 @@ describe("obtenerPago", () => {
     const ins = await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: ref,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: { id: 1, status: "approved", token: "secreto" },
@@ -401,7 +401,7 @@ describe("reprocesarPago", () => {
     const ins = await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "avanzado",
+      nivelComprado: "completo",
       montoArs: 5000,
       estado: "approved",
       payloadRaw: {},
@@ -412,10 +412,10 @@ describe("reprocesarPago", () => {
     const pagosAntes = await contarPagosDe(u.userId);
     const out = await reprocesarPago(admin, { pagoId: ins.pago.id, actorId });
 
-    expect(out.resultado).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "avanzado" });
+    expect(out.resultado).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "completo" });
     expect(out.valorAnterior).toEqual({ nivel: "ninguno" });
-    expect(out.valorNuevo).toEqual({ nivel: "avanzado" });
-    expect(await nivelDe(u.userId)).toBe("avanzado");
+    expect(out.valorNuevo).toEqual({ nivel: "completo" });
+    expect(await nivelDe(u.userId)).toBe("completo");
     expect(await contarPagosDe(u.userId)).toBe(pagosAntes);
   });
 
@@ -424,7 +424,7 @@ describe("reprocesarPago", () => {
     const ins = await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "approved",
       payloadRaw: {},
@@ -433,7 +433,7 @@ describe("reprocesarPago", () => {
     await proyectarNivel(admin, u.userId);
 
     const out = await reprocesarPago(admin, { pagoId: ins.pago.id, actorId });
-    expect(out.resultado).toEqual({ nivelAnterior: "principiante", nivelNuevo: "principiante" });
+    expect(out.resultado).toEqual({ nivelAnterior: "completo", nivelNuevo: "completo" });
   });
 
   it("estado != 'approved' -> lanza PagoNoReprocesable", async () => {
@@ -441,7 +441,7 @@ describe("reprocesarPago", () => {
     const ins = await insertarPago(admin, {
       userId: u.userId,
       proveedorRef: `test-ref-${randomUUID()}`,
-      nivelComprado: "principiante",
+      nivelComprado: "completo",
       montoArs: 1000,
       estado: "rejected",
       payloadRaw: {},

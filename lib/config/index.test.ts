@@ -7,8 +7,12 @@ vi.mock("@vercel/edge-config", () => ({
   get: (key: string) => mockGet(key),
 }));
 
+// VGRP-59/60 (Bloque 13 — plan único): `precios` pasó a un solo campo
+// (`plan`), y se sumó la clave `plan.nombre` (nombre comercial del único
+// plan, editable sin deploy).
 const VALID_CONFIG = {
-  precios: { principiante: 75000, avanzado: 125000 },
+  precios: { plan: 90000 },
+  plan: { nombre: "Plan X" },
   flags: { checkout_habilitado: true, registro_habilitado: true, fase: "2" as const },
   links: {
     calculadora: "https://ogcircle.com/calculadora",
@@ -36,6 +40,7 @@ describe("configSchema", () => {
     const shapesAInspeccionar = [
       configSchema.shape,
       configSchema.shape.precios.shape,
+      configSchema.shape.plan.shape,
       configSchema.shape.flags.shape,
       configSchema.shape.links.shape,
     ];
@@ -56,6 +61,7 @@ describe("getConfig", () => {
   it("señala el fallo sin devolver un precio adivinado cuando precios es inválido/faltante", async () => {
     mockGet.mockImplementation(async (key: string) => {
       if (key === "precios") return undefined; // clave ausente en Edge Config
+      if (key === "plan") return VALID_CONFIG.plan;
       if (key === "flags") return VALID_CONFIG.flags;
       if (key === "links") return VALID_CONFIG.links;
       return undefined;
@@ -74,6 +80,7 @@ describe("getConfig", () => {
   it("cae al default hardcodeado sin romper cuando links es inválido", async () => {
     mockGet.mockImplementation(async (key: string) => {
       if (key === "precios") return VALID_CONFIG.precios;
+      if (key === "plan") return VALID_CONFIG.plan;
       if (key === "flags") return VALID_CONFIG.flags;
       if (key === "links") return { calculadora: "no-es-una-url" };
       return undefined;
@@ -90,6 +97,21 @@ describe("getConfig", () => {
     });
   });
 
+  it("cae a un nombre de plan default cuando falla la lectura de 'plan'", async () => {
+    mockGet.mockImplementation(async (key: string) => {
+      if (key === "precios") return VALID_CONFIG.precios;
+      if (key === "plan") return { nombre: "" }; // inválido (min 1)
+      if (key === "flags") return VALID_CONFIG.flags;
+      if (key === "links") return VALID_CONFIG.links;
+      return undefined;
+    });
+
+    const { getConfig } = await import("./index");
+    const config = await getConfig();
+
+    expect(config.plan).toEqual({ nombre: "Plan X" });
+  });
+
   it("cae a flags conservadores (todo apagado) cuando falla la lectura", async () => {
     mockGet.mockImplementation(async () => {
       throw new Error("No connection string provided");
@@ -99,6 +121,7 @@ describe("getConfig", () => {
     const config = await getConfig();
 
     expect(config.precios.ok).toBe(false);
+    expect(config.plan).toEqual({ nombre: "Plan X" });
     expect(config.flags).toEqual({
       checkout_habilitado: false,
       registro_habilitado: false,

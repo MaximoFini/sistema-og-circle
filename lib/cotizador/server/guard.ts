@@ -10,20 +10,20 @@
 
 import "server-only";
 import { NextResponse } from "next/server";
-import { hasNivel } from "@/lib/auth/claims";
+import { tieneAcceso } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
 
 /**
- * `null` si el usuario tiene plan (`principiante` o más); si no, la respuesta
- * que el handler tiene que devolver tal cual: 401 sin sesión, 403 con nivel
- * `ninguno`.
+ * `null` si el usuario tiene el plan completo (VGRP-59/60: un solo plan); si
+ * no, la respuesta que el handler tiene que devolver tal cual: 401 sin
+ * sesión, 403 con nivel `ninguno`.
  */
 export async function requierePlan(): Promise<NextResponse | null> {
   const claims = await getVerifiedClaims();
   if (!claims) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
-  if (!hasNivel(claims, "principiante")) {
+  if (!tieneAcceso(claims)) {
     return NextResponse.json(
       { error: "Necesitás un plan para usar la calculadora." },
       { status: 403 },

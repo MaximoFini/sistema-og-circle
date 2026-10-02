@@ -8,24 +8,29 @@ import "../test/helpers/load-env";
 // Usa los usuarios fijos del seed (`pnpm db:seed:test`). No crea ni borra
 // usuarios: sólo loguea y navega.
 //
-//  1. principiante@test... (rol='user') -> /admin devuelve 404, no el panel.
-//  2. admin@test...        (rol='admin') -> /admin muestra el shell y la nav.
+//  1. ninguno@test... (rol='user') -> /admin devuelve 404, no el panel.
+//  2. admin@test...   (rol='admin') -> /admin muestra el shell y la nav.
+//
+// VGRP-59/60 (Bloque 13 — plan único): antes se usaba el usuario seed
+// 'principiante' (cualquier rol='user' sirve para este test, que sólo
+// verifica el gating por ROL, no por nivel) — con el enum de dos valores se
+// usa el seed 'ninguno' en su lugar.
 // =============================================================================
 
-const PRINCIPIANTE = SEED_USERS.find((u) => u.nivel === "principiante" && u.rol === "user");
+const USUARIO_SIN_ROL_ADMIN = SEED_USERS.find((u) => u.nivel === "ninguno" && u.rol === "user");
 
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill(password);
+  await page.getByLabel("Contraseña").fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
 
 test.describe("acceso a /admin por rol", () => {
   test("un usuario con rol='user' ve un 404 en /admin, nunca el panel", async ({ page }) => {
-    if (!PRINCIPIANTE) throw new Error("Falta el usuario seed 'principiante'.");
-    await login(page, PRINCIPIANTE.email, PRINCIPIANTE.password);
+    if (!USUARIO_SIN_ROL_ADMIN) throw new Error("Falta el usuario seed 'ninguno'.");
+    await login(page, USUARIO_SIN_ROL_ADMIN.email, USUARIO_SIN_ROL_ADMIN.password);
 
     const res = await page.goto("/admin");
     expect(res?.status()).toBe(404);

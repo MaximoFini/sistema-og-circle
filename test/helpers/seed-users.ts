@@ -23,6 +23,12 @@ export function isTestEmail(email: string | null | undefined): boolean {
 // Un usuario fijo por cada nivel de acceso más un admin, tal como pide
 // VGRP-43. Contraseña fija: son usuarios de test reconocibles por
 // TEST_EMAIL_SUFFIX, nunca se crean con este patrón fuera de tests.
+//
+// VGRP-59/60 (Bloque 13 — plan único): el enum pasó de tres valores
+// (ninguno/principiante/avanzado) a dos (ninguno/completo). Se mantienen los
+// emails `principiante@...`/`avanzado@...` para no invalidar usuarios seed ya
+// existentes en el proyecto real de test — ambos apuntan ahora a `nivel:
+// "completo"` (el único plan pago).
 export const SEED_USERS: readonly SeedUserDefinition[] = [
   {
     email: `ninguno${TEST_EMAIL_SUFFIX}`,
@@ -33,19 +39,19 @@ export const SEED_USERS: readonly SeedUserDefinition[] = [
   {
     email: `principiante${TEST_EMAIL_SUFFIX}`,
     password: "test-seed-password-2!",
-    nivel: "principiante",
+    nivel: "completo",
     rol: "user",
   },
   {
     email: `avanzado${TEST_EMAIL_SUFFIX}`,
     password: "test-seed-password-3!",
-    nivel: "avanzado",
+    nivel: "completo",
     rol: "user",
   },
   {
     email: `admin${TEST_EMAIL_SUFFIX}`,
     password: "test-seed-password-4!",
-    nivel: "avanzado",
+    nivel: "completo",
     rol: "admin",
   },
 ] as const;

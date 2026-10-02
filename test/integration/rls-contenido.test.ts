@@ -5,12 +5,20 @@
 // ("red de seguridad VGRP-30 US-4"). Hueco total hasta este ticket: ninguna
 // de las 4 policies tenía un test.
 //
+// VGRP-59/60 (Bloque 13 — plan único): las policies por nivel
+// (`*_select_por_nivel`) se reemplazaron por policies binarias
+// (`*_select_con_acceso`, ver supabase/migrations/20261002190000_plan_unico.sql)
+// — con acceso ve TODO lo activo/publicado, sin acceso no ve nada. La columna
+// `nivel_requerido` de agentes/videos/servicios_financieros se dropeó. Este
+// archivo se reescribió de "principiante ve su nivel, no ve avanzado" a
+// "con acceso ve todo, sin acceso no ve nada".
+//
 // Mismo criterio no negociable que rls.test.ts: las ASERCIONES se hacen
 // siempre con el cliente/token de un usuario real (nunca service_role, que
 // bypassea RLS por completo). El cliente admin sólo arma/limpia datos.
 //
-// Tokens reales via getTokenWithClaim() (los 3 usuarios seed no-admin) en vez
-// de usuarios ad hoc: son 3 usuarios fijos y estables que ya existen (no hay
+// Tokens reales via getTokenWithClaim() (los usuarios seed no-admin) en vez
+// de usuarios ad hoc: son usuarios fijos y estables que ya existen (no hay
 // que crearlos/loguearlos/borrarlos por test), lo que importa acá porque
 // varios tickets hermanos corren en paralelo contra el mismo proyecto
 // (docs/TESTING.md) y cada createAuthenticatedUser() de más es una llamada
@@ -60,17 +68,12 @@ afterEach(async () => {
   }
 });
 
-async function crearAgente(valores: {
-  nivel_requerido: "ninguno" | "principiante" | "avanzado";
-  activo?: boolean;
-  contacto?: string | null;
-}) {
+async function crearAgente(valores: { activo?: boolean; contacto?: string | null }) {
   const { data, error } = await admin
     .from("agentes")
     .insert({
       nombre: `${MARCADOR} agente ${randomUUID()}`,
       especialidad: "Test",
-      nivel_requerido: valores.nivel_requerido,
       activo: valores.activo ?? true,
       contacto: valores.contacto ?? "contacto-secreto-de-test",
     })
@@ -81,16 +84,12 @@ async function crearAgente(valores: {
   return data;
 }
 
-async function crearVideo(valores: {
-  nivel_requerido: "ninguno" | "principiante" | "avanzado";
-  publicado?: boolean;
-}) {
+async function crearVideo(valores: { publicado?: boolean }) {
   const { data, error } = await admin
     .from("videos")
     .insert({
       stage: 1,
       titulo: `${MARCADOR} video ${randomUUID()}`,
-      nivel_requerido: valores.nivel_requerido,
       publicado: valores.publicado ?? true,
       provider_ref: "provider-ref-secreto-de-test",
     })
@@ -101,15 +100,11 @@ async function crearVideo(valores: {
   return data;
 }
 
-async function crearServicioFinanciero(valores: {
-  nivel_requerido: "ninguno" | "principiante" | "avanzado";
-  activo?: boolean;
-}) {
+async function crearServicioFinanciero(valores: { activo?: boolean }) {
   const { data, error } = await admin
     .from("servicios_financieros")
     .insert({
       titulo: `${MARCADOR} servicio ${randomUUID()}`,
-      nivel_requerido: valores.nivel_requerido,
       activo: valores.activo ?? true,
     })
     .select()
@@ -153,8 +148,8 @@ describe("agentes/videos/profesionales/servicios_financieros — anon: cero fila
 });
 
 describe("nivel='ninguno': cero filas de agentes/videos/servicios_financieros, SÍ ve profesionales activos", () => {
-  it("agentes: nivel='ninguno' no ve una fila que requiere 'principiante'", async () => {
-    const agente = await crearAgente({ nivel_requerido: "principiante" });
+  it("agentes: nivel='ninguno' no ve ninguna fila (sin plan)", async () => {
+    const agente = await crearAgente({});
     const { accessToken } = await getTokenWithClaim("ninguno");
     const cliente = clienteConToken(accessToken);
 
@@ -163,8 +158,8 @@ describe("nivel='ninguno': cero filas de agentes/videos/servicios_financieros, S
     expect(data).toHaveLength(0);
   });
 
-  it("videos: nivel='ninguno' no ve una fila que requiere 'principiante'", async () => {
-    const video = await crearVideo({ nivel_requerido: "principiante" });
+  it("videos: nivel='ninguno' no ve ninguna fila (sin plan)", async () => {
+    const video = await crearVideo({});
     const { accessToken } = await getTokenWithClaim("ninguno");
     const cliente = clienteConToken(accessToken);
 
@@ -173,8 +168,8 @@ describe("nivel='ninguno': cero filas de agentes/videos/servicios_financieros, S
     expect(data).toHaveLength(0);
   });
 
-  it("servicios_financieros: nivel='ninguno' no ve una fila que requiere 'principiante'", async () => {
-    const servicio = await crearServicioFinanciero({ nivel_requerido: "principiante" });
+  it("servicios_financieros: nivel='ninguno' no ve ninguna fila (sin plan)", async () => {
+    const servicio = await crearServicioFinanciero({});
     const { accessToken } = await getTokenWithClaim("ninguno");
     const cliente = clienteConToken(accessToken);
 
@@ -198,10 +193,10 @@ describe("nivel='ninguno': cero filas de agentes/videos/servicios_financieros, S
   });
 });
 
-describe("principiante ve su nivel y NO ve avanzado (fila oculta entera, no sólo el contacto)", () => {
-  it("agentes: principiante ve una fila nivel_requerido='principiante'", async () => {
-    const agente = await crearAgente({ nivel_requerido: "principiante" });
-    const { accessToken } = await getTokenWithClaim("principiante");
+describe("con acceso (plan completo) ve el contenido activo/publicado (fila entera, no sólo el contacto)", () => {
+  it("agentes: con acceso ve la fila completa, incluido el contacto", async () => {
+    const agente = await crearAgente({});
+    const { accessToken } = await getTokenWithClaim("completo");
     const cliente = clienteConToken(accessToken);
 
     const { data, error } = await cliente.from("agentes").select().eq("id", agente.id);
@@ -209,14 +204,38 @@ describe("principiante ve su nivel y NO ve avanzado (fila oculta entera, no sól
     expect(data).toHaveLength(1);
     // La fila entera está disponible acá (RLS no filtra columnas, sólo filas) —
     // es lib/data/agentes.ts + resolverSecreto() quien decide no mandar el
-    // contacto a un cliente sin nivel; RLS es la red de seguridad si alguien
+    // contacto a un cliente sin plan; RLS es la red de seguridad si alguien
     // se saltea esa capa.
     expect(data?.[0]?.contacto).toBe("contacto-secreto-de-test");
   });
 
-  it("agentes: principiante NO ve una fila nivel_requerido='avanzado' — la fila entera desaparece, no sólo el contacto", async () => {
-    const agente = await crearAgente({ nivel_requerido: "avanzado" });
-    const { accessToken } = await getTokenWithClaim("principiante");
+  it("videos: con acceso ve la fila publicada", async () => {
+    const video = await crearVideo({});
+    const { accessToken } = await getTokenWithClaim("completo");
+    const cliente = clienteConToken(accessToken);
+
+    const { data, error } = await cliente.from("videos").select().eq("id", video.id);
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+  });
+
+  it("servicios_financieros: con acceso ve la fila activa", async () => {
+    const servicio = await crearServicioFinanciero({});
+    const { accessToken } = await getTokenWithClaim("completo");
+    const cliente = clienteConToken(accessToken);
+
+    const { data } = await cliente
+      .from("servicios_financieros")
+      .select()
+      .eq("id", servicio.id);
+    expect(data).toHaveLength(1);
+  });
+});
+
+describe("activo=false / publicado=false: invisible para cualquier nivel, incluido con acceso", () => {
+  it("agentes: activo=false invisible incluso con acceso", async () => {
+    const agente = await crearAgente({ activo: false });
+    const { accessToken } = await getTokenWithClaim("completo");
     const cliente = clienteConToken(accessToken);
 
     const { data, error } = await cliente.from("agentes").select().eq("id", agente.id);
@@ -224,92 +243,9 @@ describe("principiante ve su nivel y NO ve avanzado (fila oculta entera, no sól
     expect(data).toHaveLength(0);
   });
 
-  it("videos: principiante ve principiante y NO ve avanzado", async () => {
-    const principiante = await crearVideo({ nivel_requerido: "principiante" });
-    const avanzado = await crearVideo({ nivel_requerido: "avanzado" });
-    const { accessToken } = await getTokenWithClaim("principiante");
-    const cliente = clienteConToken(accessToken);
-
-    const { data: dataPrincipiante, error: errorPrincipiante } = await cliente
-      .from("videos")
-      .select()
-      .eq("id", principiante.id);
-    expect(errorPrincipiante).toBeNull();
-    expect(dataPrincipiante).toHaveLength(1);
-
-    const { data: dataAvanzado, error: errorAvanzado } = await cliente
-      .from("videos")
-      .select()
-      .eq("id", avanzado.id);
-    expect(errorAvanzado).toBeNull();
-    expect(dataAvanzado).toHaveLength(0);
-  });
-
-  it("servicios_financieros: principiante ve principiante y NO ve avanzado", async () => {
-    const principiante = await crearServicioFinanciero({ nivel_requerido: "principiante" });
-    const avanzado = await crearServicioFinanciero({ nivel_requerido: "avanzado" });
-    const { accessToken } = await getTokenWithClaim("principiante");
-    const cliente = clienteConToken(accessToken);
-
-    const { data: dataPrincipiante } = await cliente
-      .from("servicios_financieros")
-      .select()
-      .eq("id", principiante.id);
-    expect(dataPrincipiante).toHaveLength(1);
-
-    const { data: dataAvanzado } = await cliente
-      .from("servicios_financieros")
-      .select()
-      .eq("id", avanzado.id);
-    expect(dataAvanzado).toHaveLength(0);
-  });
-});
-
-describe("avanzado ve tanto 'principiante' como 'avanzado' — y pin del ORDEN de declaración del enum", () => {
-  // El enum se declara `('ninguno', 'principiante', 'avanzado')`
-  // (20260822035923_init_plataforma.sql) y la policy compara con `<=` sobre
-  // ese orden de DECLARACIÓN, no alfabético. Alfabéticamente "avanzado" <
-  // "ninguno" < "principiante": si la comparación fuera alfabética, un claim
-  // 'avanzado' (el más chico alfabéticamente) NO vería una fila
-  // nivel_requerido='principiante' (alfabéticamente mayor). Este test falla
-  // exactamente así si un futuro `ALTER TYPE` reordenara el enum sin que
-  // nadie se diera cuenta.
-  it("agentes: avanzado ve una fila que requiere sólo 'principiante' (confirma orden de declaración, no alfabético)", async () => {
-    const agente = await crearAgente({ nivel_requerido: "principiante" });
-    const { accessToken } = await getTokenWithClaim("avanzado");
-    const cliente = clienteConToken(accessToken);
-
-    const { data, error } = await cliente.from("agentes").select().eq("id", agente.id);
-    expect(error).toBeNull();
-    expect(data).toHaveLength(1);
-  });
-
-  it("agentes: avanzado también ve una fila que requiere 'avanzado'", async () => {
-    const agente = await crearAgente({ nivel_requerido: "avanzado" });
-    const { accessToken } = await getTokenWithClaim("avanzado");
-    const cliente = clienteConToken(accessToken);
-
-    const { data, error } = await cliente.from("agentes").select().eq("id", agente.id);
-    expect(error).toBeNull();
-    expect(data).toHaveLength(1);
-    expect(data?.[0]?.contacto).toBe("contacto-secreto-de-test");
-  });
-});
-
-describe("activo=false / publicado=false: invisible para cualquier nivel, incluido avanzado", () => {
-  it("agentes: activo=false invisible incluso para avanzado", async () => {
-    const agente = await crearAgente({ nivel_requerido: "ninguno", activo: false });
-    const { accessToken } = await getTokenWithClaim("avanzado");
-    const cliente = clienteConToken(accessToken);
-
-    const { data, error } = await cliente.from("agentes").select().eq("id", agente.id);
-    expect(error).toBeNull();
-    expect(data).toHaveLength(0);
-  });
-
-  it("videos: publicado=false invisible incluso para avanzado", async () => {
-    const video = await crearVideo({ nivel_requerido: "ninguno", publicado: false });
-    const { accessToken } = await getTokenWithClaim("avanzado");
+  it("videos: publicado=false invisible incluso con acceso", async () => {
+    const video = await crearVideo({ publicado: false });
+    const { accessToken } = await getTokenWithClaim("completo");
     const cliente = clienteConToken(accessToken);
 
     const { data, error } = await cliente.from("videos").select().eq("id", video.id);
@@ -317,9 +253,9 @@ describe("activo=false / publicado=false: invisible para cualquier nivel, inclui
     expect(data).toHaveLength(0);
   });
 
-  it("servicios_financieros: activo=false invisible incluso para avanzado", async () => {
-    const servicio = await crearServicioFinanciero({ nivel_requerido: "ninguno", activo: false });
-    const { accessToken } = await getTokenWithClaim("avanzado");
+  it("servicios_financieros: activo=false invisible incluso con acceso", async () => {
+    const servicio = await crearServicioFinanciero({ activo: false });
+    const { accessToken } = await getTokenWithClaim("completo");
     const cliente = clienteConToken(accessToken);
 
     const { data, error } = await cliente
@@ -330,9 +266,9 @@ describe("activo=false / publicado=false: invisible para cualquier nivel, inclui
     expect(data).toHaveLength(0);
   });
 
-  it("profesionales: activo=false invisible incluso para avanzado", async () => {
+  it("profesionales: activo=false invisible incluso con acceso", async () => {
     const profesional = await crearProfesional({ activo: false });
-    const { accessToken } = await getTokenWithClaim("avanzado");
+    const { accessToken } = await getTokenWithClaim("completo");
     const cliente = clienteConToken(accessToken);
 
     const { data, error } = await cliente.from("profesionales").select().eq("id", profesional.id);
@@ -345,7 +281,7 @@ describe("un autenticado no puede INSERT/UPDATE/DELETE en ninguna de las 4 tabla
   it.each(["agentes", "videos", "profesionales", "servicios_financieros"] as const)(
     "%s: INSERT/UPDATE/DELETE rechazados para authenticated",
     async (tabla) => {
-      const { accessToken } = await getTokenWithClaim("avanzado");
+      const { accessToken } = await getTokenWithClaim("completo");
       const cliente = clienteConToken(accessToken);
 
       const insertPayload =
@@ -378,14 +314,14 @@ describe("un autenticado no puede INSERT/UPDATE/DELETE en ninguna de las 4 tabla
 describe("claim de nivel ausente o inválido: comportamiento REAL de hoy (VGRP-49)", () => {
   // El Custom Access Token Hook (supabase/migrations/20260822035925_auth_hook.sql)
   // SIEMPRE sobreescribe `app_metadata.nivel` con `profiles.nivel` — una
-  // columna tipada como el enum `nivel_acceso` — en CADA login. Por
-  // construcción, un JWT real emitido por este proyecto nunca puede traer un
-  // `app_metadata.nivel` ausente (el hook cae a 'ninguno', no a "ausente") ni
-  // inválido (la columna de origen no admite otro valor que el enum). Esto no
-  // se puede simular fabricando un JWT propio: no tenemos la clave privada
-  // ES256 del proyecto (mismo límite ya documentado en
-  // test/integration/claims.test.ts). El comportamiento real verificable acá
-  // es doble:
+  // columna tipada como el enum `nivel_acceso` (VGRP-59: ninguno/completo) —
+  // en CADA login. Por construcción, un JWT real emitido por este proyecto
+  // nunca puede traer un `app_metadata.nivel` ausente (el hook cae a
+  // 'ninguno', no a "ausente") ni inválido (la columna de origen no admite
+  // otro valor que el enum). Esto no se puede simular fabricando un JWT
+  // propio: no tenemos la clave privada ES256 del proyecto (mismo límite ya
+  // documentado en test/integration/claims.test.ts). El comportamiento real
+  // verificable acá es doble:
   it("la columna profiles.nivel (origen del claim) rechaza cualquier valor fuera del enum — por eso el claim nunca puede ser 'inválido' vía un login real", async () => {
     // Bug real de TEST encontrado corriendo esto por primera vez contra la base real
     // (ninguno de los 4 agentes de Bloque 9 pudo correr la suite real antes de este
@@ -432,7 +368,7 @@ describe("claim de nivel ausente o inválido: comportamiento REAL de hoy (VGRP-4
   });
 
   it("un token real con la firma corrompida (mismo mecanismo que claims.test.ts) es rechazado por PostgREST antes de llegar a evaluar RLS — nunca devuelve una fila real", async () => {
-    const { accessToken } = await getTokenWithClaim("avanzado");
+    const { accessToken } = await getTokenWithClaim("completo");
     const [header, payload, signature] = accessToken.split(".");
     const idx = Math.floor(payload.length / 2);
     const charOriginal = payload[idx];
@@ -455,13 +391,13 @@ describe("claim de nivel ausente o inválido: comportamiento REAL de hoy (VGRP-4
   });
 });
 
-describe("verificación de que el test sirve: SIN agentes_select_por_nivel, ni un usuario avanzado ve las filas (VGRP-49, criterio de aceptación 'romper a propósito')", () => {
-  it("desactivar la policy hace que incluso avanzado quede en 0 filas — confirma que el test de arriba depende de la policy real", async () => {
-    const agente = await crearAgente({ nivel_requerido: "avanzado" });
-    const { accessToken } = await getTokenWithClaim("avanzado");
+describe("verificación de que el test sirve: SIN agentes_select_con_acceso, ni un usuario con plan ve las filas (VGRP-49, criterio de aceptación 'romper a propósito')", () => {
+  it("desactivar la policy hace que incluso con acceso quede en 0 filas — confirma que el test de arriba depende de la policy real", async () => {
+    const agente = await crearAgente({});
+    const { accessToken } = await getTokenWithClaim("completo");
     const cliente = clienteConToken(accessToken);
 
-    await withPolicyDisabled(admin, "public", "agentes", "agentes_select_por_nivel", async () => {
+    await withPolicyDisabled(admin, "public", "agentes", "agentes_select_con_acceso", async () => {
       const { data, error } = await cliente.from("agentes").select().eq("id", agente.id);
       expect(error).toBeNull();
       // Con la policy activa, el test hermano de arriba espera 1 fila.

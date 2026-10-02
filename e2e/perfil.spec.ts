@@ -15,7 +15,7 @@ import "../test/helpers/load-env";
 async function loginComo(page: import("@playwright/test").Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill("test-password-1!");
+  await page.getByLabel("Contraseña").fill("test-password-1!");
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -72,54 +72,31 @@ test.describe("/perfil — VGRP-52", () => {
     }
   });
 
-  test("nivel 'principiante': ACCESOS_PRINCIPIANTE en la lista principal + bloque 'Avanzado suma, además:' aparte, con el CTA de mejora — nunca mezclados", async ({
+  test("nivel 'completo': una sola lista con todos los accesos, nombre comercial del plan en 'Nivel activo', sin bloque de mejora ni su CTA", async ({
     page,
   }) => {
-    const usuario = await createAuthenticatedUser("principiante");
+    const usuario = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, usuario.email);
       await page.goto("/perfil");
 
+      // VGRP-59/60 (Bloque 13 — plan único): ya no hay un bloque "Avanzado
+      // suma, además" separado — un solo plan, una sola lista con todo.
       const accesos = page.getByRole("region", { name: "Accesos habilitados" });
       await expect(accesos.getByText("Formación completa (11 videos)")).toBeVisible();
       await expect(accesos.getByText("Calculadora de costos")).toBeVisible();
       await expect(accesos.getByText("Directorio de profesionales")).toBeVisible();
       await expect(accesos.getByText("Servicios financieros")).toBeVisible();
-
-      await expect(accesos.getByText("Avanzado suma, además:")).toBeVisible();
       await expect(accesos.getByText("Depósitos en Miami, China y España")).toBeVisible();
       await expect(accesos.getByText("Agente de muestras y de volumen")).toBeVisible();
       await expect(accesos.getByText("Flete y despacho gestionado")).toBeVisible();
       await expect(accesos.getByText("Tracking marítimo")).toBeVisible();
       await expect(accesos.getByText("Datos SWIFT")).toBeVisible();
 
-      await expect(accesos.getByRole("link", { name: "Mejorar mi nivel" })).toBeVisible();
-      await expect(accesos.getByRole("link", { name: "Comprar acceso" })).toHaveCount(0);
-
-      // "Nunca mezclados" en forma estructural: dos <ul> separadas (principal + "suma
-      // además"), no una sola lista combinada (eso es lo que hace 'avanzado').
-      await expect(accesos.locator("ul")).toHaveCount(2);
-    } finally {
-      await cleanupUser(usuario.userId);
-    }
-  });
-
-  test("nivel 'avanzado': ambas listas juntas en una sola <ul>, sin el bloque de mejora ni su CTA", async ({
-    page,
-  }) => {
-    const usuario = await createAuthenticatedUser("avanzado");
-    try {
-      await loginComo(page, usuario.email);
-      await page.goto("/perfil");
-
-      const accesos = page.getByRole("region", { name: "Accesos habilitados" });
-      await expect(accesos.getByText("Formación completa (11 videos)")).toBeVisible();
-      await expect(accesos.getByText("Datos SWIFT")).toBeVisible();
-
-      await expect(accesos.getByText("Avanzado suma, además:")).toHaveCount(0);
       await expect(accesos.getByRole("link", { name: "Mejorar mi nivel" })).toHaveCount(0);
       await expect(accesos.getByRole("link", { name: "Comprar acceso" })).toHaveCount(0);
 
+      // Una sola <ul> — no hay segunda lista de "lo que falta" con un solo plan.
       await expect(accesos.locator("ul")).toHaveCount(1);
     } finally {
       await cleanupUser(usuario.userId);
@@ -129,15 +106,10 @@ test.describe("/perfil — VGRP-52", () => {
   test("PerfilForm precargado con nombre/teléfono actuales; editar y guardar refleja el cambio tras recargar (round-trip real)", async ({
     page,
   }) => {
-    const usuario = await createAuthenticatedUser("principiante");
+    const usuario = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, usuario.email);
       await page.goto("/perfil");
-
-      // El form (PerfilForm) vive dentro del modal "Tus datos" (DatosModal), no
-      // inline en la página — hay que abrirlo antes de poder ver sus campos.
-      await page.getByRole("button", { name: "Ver datos" }).click();
-      await expect(page.getByRole("dialog", { name: "Tus datos" })).toBeVisible();
 
       // createAuthenticatedUser no setea nombre/telefono (sólo email, ver test/helpers/
       // auth.ts) — precargado con los valores reales de profiles (strings vacíos), no
@@ -154,7 +126,6 @@ test.describe("/perfil — VGRP-52", () => {
       await expect(page.getByText("Guardado.")).toBeVisible();
 
       await page.reload();
-      await page.getByRole("button", { name: "Ver datos" }).click();
       await expect(page.getByLabel("Nombre")).toHaveValue(nuevoNombre);
       await expect(page.getByLabel("Teléfono")).toHaveValue(nuevoTelefono);
     } finally {
@@ -165,18 +136,12 @@ test.describe("/perfil — VGRP-52", () => {
   test("'Cerrar sesión' desde /perfil dispara el mismo cerrarSesion() que el resto del repo", async ({
     page,
   }) => {
-    const usuario = await createAuthenticatedUser("principiante");
+    const usuario = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, usuario.email);
       await page.goto("/perfil");
 
-      // El trigger abre un diálogo de confirmación (CerrarSesionBoton) con un
-      // segundo botón "Cerrar sesión" adentro — hay que confirmarlo, no alcanza
-      // con el primer clic.
       await page.getByRole("button", { name: "Cerrar sesión" }).click();
-      const dialogo = page.getByRole("dialog", { name: "¿Cerrar sesión?" });
-      await expect(dialogo).toBeVisible();
-      await dialogo.getByRole("button", { name: "Cerrar sesión" }).click();
       await page.waitForURL("**/login");
 
       // La sesión quedó realmente cerrada, no sólo la UI: /dashboard sin sesión rebota

@@ -4,7 +4,7 @@ import { CerrarSesionBoton } from "@/components/auth/CerrarSesionBoton";
 import { Icon } from "@/components/ui/Icon";
 import type { NivelAcceso } from "@/lib/auth/claims";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
-import { getLinks } from "@/lib/config";
+import { getLinks, getPlan } from "@/lib/config";
 import { DatosModal } from "./DatosModal";
 import styles from "./perfil.module.css";
 
@@ -18,16 +18,19 @@ import styles from "./perfil.module.css";
 //
 // El nivel mostrado sale de `profiles.nivel` (la misma fuente de verdad que
 // proyecta el claim del JWT — VGRP-24), nunca de un prop heredado ni de la URL.
+//
+// VGRP-59/60 (Bloque 13 — plan único): ya no hay "Principiante" vs "Avanzado"
+// ni un CTA de "mejorar mi nivel" — con un solo plan, sólo hay dos estados:
+// sin acceso (CTA de compra) o acceso completo (la lista entera, sin nada
+// bloqueado). El nombre comercial del plan ("Plan X" por ahora) sale de
+// `getPlan()` en vez de mostrar el identificador interno crudo del enum.
 // =============================================================================
 
-const ACCESOS_PRINCIPIANTE = [
+const ACCESOS_COMPLETO = [
   "Formación completa (11 videos)",
   "Calculadora de costos",
   "Directorio de profesionales",
   "Servicios financieros",
-];
-
-const ACCESOS_AVANZADO_ADICIONALES = [
   "Depósitos en Miami, China y España",
   "Agente de muestras y de volumen",
   "Flete y despacho gestionado",
@@ -44,9 +47,10 @@ export default async function PerfilPage() {
   }
 
   const supabase = await createSupabaseServerClient();
-  const [{ data: perfil, error }, links] = await Promise.all([
+  const [{ data: perfil, error }, links, plan] = await Promise.all([
     supabase.from("profiles").select("nombre, email, telefono, nivel").single(),
     getLinks(),
+    getPlan(),
   ]);
 
   if (error || !perfil) {
@@ -68,7 +72,7 @@ export default async function PerfilPage() {
             <p className={styles.eyebrow}>Tu cuenta</p>
             <h1 className={styles.titulo}>Perfil</h1>
             <p className={styles.nivelActivo}>
-              Nivel activo: <strong>{nivel}</strong>
+              Nivel activo: <strong>{nivel === "completo" ? plan.nombre : "Sin acceso"}</strong>
             </p>
           </div>
         </div>
@@ -95,39 +99,15 @@ export default async function PerfilPage() {
             </div>
           ) : (
             <>
+              <p className={styles.descripcion}>Tenés acceso completo a la plataforma.</p>
               <ul className={styles.lista}>
-                {ACCESOS_PRINCIPIANTE.map((item) => (
+                {ACCESOS_COMPLETO.map((item) => (
                   <li key={item} className={styles.acceso}>
                     <Icon name="check" size={18} className={styles.check} />
                     {item}
                   </li>
                 ))}
-                {nivel === "avanzado"
-                  ? ACCESOS_AVANZADO_ADICIONALES.map((item) => (
-                      <li key={item} className={styles.acceso}>
-                        <Icon name="check" size={18} className={styles.check} />
-                        {item}
-                      </li>
-                    ))
-                  : null}
               </ul>
-
-              {nivel === "principiante" ? (
-                <div className={styles.grupoCuerpo}>
-                  <p className={styles.descripcion}>Avanzado suma, además:</p>
-                  <ul className={styles.lista}>
-                    {ACCESOS_AVANZADO_ADICIONALES.map((item) => (
-                      <li key={item} className={`${styles.acceso} ${styles.accesoPendiente}`}>
-                        <Icon name="candado" size={16} className={styles.check} />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <NextLink href="/comprar" className={styles.ctaComprar}>
-                    Mejorar mi nivel
-                  </NextLink>
-                </div>
-              ) : null}
             </>
           )}
         </section>

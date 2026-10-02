@@ -20,7 +20,7 @@ import { PendienteClient } from "./PendienteClient";
 // =============================================================================
 
 function esNivelAcceso(value: string | undefined): value is NivelAcceso {
-  return value === "principiante" || value === "avanzado" || value === "ninguno";
+  return value === "completo" || value === "ninguno";
 }
 
 export default async function ComprarPendientePage({

@@ -13,16 +13,22 @@ import "../test/helpers/load-env";
 // agregarla (sería una decisión de STACK.md §10, fuera de alcance) y probar
 // esto en Playwright en su lugar.
 //
-// LÍMITE DE ENTORNO documentado (no arreglable desde este ticket, mismo
-// criterio que ya documentan VGRP-45/48 en docs/TESTING.md): la rama
-// `nivelActual === 'ninguno'` de ContenidoBloqueado (CTA "Comprar acceso")
-// nunca se alcanza desde una pantalla real. `middleware.ts` sólo reescribe
-// `/dashboard` -> `/dashboard/{principiante,avanzado}` (donde vive
-// <AgentesGrid>) cuando el nivel es justamente uno de esos dos; un usuario
-// `nivel='ninguno'` sigue viendo `app/(app)/dashboard/page.tsx` (VGRP-18),
-// que no usa <ContenidoBloqueado> en absoluto. No se simula esta rama acá
-// (sería justamente el tipo de test con RTL/render aislado que el ticket
-// pide no agregar) — queda anotado como pregunta abierta en el reporte final.
+// VGRP-59/60 (Bloque 13 — plan único): el gating por FILA (nivel_requerido
+// por agente) desapareció junto con la columna (ver supabase/migrations/
+// 20261002190000_plan_unico.sql, paso 5) — con un solo plan, un usuario con
+// el plan completo ve TODAS las filas con contacto resuelto; RLS directamente
+// no devuelve ninguna fila a un usuario 'ninguno' (gating todo-o-nada, no por
+// fila). El escenario "misma pantalla, algunas filas bloqueadas y otras no
+// para el mismo usuario" que este archivo probaba ya no es alcanzable — se
+// reemplaza por confirmar que un usuario con el plan completo ve el contacto
+// real de un agente sembrado.
+//
+// La rama `nivelActual === 'ninguno'` de ContenidoBloqueado (CTA "Comprar
+// acceso") sigue sin ser alcanzable desde una pantalla real por el mismo
+// motivo documentado antes de este cambio: `middleware.ts` sólo reescribe
+// `/dashboard` -> `/dashboard/completo` cuando el nivel es 'completo'; un
+// usuario `nivel='ninguno'` ve `app/(app)/dashboard/page.tsx` (VGRP-18), que
+// no usa <ContenidoBloqueado> en absoluto.
 // =============================================================================
 
 const MARCADOR = "[test] e2e-gating";
@@ -31,12 +37,12 @@ const PASSWORD = "test-password-1!"; // default de createAuthenticatedUser
 async function loginComo(page: import("@playwright/test").Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Contraseña").fill(PASSWORD);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
 
-test.describe("ContenidoBloqueado en AgentesGrid — nunca oculta sin explicar (VGRP-49)", () => {
+test.describe("AgentesGrid con el plan completo — contenido nunca queda oculto sin explicar (VGRP-49/59)", () => {
   let userId: string | null = null;
   const agenteIds: string[] = [];
   const admin = createTestAdminClient();
@@ -51,14 +57,13 @@ test.describe("ContenidoBloqueado en AgentesGrid — nunca oculta sin explicar (
     }
   });
 
-  test("bloqueado=true: el contacto NO está en el HTML (no oculto por CSS), muestra el nivel que desbloquea, y el CTA es 'Mejorar mi nivel' para un usuario con nivel propio", async ({
+  test("un usuario con el plan completo ve el contacto real del agente, sin ningún candado", async ({
     page,
     browser,
   }) => {
     const sufijo = crypto.randomUUID();
-    const nombreBloqueado = `${MARCADOR} bloqueado ${sufijo}`;
-    const nombreDesbloqueado = `${MARCADOR} desbloqueado ${sufijo}`;
-    const contactoSecreto = `contacto-secreto-e2e-${sufijo}`;
+    const nombre = `${MARCADOR} ${sufijo}`;
+    const contacto = `contacto-visible-e2e-${sufijo}`;
 
     // VGRP-55 punto 1 — sembrado vía la API real de admin (no un insert
     // directo): lib/data/agentes.ts cachea la lectura de filas y sólo se
@@ -66,47 +71,24 @@ test.describe("ContenidoBloqueado en AgentesGrid — nunca oculta sin explicar (
     // escritura real. Un insert directo podía dejar la grilla sirviendo la
     // lista vieja desde caché, sin este agente — ver
     // test/helpers/admin-content-seed.ts.
-    const bloqueado = await sembrarAgenteViaAdmin(browser, {
-      nombre: nombreBloqueado,
+    const agente = await sembrarAgenteViaAdmin(browser, {
+      nombre,
       especialidad: "Especialidad test",
-      nivel_requerido: "avanzado",
-      contacto: contactoSecreto,
+      contacto,
     });
-    agenteIds.push(bloqueado.id);
+    agenteIds.push(agente.id);
 
-    const desbloqueado = await sembrarAgenteViaAdmin(browser, {
-      nombre: nombreDesbloqueado,
-      especialidad: "Especialidad test",
-      nivel_requerido: "principiante",
-      contacto: "contacto-visible-e2e",
-    });
-    agenteIds.push(desbloqueado.id);
-
-    const creado = await createAuthenticatedUser("principiante");
+    const creado = await createAuthenticatedUser("completo");
     userId = creado.userId;
     await loginComo(page, creado.email);
 
-    // publicMeta (nombre) SIEMPRE visible, esté bloqueado o no.
-    await expect(page.getByText(nombreBloqueado)).toBeVisible();
+    // publicMeta (nombre) siempre visible.
+    await expect(page.getByText(nombre)).toBeVisible();
 
-    // El contacto real NUNCA está en el HTML — no es un chequeo de
-    // visibilidad (que un `display:none` pasaría igual), es que el string ni
-    // siquiera llegó al DOM ni al bundle servido.
-    const html = await page.content();
-    expect(html).not.toContain(contactoSecreto);
-
-    // Localiza la card de este agente específico (evita pisarse con otras
-    // filas reales que puedan existir en la tabla) y confirma, DENTRO de esa
-    // card: el nivel que desbloquea, y el CTA correcto.
-    const cardBloqueada = page.locator("div", { hasText: nombreBloqueado }).last();
-    await expect(cardBloqueada.getByText("Avanzado")).toBeVisible();
-    await expect(cardBloqueada.getByRole("link", { name: "Mejorar mi nivel" })).toBeVisible();
-    await expect(cardBloqueada.getByRole("link", { name: "Comprar acceso" })).toHaveCount(0);
-
-    // Control: bloqueado=false -> el contacto SÍ está, tal cual (children sin
-    // envolver).
-    const cardDesbloqueada = page.locator("div", { hasText: nombreDesbloqueado }).last();
-    await expect(cardDesbloqueada.getByText("contacto-visible-e2e")).toBeVisible();
-    await expect(cardDesbloqueada.getByRole("link", { name: "Mejorar mi nivel" })).toHaveCount(0);
+    // Con el plan completo, el contacto real está en el DOM — no hay candado
+    // ni CTA de compra/mejora de nivel para este agente.
+    const card = page.locator("div", { hasText: nombre }).last();
+    await expect(card.getByText(contacto)).toBeVisible();
+    await expect(card.getByRole("link", { name: "Comprar acceso" })).toHaveCount(0);
   });
 });

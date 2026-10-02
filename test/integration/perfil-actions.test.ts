@@ -119,7 +119,7 @@ describe("actualizarPerfil — VGRP-33/VGRP-52", () => {
     let telefonoOriginal: string | null;
 
     beforeAll(async () => {
-      const created = await createAuthenticatedUser("principiante");
+      const created = await createAuthenticatedUser("completo");
       userId = created.userId;
       email = created.email;
 
@@ -203,7 +203,7 @@ describe("actualizarPerfil — VGRP-33/VGRP-52", () => {
     });
 
     it("actualiza profiles.nombre/telefono de verdad en la base y llama a revalidatePath('/perfil')", async () => {
-      const created = await createAuthenticatedUser("principiante");
+      const created = await createAuthenticatedUser("completo");
       userId = created.userId;
       await loguear(created.email);
 
@@ -231,7 +231,7 @@ describe("actualizarPerfil — VGRP-33/VGRP-52", () => {
     });
 
     it("LA GARANTÍA DURA: un FormData con nivel/rol agregados a mano NO cambia profiles.nivel/rol (probado contra la base real)", async () => {
-      const created = await createAuthenticatedUser("principiante", "user");
+      const created = await createAuthenticatedUser("completo", "user");
       userId = created.userId;
       await loguear(created.email);
 
@@ -242,7 +242,7 @@ describe("actualizarPerfil — VGRP-33/VGRP-52", () => {
       // Nadie en el <form> real manda estos campos — un FormData armado a mano (o un
       // atacante con devtools) sí podría. `perfilSchema` sólo lee `nombre`/`telefono` de
       // acá, así que esto no debería llegar ni siquiera a construir el `.update()`.
-      fd.set("nivel", "avanzado");
+      fd.set("nivel", "completo");
       fd.set("rol", "admin");
 
       const resultado = await actualizarPerfil(INITIAL_ACTION_STATE, fd);
@@ -254,14 +254,14 @@ describe("actualizarPerfil — VGRP-33/VGRP-52", () => {
         .eq("id", userId)
         .single();
       expect(error).toBeNull();
-      expect(data?.nivel).toBe("principiante");
+      expect(data?.nivel).toBe("completo");
       expect(data?.rol).toBe("user");
       expect(data?.nombre).toBe("Intento de escalar privilegios");
     });
 
     it("un usuario sólo edita su propia fila: el .eq('id', userId) usa el claim propio, nunca un id ajeno", async () => {
-      const userA = await createAuthenticatedUser("principiante");
-      const userB = await createAuthenticatedUser("avanzado");
+      const userA = await createAuthenticatedUser("completo");
+      const userB = await createAuthenticatedUser("completo");
       userId = userA.userId; // limpiado por el afterEach; userB se limpia acá abajo.
 
       try {

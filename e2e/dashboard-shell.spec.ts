@@ -7,9 +7,11 @@ import "../test/helpers/load-env";
 // VGRP-27 — shell del dashboard: header, drawer de navegación, y logout.
 //
 // Cubre las dos partes del ticket que necesitan un browser real (no Vitest):
-// 1. Las dos variantes prerenderizadas (`/dashboard/principiante` y
-//    `/dashboard/avanzado`, vía rewrite de middleware.ts) responden con
-//    sesión real, sin asumir nada del mecanismo interno — ver design.md.
+// 1. La variante prerenderizada (`/dashboard/completo`, vía rewrite de
+//    middleware.ts) responde con sesión real, sin asumir nada del mecanismo
+//    interno — ver design.md. VGRP-59/60 (Bloque 13 — plan único) borró la
+//    variante 'principiante' — antes había dos variantes para loguear
+//    (principiante/avanzado), ahora sólo una (completo).
 // 2. El drawer: abre con teclado, atrapa el foco, Comunidad/Tracking se ven
 //    pero NO son links navegables, y Escape cierra devolviendo el foco al
 //    trigger (criterios de aceptación de requirements.md, US-2).
@@ -26,40 +28,35 @@ const PASSWORD = "test-password-1!"; // default de createAuthenticatedUser
 async function loginComo(page: import("@playwright/test").Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Contraseña").fill(PASSWORD);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
 
-test.describe("shell del dashboard por nivel (VGRP-27)", () => {
-  for (const nivel of ["principiante", "avanzado"] as const) {
-    test(`login real de un usuario '${nivel}' llega a /dashboard con la variante prerenderizada correcta`, async ({
-      page,
-    }) => {
-      const created = await createAuthenticatedUser(nivel);
-      try {
-        await loginComo(page, created.email);
+test.describe("shell del dashboard con el plan completo (VGRP-27/59)", () => {
+  test("login real de un usuario 'completo' llega a /dashboard con la variante prerenderizada correcta", async ({
+    page,
+  }) => {
+    const created = await createAuthenticatedUser("completo");
+    try {
+      await loginComo(page, created.email);
 
-        // La URL visible sigue siendo /dashboard (rewrite, no redirect) —
-        // confirmado también contra el output de red durante el desarrollo.
-        expect(page.url()).toContain("/dashboard");
-        await expect(page.getByRole("heading", { name: `Nivel ${nivel}` })).toBeVisible();
-        // Ningún rastro del otro nivel ni del estado "ninguno" en pantalla.
-        const otro = nivel === "principiante" ? "avanzado" : "principiante";
-        await expect(page.getByText(`Nivel ${otro}`)).toHaveCount(0);
-        await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toHaveCount(0);
-      } finally {
-        await cleanupUser(created.userId);
-      }
-    });
-  }
+      // La URL visible sigue siendo /dashboard (rewrite, no redirect) —
+      // confirmado también contra el output de red durante el desarrollo.
+      expect(page.url()).toContain("/dashboard");
+      await expect(page.getByRole("heading", { name: "Nivel completo" })).toBeVisible();
+      await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toHaveCount(0);
+    } finally {
+      await cleanupUser(created.userId);
+    }
+  });
 });
 
 test.describe("drawer de navegación (VGRP-27)", () => {
   test("abre con teclado, atrapa el foco, marca Comunidad/Tracking como Próximamente (no navegables), y Escape cierra devolviendo el foco", async ({
     page,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, created.email);
 
@@ -99,7 +96,7 @@ test.describe("drawer de navegación (VGRP-27)", () => {
   test("el pie del drawer muestra el email del usuario y 'Cerrar sesión' termina la sesión de verdad", async ({
     page,
   }) => {
-    const created = await createAuthenticatedUser("principiante");
+    const created = await createAuthenticatedUser("completo");
     try {
       await loginComo(page, created.email);
 

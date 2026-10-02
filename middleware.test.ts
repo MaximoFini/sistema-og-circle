@@ -299,9 +299,9 @@ describe("middleware", () => {
       expect(new URL(destino as string).pathname).toBe("/dashboard/ninguno");
     });
 
-    it("sesión + nivel='principiante': rewrite a /dashboard/principiante", async () => {
+    it("sesión + nivel='completo': rewrite a /dashboard/completo", async () => {
       mockGetClaims.mockResolvedValue({
-        data: { claims: { sub: "u1", app_metadata: { nivel: "principiante" } } },
+        data: { claims: { sub: "u2", app_metadata: { nivel: "completo" } } },
         error: null,
       });
       const { middleware } = await import("./middleware");
@@ -311,10 +311,12 @@ describe("middleware", () => {
       expect(res.status).toBe(200);
       const destino = res.headers.get("x-middleware-rewrite");
       expect(destino).not.toBeNull();
-      expect(new URL(destino as string).pathname).toBe("/dashboard/principiante");
+      expect(new URL(destino as string).pathname).toBe("/dashboard/completo");
     });
 
-    it("sesión + nivel='avanzado': rewrite a /dashboard/avanzado", async () => {
+    // VGRP-60 — transición de tokens: un JWT viejo con 'avanzado' (emitido
+    // antes del deploy de VGRP-59) se mapea a 'completo' por getNivel().
+    it("sesión + nivel='avanzado' (token viejo): rewrite a /dashboard/completo", async () => {
       mockGetClaims.mockResolvedValue({
         data: { claims: { sub: "u2", app_metadata: { nivel: "avanzado" } } },
         error: null,
@@ -326,12 +328,12 @@ describe("middleware", () => {
       expect(res.status).toBe(200);
       const destino = res.headers.get("x-middleware-rewrite");
       expect(destino).not.toBeNull();
-      expect(new URL(destino as string).pathname).toBe("/dashboard/avanzado");
+      expect(new URL(destino as string).pathname).toBe("/dashboard/completo");
     });
 
     it("el rewrite no aplica a otras rutas privadas (p. ej. /comprar)", async () => {
       mockGetClaims.mockResolvedValue({
-        data: { claims: { sub: "u1", app_metadata: { nivel: "principiante" } } },
+        data: { claims: { sub: "u1", app_metadata: { nivel: "completo" } } },
         error: null,
       });
       const { middleware } = await import("./middleware");
@@ -373,7 +375,9 @@ describe("middleware", () => {
       expect(new URL(res.headers.get("location") as string).pathname).toBe("/comprar");
     });
 
-    it.each(["principiante", "avanzado"])(
+    // VGRP-60 — 'avanzado' es un token viejo (transición): tieneAcceso()
+    // también debe darle paso, vía el mapeo de getNivel().
+    it.each(["completo", "avanzado"])(
       "sesión + nivel='%s': pasa (200, sin redirect)",
       async (nivel) => {
         mockGetClaims.mockResolvedValue(conNivel(nivel));
@@ -476,7 +480,7 @@ describe("middleware", () => {
 
     it("rewrite de /dashboard a la variante estática también reenvía los claims verificados", async () => {
       mockGetClaims.mockResolvedValue({
-        data: { claims: { sub: "u1", app_metadata: { nivel: "avanzado" } } },
+        data: { claims: { sub: "u1", app_metadata: { nivel: "completo" } } },
         error: null,
       });
       const { middleware } = await import("./middleware");
@@ -487,7 +491,7 @@ describe("middleware", () => {
       expect(forwarded).not.toBeNull();
       expect(JSON.parse(atob(forwarded as string))).toEqual({
         sub: "u1",
-        app_metadata: { nivel: "avanzado" },
+        app_metadata: { nivel: "completo" },
       });
     });
   });

@@ -37,7 +37,7 @@ test("el admin reprocesa un pago aprobado sin aplicar y el nivel del usuario sub
   const ins = await insertarPago(admin, {
     userId: objetivo.userId,
     proveedorRef: ref,
-    nivelComprado: "avanzado",
+    nivelComprado: "completo",
     montoArs: 5000,
     estado: "approved",
     payloadRaw: { id: 1, status: "approved" },
@@ -69,7 +69,7 @@ test("el admin reprocesa un pago aprobado sin aplicar y el nivel del usuario sub
       .select("nivel")
       .eq("id", objetivo.userId)
       .single();
-    expect(perfil?.nivel).toBe("avanzado");
+    expect(perfil?.nivel).toBe("completo");
   } finally {
     await cleanupUser(objetivo.userId);
   }

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { configSchema } from "./schema";
 
-// Hallazgo de auditoría del panel de admin (Bloque 9): configSchema validaba
-// cada precio por separado (positive(), int()) pero no impedía que el precio
-// de 'avanzado' quedara por debajo del de 'principiante' — un PATCH así
-// pasaba la validación igual. Ver el .refine() de schema.ts.
+// VGRP-59/60 (Bloque 13 — plan único): `precios` pasó de { principiante,
+// avanzado } (con el .refine() de "avanzado >= principiante") a un solo
+// precio { plan }. Ya no hay dos precios que comparar entre sí, así que ese
+// refine desapareció — este archivo ahora sólo cubre la forma del schema.
 
-const PRECIOS_BASE = { principiante: 75_000, avanzado: 125_000 };
+const PRECIOS_BASE = { plan: 90_000 };
+const PLAN_BASE = { nombre: "Plan X" };
 const FLAGS_BASE = { checkout_habilitado: true, registro_habilitado: true, fase: "1" } as const;
 const LINKS_BASE = {
   calculadora: "https://ogcircle.example/calculadora",
@@ -14,34 +15,37 @@ const LINKS_BASE = {
   traxcargo: "https://traxcargo.example",
 };
 
-function config(precios: { principiante: number; avanzado: number }) {
-  return { precios, flags: FLAGS_BASE, links: LINKS_BASE };
+function config(precios: { plan: number }) {
+  return { precios, plan: PLAN_BASE, flags: FLAGS_BASE, links: LINKS_BASE };
 }
 
-describe("configSchema — precios.avanzado >= precios.principiante", () => {
-  it("avanzado > principiante -> válido", () => {
+describe("configSchema — precios.plan", () => {
+  it("un entero positivo es válido", () => {
     expect(configSchema.safeParse(config(PRECIOS_BASE)).success).toBe(true);
   });
 
-  it("avanzado === principiante -> válido (empate permitido, sólo se prohíbe que sea MENOR)", () => {
-    expect(configSchema.safeParse(config({ principiante: 75_000, avanzado: 75_000 })).success).toBe(
-      true,
-    );
+  it("cero o negativo es inválido", () => {
+    expect(configSchema.safeParse(config({ plan: 0 })).success).toBe(false);
+    expect(configSchema.safeParse(config({ plan: -1 })).success).toBe(false);
   });
 
-  it("avanzado < principiante -> inválido, error en el campo 'avanzado'", () => {
-    const resultado = configSchema.safeParse(config({ principiante: 125_000, avanzado: 75_000 }));
-    expect(resultado.success).toBe(false);
-    if (!resultado.success) {
-      expect(resultado.error.issues[0]?.path).toEqual(["precios", "avanzado"]);
-    }
+  it("no entero es inválido", () => {
+    expect(configSchema.safeParse(config({ plan: 90_000.5 })).success).toBe(false);
   });
 
-  it("el schema de sólo precios (configSchema.shape.precios, el que usa patchBodySchema) aplica la misma regla", () => {
-    const resultado = configSchema.shape.precios.safeParse({
-      principiante: 125_000,
-      avanzado: 75_000,
-    });
-    expect(resultado.success).toBe(false);
+  it("el schema de sólo precios (configSchema.shape.precios, el que usa patchBodySchema) valida igual", () => {
+    expect(configSchema.shape.precios.safeParse({ plan: 90_000 }).success).toBe(true);
+    expect(configSchema.shape.precios.safeParse({ plan: -1 }).success).toBe(false);
+  });
+});
+
+describe("configSchema — plan.nombre", () => {
+  it("un string no vacío es válido", () => {
+    expect(configSchema.shape.plan.safeParse({ nombre: "Plan X" }).success).toBe(true);
+  });
+
+  it("vacío o sólo espacios es inválido", () => {
+    expect(configSchema.shape.plan.safeParse({ nombre: "" }).success).toBe(false);
+    expect(configSchema.shape.plan.safeParse({ nombre: "   " }).success).toBe(false);
   });
 });

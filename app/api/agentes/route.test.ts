@@ -44,15 +44,15 @@ describe("GET /api/agentes", () => {
   });
 
   it("nivelActual sale de getNivel(claims) — el mismo claims que se le pasa a obtenerAgentesCacheados, nunca de otro lado", async () => {
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "principiante" } });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "completo" } });
     mockObtenerAgentesCacheados.mockResolvedValue([]);
 
     const res = await call();
     const body = await res.json();
 
-    expect(body.nivelActual).toBe("principiante");
+    expect(body.nivelActual).toBe("completo");
     expect(mockObtenerAgentesCacheados).toHaveBeenCalledWith({
-      app_metadata: { nivel: "principiante" },
+      app_metadata: { nivel: "completo" },
     });
   });
 
@@ -73,11 +73,11 @@ describe("GET /api/agentes", () => {
     // Request con ?nivel=avanzado) no cambia nada: la firma real de GET no
     // los declara, así que en runtime se ignoran por completo. Lo único que
     // decide la respuesta es lo que devuelve el mock de getVerifiedClaims.
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "principiante" } });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "completo" } });
     mockObtenerAgentesCacheados.mockResolvedValue([
       {
         id: "a1",
-        publicMeta: { nombre: "x", especialidad: "y", nivelRequerido: "avanzado" },
+        publicMeta: { nombre: "x", especialidad: "y", nivelRequerido: "completo" },
         contacto: null,
       },
     ]);
@@ -85,18 +85,18 @@ describe("GET /api/agentes", () => {
     const { GET } = await import("./route");
     const requestConNivelInyectado = new Request(
       "https://ogcircle.example/api/agentes?nivel=avanzado",
-      { headers: { "x-nivel-forzado": "avanzado" } },
+      { headers: { "x-nivel-forzado": "completo" } },
     );
     // biome-ignore lint/suspicious/noExplicitAny: GET real no acepta argumentos; se fuerza a mano para probar que, aunque se le pasen, no hacen nada.
-    const res = await (GET as any)(requestConNivelInyectado, { nivel: "avanzado" });
+    const res = await (GET as any)(requestConNivelInyectado, { nivel: "completo" });
     const body = await res.json();
 
-    expect(body.nivelActual).toBe("principiante");
+    expect(body.nivelActual).toBe("completo");
     expect(body.agentes[0].contacto).toBeNull();
   });
 
   it("si obtenerAgentesCacheados tira (Postgres real o cualquier otra falla), la respuesta es 500 genérica y NUNCA el mensaje crudo de la excepción", async () => {
-    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "avanzado" } });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "completo" } });
     const errorCrudoDePostgres = new Error(
       'column "contacto_secreto_interno" does not exist — detalle interno de schema',
     );

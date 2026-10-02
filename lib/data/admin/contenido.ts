@@ -15,20 +15,11 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import {
-  Constants,
-  type Database,
-  type Json,
-  type Tables,
-  type TablesInsert,
-  type TablesUpdate,
-} from "../../database.types";
+import type { Database, Json, Tables, TablesInsert, TablesUpdate } from "../../database.types";
 import { videoProvider } from "../../video/provider";
 import type { ResultadoMutacion } from "./audit-log";
 
 type AdminClient = SupabaseClient<Database>;
-
-const NIVELES = Constants.public.Enums.nivel_acceso;
 
 export const ENTIDADES = ["agentes", "videos", "profesionales", "servicios_financieros"] as const;
 export type Entidad = (typeof ENTIDADES)[number];
@@ -70,7 +61,6 @@ export class ItemNoEncontrado extends Error {
 const agenteSchema = z.object({
   nombre: z.string().trim().min(1),
   especialidad: z.string().trim().min(1),
-  nivel_requerido: z.enum(NIVELES),
   contacto: z.string().trim().min(1).nullable().optional(),
   orden: z.number().int(),
   activo: z.boolean(),
@@ -104,9 +94,6 @@ const videoSchema = z.object({
       return z.NEVER;
     })
     .optional(),
-  // Ver comment de columna en la migración: existe por paridad de schema,
-  // VGRP-29 documenta que no se aplica gating real sobre la formación.
-  nivel_requerido: z.enum(NIVELES),
   // El admin ya no tipea el orden de un video: lo define arrastrando en el
   // listado (reordenarVideos). Al crear, si no viene, queda al final.
   orden: z.number().int().optional(),
@@ -125,7 +112,6 @@ const profesionalSchema = z.object({
 const servicioFinancieroSchema = z.object({
   titulo: z.string().trim().min(1),
   descripcion: z.string().trim().nullable().optional(),
-  nivel_requerido: z.enum(NIVELES),
   orden: z.number().int(),
   activo: z.boolean(),
 });

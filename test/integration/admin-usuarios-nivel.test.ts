@@ -87,9 +87,9 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
     const objetivo = objetivoId as string;
     const actor = adminId as string;
 
-    const res = await req({ nivel: "avanzado", motivo: "pagó por transferencia" }, objetivo);
+    const res = await req({ nivel: "completo", motivo: "pagó por transferencia" }, objetivo);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "avanzado" });
+    expect(await res.json()).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "completo" });
 
     const { data: override, error: overrideError } = await admin
       .from("nivel_overrides")
@@ -97,7 +97,7 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
       .eq("user_id", objetivo)
       .single();
     expect(overrideError).toBeNull();
-    expect(override?.nivel).toBe("avanzado");
+    expect(override?.nivel).toBe("completo");
     expect(override?.motivo).toBe("pagó por transferencia");
     expect(override?.actor_id).toBe(actor);
 
@@ -107,14 +107,14 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
       .eq("id", objetivo)
       .single();
     expect(profileError).toBeNull();
-    expect(profile?.nivel).toBe("avanzado");
+    expect(profile?.nivel).toBe("completo");
 
     const { data: authUser, error: authError } = await withAuthRetry(() =>
       admin.auth.admin.getUserById(objetivo),
     );
     expect(authError).toBeNull();
     expect((authUser?.user?.app_metadata as Record<string, unknown> | undefined)?.nivel).toBe(
-      "avanzado",
+      "completo",
     );
 
     const { data: audit, error: auditError } = await admin
@@ -132,7 +132,7 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
   it("body sin motivo -> 400, y NO se insertó fila en nivel_overrides ni en admin_audit_log", async () => {
     const objetivo = objetivoId as string;
 
-    const res = await req({ nivel: "avanzado" }, objetivo);
+    const res = await req({ nivel: "completo" }, objetivo);
     expect(res.status).toBe(400);
 
     const { data: overrides } = await admin
@@ -152,7 +152,7 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
   it("motivo en blanco -> 400, y NO se insertó fila en nivel_overrides ni en admin_audit_log", async () => {
     const objetivo = objetivoId as string;
 
-    const res = await req({ nivel: "avanzado", motivo: "   " }, objetivo);
+    const res = await req({ nivel: "completo", motivo: "   " }, objetivo);
     expect(res.status).toBe(400);
 
     const { data: overrides } = await admin
@@ -173,7 +173,7 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
     const objetivo = objetivoId as string;
 
     const res = await req(
-      { nivel: "principiante", motivo: "activación manual de prueba" },
+      { nivel: "completo", motivo: "activación manual de prueba" },
       objetivo,
     );
     expect(res.status).toBe(200);
@@ -186,7 +186,7 @@ describe("POST /api/admin/usuarios/[id]/nivel — integración real (VGRP-47 §3
     );
     expect(error).toBeNull();
     expect((authUser?.user?.app_metadata as Record<string, unknown> | undefined)?.nivel).toBe(
-      "principiante",
+      "completo",
     );
   });
 });
