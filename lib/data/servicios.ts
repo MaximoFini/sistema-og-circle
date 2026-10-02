@@ -1,10 +1,9 @@
 // VGRP-32 — lectura de la tabla `servicios_financieros`. A diferencia de agentes
 // (publicMeta + secret DENTRO de la misma fila), acá el gating es de la FILA
 // COMPLETA: no hay una columna separada tipo "swift_data" en el schema (ver
-// migración de VGRP-38) — la información sensible (incluido SWIFT en las filas
-// nivel_requerido='avanzado') vive en `descripcion`. `titulo` siempre se muestra
-// (nunca desaparece sin explicación, PRD §6); `descripcion` es lo que
-// `resolverSecreto()` gatea.
+// migración de VGRP-38) — la información sensible (incluido SWIFT) vive en
+// `descripcion`. `titulo` siempre se muestra (nunca desaparece sin explicación,
+// PRD §6); `descripcion` es lo que `resolverSecreto()` gatea.
 //
 // VGRP-55 punto 1 — la LECTURA de filas se cachea (unstable_cache, mismo patrón que
 // lib/data/videos.ts); `resolverSecreto()` se sigue aplicando SIEMPRE afuera de esa
@@ -15,7 +14,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
-import type { AppMetadataClaims, NivelAcceso } from "../auth/claims";
+import type { AppMetadataClaims } from "../auth/claims";
 import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { TAG_POR_ENTIDAD } from "./admin/contenido";
@@ -28,16 +27,14 @@ export interface ServicioFinancieroPublico {
   id: string;
   publicMeta: {
     titulo: string;
-    nivelRequerido: NivelAcceso;
   };
-  /** null = bloqueado (nivel insuficiente) — nunca se envía la descripción real. */
+  /** null = bloqueado (sin plan) — nunca se envía la descripción real. */
   descripcion: string | null;
 }
 
 interface ServicioFila {
   id: string;
   titulo: string;
-  nivel_requerido: NivelAcceso;
   /** CRUDA (puede traer datos SWIFT) — sólo se cachea esto, nunca el resultado
    *  ya filtrado por `resolverSecreto()`. */
   descripcion: string | null;
@@ -46,7 +43,7 @@ interface ServicioFila {
 async function obtenerFilasServicios(admin: AdminClient): Promise<ServicioFila[]> {
   const { data, error } = await admin
     .from("servicios_financieros")
-    .select("id, titulo, descripcion, nivel_requerido")
+    .select("id, titulo, descripcion")
     .eq("activo", true)
     .order("orden", { ascending: true });
   if (error) throw error;
@@ -67,9 +64,8 @@ function resolverServicios(
     id: fila.id,
     publicMeta: {
       titulo: fila.titulo,
-      nivelRequerido: fila.nivel_requerido,
     },
-    descripcion: resolverSecreto(claims, fila.nivel_requerido, fila.descripcion),
+    descripcion: resolverSecreto(claims, fila.descripcion),
   }));
 }
 

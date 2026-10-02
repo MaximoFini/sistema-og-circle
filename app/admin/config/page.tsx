@@ -1,4 +1,4 @@
-import { getFlags, getPrecios } from "@/lib/config";
+import { getFlags, getPlan, getPrecios } from "@/lib/config";
 import styles from "../admin.module.css";
 import { FlagsForm } from "./FlagsForm";
 import { PreciosForm } from "./PreciosForm";
@@ -12,7 +12,7 @@ import { PreciosForm } from "./PreciosForm";
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage() {
-  const [precios, flags] = await Promise.all([getPrecios(), getFlags()]);
+  const [precios, plan, flags] = await Promise.all([getPrecios(), getPlan(), getFlags()]);
 
   return (
     <div className={styles.page}>
@@ -26,7 +26,7 @@ export default async function ConfigPage() {
       <section className={styles.seccion}>
         <h2 className={styles.seccionTitulo}>Precios</h2>
         {precios.ok ? (
-          <PreciosForm preciosIniciales={precios.precios} />
+          <PreciosForm preciosIniciales={precios.precios} planIniciales={plan} />
         ) : (
           <p className={styles.avisoFiltro}>
             No se pudieron leer los precios actuales de Edge Config ({precios.error}). No se muestra

@@ -139,7 +139,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
         pagoMp({
           id: Number(paymentId),
           external_reference: userId,
-          metadata: { nivel: "principiante" },
+          metadata: { nivel: "completo" },
           transaction_amount: 75000,
         }),
       ),
@@ -149,11 +149,11 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
     const res = await POST(webhookRequest(paymentId));
 
     expect(res.status).toBe(200);
-    expect(await nivelDe(userId)).toBe("principiante");
-    expect(await claimNivelDe(userId)).toBe("principiante");
+    expect(await nivelDe(userId)).toBe("completo");
+    expect(await claimNivelDe(userId)).toBe("completo");
     const pagos = await pagosDe(userId);
     expect(pagos).toHaveLength(1);
-    expect(pagos[0]).toMatchObject({ estado: "approved", nivel_comprado: "principiante" });
+    expect(pagos[0]).toMatchObject({ estado: "approved", nivel_comprado: "completo" });
   });
 
   it("reintento idéntico del mismo paymentId: 200, cero filas nuevas, nivel estable", async () => {
@@ -165,7 +165,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
         pagoMp({
           id: Number(paymentId),
           external_reference: userId,
-          metadata: { nivel: "avanzado" },
+          metadata: { nivel: "completo" },
           transaction_amount: 125000,
         }),
       ),
@@ -181,7 +181,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
 
     const pagos = await pagosDe(userId);
     expect(pagos).toHaveLength(1);
-    expect(await nivelDe(userId)).toBe("avanzado");
+    expect(await nivelDe(userId)).toBe("completo");
   });
 
   it("un status inventado en el body nunca pisa el status real de la API (sólo importa lo que devuelve paymentClient.get)", async () => {
@@ -197,7 +197,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
           id: Number(paymentId),
           status: "rejected",
           external_reference: userId,
-          metadata: { nivel: "principiante" },
+          metadata: { nivel: "completo" },
         }),
       ),
     });
@@ -212,8 +212,14 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
     expect(await nivelDe(userId)).toBe("ninguno");
   });
 
-  it("notificaciones fuera de orden (avanzado, después principiante) dejan al usuario en avanzado", async () => {
-    userId = await crearUsuarioDeTest("webhook-precedencia");
+  // VGRP-59/60 (Bloque 13 — plan único): con un solo nivel pago ya no hay
+  // "degradación" posible entre dos niveles comprables — pero una preferencia
+  // creada ANTES del deploy de VGRP-59 todavía puede traer `metadata.nivel`
+  // con el string literal viejo ('principiante'/'avanzado'). Este test
+  // confirma que dos notificaciones así, en cualquier orden, terminan
+  // proyectando 'completo' (normalizarNivelLegacy() en el webhook).
+  it("notificaciones con metadata.nivel legacy ('avanzado', después 'principiante') dejan al usuario en 'completo'", async () => {
+    userId = await crearUsuarioDeTest("webhook-legacy-precedencia");
     const paymentIdAvanzado = `${Date.now()}1`;
     const paymentIdPrincipiante = `${Date.now()}2`;
 
@@ -231,7 +237,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
     });
     const resAvanzado = await POST(webhookRequest(paymentIdAvanzado));
     expect(resAvanzado.status).toBe(200);
-    expect(await nivelDe(userId)).toBe("avanzado");
+    expect(await nivelDe(userId)).toBe("completo");
 
     mockGetPaymentClient.mockReturnValue({
       get: vi.fn().mockResolvedValue(
@@ -246,9 +252,9 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
     const resPrincipiante = await POST(webhookRequest(paymentIdPrincipiante));
     expect(resPrincipiante.status).toBe(200);
 
-    // Nunca degrada: el nivel más alto entre pagos approved gana, sin
-    // importar el orden de llegada de las notificaciones (VGRP-24).
-    expect(await nivelDe(userId)).toBe("avanzado");
+    // Nunca degrada: ambos pagos approved se normalizan a 'completo', sin
+    // importar el orden de llegada de las notificaciones (VGRP-24/VGRP-60).
+    expect(await nivelDe(userId)).toBe("completo");
   });
 
   it("un refunded posterior para el mismo paymentId hace caer el nivel a 'ninguno' (PRD §8, revocación automática)", async () => {
@@ -262,15 +268,15 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
         pagoMp({
           id: Number(paymentId),
           external_reference: userId,
-          metadata: { nivel: "avanzado" },
+          metadata: { nivel: "completo" },
           transaction_amount: 125000,
         }),
       ),
     });
     const aprobado = await POST(webhookRequest(paymentId));
     expect(aprobado.status).toBe(200);
-    expect(await nivelDe(userId)).toBe("avanzado");
-    expect(await claimNivelDe(userId)).toBe("avanzado");
+    expect(await nivelDe(userId)).toBe("completo");
+    expect(await claimNivelDe(userId)).toBe("completo");
 
     mockGetPaymentClient.mockReturnValue({
       get: vi.fn().mockResolvedValue(
@@ -278,7 +284,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
           id: Number(paymentId),
           status: "refunded",
           external_reference: userId,
-          metadata: { nivel: "avanzado" },
+          metadata: { nivel: "completo" },
           transaction_amount: 125000,
         }),
       ),
@@ -304,7 +310,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
           id: Number(paymentId),
           status: "in_mediation", // no está en MAPA_STATUS_A_ESTADO
           external_reference: userId,
-          metadata: { nivel: "principiante" },
+          metadata: { nivel: "completo" },
         }),
       ),
     });
@@ -349,7 +355,7 @@ describe("POST /api/webhooks/mercadopago (integración real)", () => {
         pagoMp({
           id: Number(paymentId),
           external_reference: usuarioInexistente,
-          metadata: { nivel: "principiante" },
+          metadata: { nivel: "completo" },
         }),
       ),
     });

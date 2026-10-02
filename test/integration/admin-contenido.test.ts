@@ -158,7 +158,6 @@ describe("panel admin de contenido — integración real (VGRP-49 / VGRP-38)", (
     const res = await reqPost("agentes", {
       nombre: `${MARCADOR} ${randomUUID()}`,
       especialidad: "Especialidad test",
-      nivel_requerido: "principiante",
       orden: 999,
       activo: true,
       contacto: "contacto-test",
@@ -190,7 +189,6 @@ describe("panel admin de contenido — integración real (VGRP-49 / VGRP-38)", (
       .insert({
         nombre: `${MARCADOR} ${randomUUID()}`,
         especialidad: "Test",
-        nivel_requerido: "principiante",
         orden: 999,
         activo: true,
       })
@@ -211,7 +209,6 @@ describe("panel admin de contenido — integración real (VGRP-49 / VGRP-38)", (
       .insert({
         nombre: `${MARCADOR} original ${randomUUID()}`,
         especialidad: "Test",
-        nivel_requerido: "principiante",
         orden: 999,
         activo: true,
       })
@@ -241,7 +238,6 @@ describe("panel admin de contenido — integración real (VGRP-49 / VGRP-38)", (
       .insert({
         stage: 1,
         titulo: `${MARCADOR} video ${randomUUID()}`,
-        nivel_requerido: "principiante",
         orden: 999,
         publicado: true,
       })
@@ -335,7 +331,6 @@ describe("panel admin de contenido — integración real (VGRP-49 / VGRP-38)", (
     const res = await reqPost("agentes", {
       nombre: `${MARCADOR} audit-roto ${randomUUID()}`,
       especialidad: "Test",
-      nivel_requerido: "principiante",
       orden: 999,
       activo: true,
     });

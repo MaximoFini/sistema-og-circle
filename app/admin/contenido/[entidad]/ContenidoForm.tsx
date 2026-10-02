@@ -9,14 +9,14 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Button, FormError } from "@/components/ui";
-import { Constants } from "@/lib/database.types";
-import { capitalizar } from "@/lib/format";
 import { videoProvider } from "@/lib/video/provider";
 import styles from "../../admin.module.css";
 
-const NIVELES = Constants.public.Enums.nivel_acceso;
+// VGRP-59/60 (Bloque 13 — plan único): `nivel_requerido` se dropeó de
+// agentes/videos/servicios_financieros (ya no tiene sentido distinguir nivel
+// por fila con un solo plan) — el tipo "nivel" de campo desapareció con él.
 
-type TipoCampo = "text" | "textarea" | "number" | "nivel" | "checkbox" | "stage";
+type TipoCampo = "text" | "textarea" | "number" | "checkbox" | "stage";
 
 interface CampoConfig {
   name: string;
@@ -31,7 +31,6 @@ const CAMPOS: Record<string, CampoConfig[]> = {
   agentes: [
     { name: "nombre", label: "Nombre", tipo: "text", requerido: true },
     { name: "especialidad", label: "Especialidad", tipo: "text", requerido: true },
-    { name: "nivel_requerido", label: "Nivel requerido", tipo: "nivel" },
     { name: "contacto", label: "Contacto (sensible — nunca sale sin el nivel)", tipo: "text" },
     { name: "orden", label: "Orden", tipo: "number" },
     { name: "activo", label: "Activo", tipo: "checkbox" },
@@ -45,11 +44,6 @@ const CAMPOS: Record<string, CampoConfig[]> = {
       label: `Link del video de ${videoProvider.nombre} (sensible)`,
       ayuda: `Pegá el link completo tal cual lo copiás de ${videoProvider.nombre} (botón Compartir o barra de direcciones). El id del video se extrae solo al guardar.`,
       tipo: "text",
-    },
-    {
-      name: "nivel_requerido",
-      label: "Nivel requerido (sin uso real hoy — VGRP-29)",
-      tipo: "nivel",
     },
     // Sin campo "orden": los videos se reordenan arrastrando en el listado.
     { name: "publicado", label: "Publicado", tipo: "checkbox" },
@@ -65,7 +59,6 @@ const CAMPOS: Record<string, CampoConfig[]> = {
   servicios_financieros: [
     { name: "titulo", label: "Título", tipo: "text", requerido: true },
     { name: "descripcion", label: "Descripción", tipo: "textarea" },
-    { name: "nivel_requerido", label: "Nivel requerido", tipo: "nivel" },
     { name: "orden", label: "Orden", tipo: "number" },
     { name: "activo", label: "Activo", tipo: "checkbox" },
   ],
@@ -75,7 +68,6 @@ function valorPorDefecto(campo: CampoConfig): unknown {
   if (campo.tipo === "checkbox") return campo.name !== "publicado";
   if (campo.tipo === "number") return 0;
   if (campo.tipo === "stage") return 1;
-  if (campo.tipo === "nivel") return "principiante";
   return "";
 }
 
@@ -212,19 +204,6 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
                 value={(valores[campo.name] as string) ?? ""}
                 onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.value }))}
               />
-            ) : campo.tipo === "nivel" ? (
-              <select
-                className={styles.selectNativo}
-                {...ariaCampo(campo)}
-                value={(valores[campo.name] as string) ?? "principiante"}
-                onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.value }))}
-              >
-                {NIVELES.map((n) => (
-                  <option key={n} value={n}>
-                    {capitalizar(n)}
-                  </option>
-                ))}
-              </select>
             ) : campo.tipo === "stage" ? (
               <select
                 className={styles.selectNativo}

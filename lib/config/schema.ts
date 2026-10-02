@@ -9,21 +9,16 @@ import { z } from "zod";
 export const FASES = ["1", "2", "3", "4"] as const;
 
 export const configSchema = z.object({
-  precios: z
-    .object({
-      principiante: z.number().int().positive(), // ARS
-      avanzado: z.number().int().positive(), // ARS
-    })
-    // Hallazgo de auditoría del panel de admin: sin esto, un PATCH con
-    // avanzado < principiante pasaba la validación (cada precio se validaba
-    // por separado) y quedaba escrito en Edge Config. El nivel superior
-    // desbloquea MÁS infraestructura que el inferior (CONTEXT.md §3) y el
-    // upgrade se cobra como la diferencia entre ambos (resumen-ejecutivo.md
-    // §2.2) — una diferencia negativa no tiene sentido de negocio.
-    .refine((precios) => precios.avanzado >= precios.principiante, {
-      message: "El precio de 'avanzado' no puede ser menor al de 'principiante'.",
-      path: ["avanzado"],
-    }),
+  // VGRP-59/60 (Bloque 13 — plan único): un solo precio, no dos. El nombre
+  // comercial del plan ("Plan X" hasta que el equipo lo defina) también vive
+  // acá — es copy, no esquema, así que cambiarlo no pide ni migración ni
+  // deploy.
+  precios: z.object({
+    plan: z.number().int().positive(), // ARS
+  }),
+  plan: z.object({
+    nombre: z.string().trim().min(1),
+  }),
   flags: z.object({
     checkout_habilitado: z.boolean(),
     registro_habilitado: z.boolean(),

@@ -55,8 +55,7 @@ function appMetadataDe(payload: Record<string, unknown>): Record<string, unknown
 describe("el JWT emitido contiene app_metadata.nivel/rol correctos (VGRP-16)", () => {
   it.each([
     ["ninguno", "user"],
-    ["principiante", "user"],
-    ["avanzado", "user"],
+    ["completo", "user"],
   ] as const)("usuario seed nivel=%s, rol=%s", async (nivel, rolEsperado) => {
     const { accessToken } = await getTokenWithClaim(nivel);
     const appMetadata = appMetadataDe(decodeJwtPayload(accessToken));
@@ -65,7 +64,7 @@ describe("el JWT emitido contiene app_metadata.nivel/rol correctos (VGRP-16)", (
     expect(appMetadata.rol).toBe(rolEsperado);
   });
 
-  it("usuario seed admin (nivel=avanzado, rol=admin) — no pasa por getTokenWithClaim porque busca rol='user'", async () => {
+  it("usuario seed admin (nivel=completo, rol=admin) — no pasa por getTokenWithClaim porque busca rol='user'", async () => {
     const anon = createTestAnonClient();
     const { data, error } = await withAuthRetry(() =>
       anon.auth.signInWithPassword({
@@ -94,7 +93,7 @@ describe("el JWT emitido contiene app_metadata.nivel/rol correctos (VGRP-16)", (
 // documenta acá en vez de forzar el código que pedía el ticket.
 describe("Supabase rechaza un JWT inválido (VGRP-16)", () => {
   it("un token real con un carácter del payload cambiado a mano (sin re-firmar) es rechazado con 403 bad_jwt", async () => {
-    const { accessToken } = await getTokenWithClaim("avanzado");
+    const { accessToken } = await getTokenWithClaim("completo");
     const [header, payload, signature] = accessToken.split(".");
 
     // Cambiamos un carácter en el medio del payload base64url: sigue siendo
@@ -135,7 +134,7 @@ describe("Supabase rechaza un JWT inválido (VGRP-16)", () => {
     const payload = {
       sub: randomUUID(),
       role: "authenticated",
-      app_metadata: { nivel: "avanzado", rol: "admin" },
+      app_metadata: { nivel: "completo", rol: "admin" },
       iat: Math.floor(Date.now() / 1000) - 7200,
       exp: Math.floor(Date.now() / 1000) - 3600, // vencido hace una hora
     };
@@ -168,7 +167,7 @@ describe("Supabase rechaza un JWT inválido (VGRP-16)", () => {
 // rompe, ya lo delata este test en CI antes de deployar.
 describe("el proyecto usa claves de firma asimétricas ES256, no HS256 (VGRP-54 punto 3)", () => {
   it("el header de un access_token real tiene alg='ES256'", async () => {
-    const { accessToken } = await getTokenWithClaim("avanzado");
+    const { accessToken } = await getTokenWithClaim("completo");
     const header = decodeJwtHeader(accessToken);
 
     expect(header.alg).toBe("ES256");
@@ -185,7 +184,7 @@ describe("verificar un JWT ya obtenido no genera red (VGRP-16)", () => {
   // logueado, que es exactamente el método que getVerifiedClaims() envuelve.
   it("una segunda llamada a getClaims() sobre el mismo token no dispara fetch", async () => {
     const anon = createTestAnonClient();
-    const seedUser = findSeedUser("avanzado");
+    const seedUser = findSeedUser("completo");
     const { error: signInError } = await withAuthRetry(() =>
       anon.auth.signInWithPassword({ email: seedUser.email, password: seedUser.password }),
     );
@@ -203,7 +202,7 @@ describe("verificar un JWT ya obtenido no genera red (VGRP-16)", () => {
 
       expect(error).toBeNull();
       const claims = data?.claims as AppMetadataClaims | undefined;
-      expect(claims?.app_metadata?.nivel).toBe("avanzado");
+      expect(claims?.app_metadata?.nivel).toBe("completo");
       expect(fetchSpy).not.toHaveBeenCalled();
     } finally {
       fetchSpy.mockRestore();
@@ -234,7 +233,7 @@ describe("un cambio de nivel en base se refleja en el claim tras renovar la sesi
     expect(appMetadataInicial.nivel).toBe("ninguno");
 
     const admin = createTestAdminClient();
-    await applyNivelRol(admin, userId, "avanzado", "user");
+    await applyNivelRol(admin, userId, "completo", "user");
 
     // Sesión nueva (nuevo signInWithPassword, no un refresh de la vieja): es
     // lo que fuerza a Auth a emitir un JWT nuevo y correr el hook de nuevo
@@ -252,7 +251,7 @@ describe("un cambio de nivel en base se refleja en el claim tras renovar la sesi
     if (!accessToken) throw new Error("El nuevo login no devolvió access_token.");
 
     const appMetadataNuevo = appMetadataDe(decodeJwtPayload(accessToken));
-    expect(appMetadataNuevo.nivel).toBe("avanzado");
+    expect(appMetadataNuevo.nivel).toBe("completo");
     expect(appMetadataNuevo.rol).toBe("user");
   });
 });

@@ -6,7 +6,9 @@ vi.mock("../config", () => ({
   getPrecios: () => mockGetPrecios(),
 }));
 
-const PRECIOS_OK = { principiante: 75000, avanzado: 125000 };
+// VGRP-59/60 (Bloque 13 — plan único): `precios` pasó a un solo campo
+// (`plan`) y el único nivel comprable es 'completo'.
+const PRECIOS_OK = { plan: 90000 };
 
 describe("armarPreferencia", () => {
   beforeEach(() => {
@@ -17,53 +19,42 @@ describe("armarPreferencia", () => {
     process.env.NEXT_PUBLIC_SITE_URL = "https://ogcircle.example";
   });
 
-  it("usa el precio de 'principiante' de getPrecios() para ese nivel", async () => {
+  it("usa el precio de 'plan' de getPrecios() para el único nivel comprable", async () => {
     mockGetPrecios.mockResolvedValue({ ok: true, precios: PRECIOS_OK });
 
     const { armarPreferencia } = await import("./preferencia");
-    const result = await armarPreferencia("principiante", "user-123");
+    const result = await armarPreferencia("completo", "user-123");
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("no debería ser ok:false");
-    expect(result.preferenceData.items[0].unit_price).toBe(75000);
-  });
-
-  it("usa el precio de 'avanzado' de getPrecios() para ese nivel", async () => {
-    mockGetPrecios.mockResolvedValue({ ok: true, precios: PRECIOS_OK });
-
-    const { armarPreferencia } = await import("./preferencia");
-    const result = await armarPreferencia("avanzado", "user-123");
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error("no debería ser ok:false");
-    expect(result.preferenceData.items[0].unit_price).toBe(125000);
+    expect(result.preferenceData.items[0].unit_price).toBe(90000);
   });
 
   it("siempre incluye external_reference (userId) y metadata.nivel", async () => {
     mockGetPrecios.mockResolvedValue({ ok: true, precios: PRECIOS_OK });
 
     const { armarPreferencia } = await import("./preferencia");
-    const result = await armarPreferencia("avanzado", "user-abc-456");
+    const result = await armarPreferencia("completo", "user-abc-456");
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("no debería ser ok:false");
     expect(result.preferenceData.external_reference).toBe("user-abc-456");
-    expect(result.preferenceData.metadata).toEqual({ nivel: "avanzado" });
+    expect(result.preferenceData.metadata).toEqual({ nivel: "completo" });
   });
 
   it("arma back_urls absolutas de éxito/pendiente/fallo apuntando a /comprar", async () => {
     mockGetPrecios.mockResolvedValue({ ok: true, precios: PRECIOS_OK });
 
     const { armarPreferencia } = await import("./preferencia");
-    const result = await armarPreferencia("principiante", "user-123");
+    const result = await armarPreferencia("completo", "user-123");
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("no debería ser ok:false");
     expect(result.preferenceData.back_urls?.success).toBe(
-      "https://ogcircle.example/comprar/pendiente?nivel=principiante",
+      "https://ogcircle.example/comprar/pendiente?nivel=completo",
     );
     expect(result.preferenceData.back_urls?.pending).toBe(
-      "https://ogcircle.example/comprar/pendiente?nivel=principiante",
+      "https://ogcircle.example/comprar/pendiente?nivel=completo",
     );
     expect(result.preferenceData.back_urls?.failure).toBe("https://ogcircle.example/comprar");
     expect(result.preferenceData.auto_return).toBe("approved");
@@ -76,7 +67,7 @@ describe("armarPreferencia", () => {
     });
 
     const { armarPreferencia } = await import("./preferencia");
-    const result = await armarPreferencia("principiante", "user-123");
+    const result = await armarPreferencia("completo", "user-123");
 
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("no debería ser ok:true");
@@ -92,7 +83,7 @@ describe("armarPreferencia", () => {
     mockGetPrecios.mockResolvedValue({ ok: true, precios: PRECIOS_OK });
 
     const { armarPreferencia } = await import("./preferencia");
-    const result = await armarPreferencia("avanzado", "user-123");
+    const result = await armarPreferencia("completo", "user-123");
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error("no debería ser ok:false");

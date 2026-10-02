@@ -17,12 +17,12 @@ import "../test/helpers/load-env";
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill(password);
+  await page.getByLabel("Contraseña").fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
 
-test("el admin activa el nivel de un usuario indicando un motivo", async ({ page }) => {
+test("el admin da acceso a un usuario indicando un motivo", async ({ page }) => {
   const objetivo = await createAuthenticatedUser("ninguno");
 
   try {
@@ -32,12 +32,11 @@ test("el admin activa el nivel de un usuario indicando un motivo", async ({ page
     await page.getByRole("link", { name: objetivo.email }).click();
     await page.waitForURL(`**/admin/usuarios/${objetivo.userId}`);
 
-    await page.getByLabel("Nivel").selectOption("avanzado");
     await page.getByLabel("Motivo").fill("Pagó por transferencia bancaria, sin webhook.");
-    await page.getByRole("button", { name: "Aplicar cambio" }).click();
+    await page.getByRole("button", { name: "Dar acceso" }).click();
 
-    await expect(page.getByText(/Nivel actualizado: ninguno → avanzado/)).toBeVisible();
-    await expect(page.getByText("Nivel vigente:").locator("..")).toContainText("avanzado");
+    await expect(page.getByText(/Nivel actualizado: ninguno → completo/)).toBeVisible();
+    await expect(page.getByText("Nivel vigente:").locator("..")).toContainText("completo");
   } finally {
     await cleanupUser(objetivo.userId);
   }

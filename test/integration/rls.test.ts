@@ -35,7 +35,7 @@ const PASSWORD_USUARIO_AD_HOC = "test-password-1!";
  * casi todos los tests de este archivo: necesitamos un token real de un
  * usuario real para que RLS tenga algo que evaluar.
  */
-async function crearUsuarioLogueado(nivel: "ninguno" | "principiante" | "avanzado" = "ninguno") {
+async function crearUsuarioLogueado(nivel: "ninguno" | "completo" = "ninguno") {
   const created = await createAuthenticatedUser(nivel);
   const client = createTestAnonClient();
   const { error } = await withAuthRetry(() =>
@@ -127,7 +127,7 @@ describe("inmutabilidad de profiles.nivel y profiles.rol (VGRP-15)", () => {
 
     const { error } = await user.client
       .from("profiles")
-      .update({ nivel: "avanzado" })
+      .update({ nivel: "completo" })
       .eq("id", userId);
 
     expect(error).not.toBeNull();
@@ -202,7 +202,7 @@ describe("pagos_select_own: un usuario sólo lee sus propias filas de pagos (VGR
         user_id: userId,
         proveedor: "mercadopago",
         proveedor_ref: `test-rls-${randomUUID()}`,
-        nivel_comprado: "principiante",
+        nivel_comprado: "completo",
         monto_ars: 1000,
         estado: "approved",
         payload_raw: {},
@@ -313,7 +313,7 @@ describe("admin_audit_log_select_admin: sólo un rol=admin lee la auditoría (VG
         entidad: "profiles",
         entidad_id: actor,
         valor_anterior: { nivel: "ninguno" },
-        valor_nuevo: { nivel: "avanzado" },
+        valor_nuevo: { nivel: "completo" },
       })
       .select("id")
       .single();
@@ -418,7 +418,7 @@ describe("nivel_overrides: default-deny para authenticated (VGRP-36)", () => {
 
     const { data: creado, error: insertError } = await admin
       .from("nivel_overrides")
-      .insert({ user_id: userId, nivel: "avanzado", motivo: "test-rls", actor_id: userId })
+      .insert({ user_id: userId, nivel: "completo", motivo: "test-rls", actor_id: userId })
       .select("id")
       .single();
     if (insertError) throw insertError;
@@ -437,7 +437,7 @@ describe("nivel_overrides: default-deny para authenticated (VGRP-36)", () => {
 
     const { error } = await user.client
       .from("nivel_overrides")
-      .insert({ user_id: userId, nivel: "avanzado", motivo: "intento", actor_id: userId });
+      .insert({ user_id: userId, nivel: "completo", motivo: "intento", actor_id: userId });
 
     expect(error).not.toBeNull();
 
@@ -446,11 +446,11 @@ describe("nivel_overrides: default-deny para authenticated (VGRP-36)", () => {
   });
 });
 
-// Criterio del ticket: "un token de nivel principiante no ve contenido de
-// avanzado" y "un usuario ninguno no lee contenido de ningún nivel pago".
-// RESUELTO por VGRP-49 (VGRP-38 creó las tablas de contenido — agentes,
-// videos, profesionales, servicios_financieros — con sus 4 policies de RLS):
-// ver test/integration/rls-contenido.test.ts, que cubre exactamente esto
-// contra el proyecto real (anon, ninguno/principiante/avanzado,
-// activo=false/publicado=false, orden de declaración del enum, y
+// Criterio del ticket: "un usuario sin plan no lee contenido con acceso" y
+// "un usuario ninguno no lee contenido de ningún nivel pago". RESUELTO por
+// VGRP-49 (VGRP-38 creó las tablas de contenido — agentes, videos,
+// profesionales, servicios_financieros — con sus 4 policies de RLS), y
+// adaptado por VGRP-59/60 (plan único, ninguno/completo): ver
+// test/integration/rls-contenido.test.ts, que cubre exactamente esto contra
+// el proyecto real (anon, ninguno/completo, activo=false/publicado=false, y
 // INSERT/UPDATE/DELETE denegado para authenticated).

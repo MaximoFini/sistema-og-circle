@@ -4,13 +4,17 @@ import "server-only";
 // provider_ref de video, dato SWIFT) a lo que sea que lo consuma después.
 // `server-only`: si algún día un 'use client' importa esto por error, el
 // build falla en vez de publicar el producto — STACK.md §3, regla dura.
+//
+// VGRP-59/60 (Bloque 13 — plan único): ya no hay un "nivel mínimo" que
+// elegir por fila — con un solo plan, la pregunta es sólo "¿tiene acceso o
+// no?" (`tieneAcceso()`, lib/auth/claims.ts).
 
-import type { AppMetadataClaims, NivelAcceso } from "@/lib/auth/claims";
-import { hasNivel } from "@/lib/auth/claims";
+import type { AppMetadataClaims } from "@/lib/auth/claims";
+import { tieneAcceso } from "@/lib/auth/claims";
 
 /**
- * Devuelve `secreto` sólo si `claims` alcanza `nivelMinimo` (mismo orden que
- * `hasNivel()`, VGRP-16); si no, `null`. No hace el fetch del secreto —
+ * Devuelve `secreto` sólo si `claims` tiene el plan completo
+ * (`tieneAcceso()`, VGRP-60); si no, `null`. No hace el fetch del secreto —
  * quien llama decide cuándo vale la pena pagar esa consulta real; esto es la
  * ÚLTIMA barrera antes de serializar la respuesta, no la única optimización.
  *
@@ -23,10 +27,6 @@ import { hasNivel } from "@/lib/auth/claims";
  * cual sea su nivel real. Por eso `resolverSecreto()` se llama siempre desde
  * un contexto dinámico (Route Handler), nunca desde el render de esa ruta.
  */
-export function resolverSecreto<T>(
-  claims: AppMetadataClaims | null,
-  nivelMinimo: NivelAcceso,
-  secreto: T,
-): T | null {
-  return hasNivel(claims, nivelMinimo) ? secreto : null;
+export function resolverSecreto<T>(claims: AppMetadataClaims | null, secreto: T): T | null {
+  return tieneAcceso(claims) ? secreto : null;
 }

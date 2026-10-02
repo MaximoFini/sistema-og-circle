@@ -17,7 +17,7 @@ import "../test/helpers/load-env";
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill(password);
+  await page.getByLabel("Contraseña").fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -40,7 +40,7 @@ test.describe("superficie de admin — usuario común", () => {
   });
 
   test("un usuario con nivel activo no ve ningún link a /admin en la UI", async ({ page }) => {
-    const creado = await createAuthenticatedUser("avanzado", "user");
+    const creado = await createAuthenticatedUser("completo", "user");
     userIdA = creado.userId;
 
     await login(page, creado.email, PASSWORD);
@@ -54,7 +54,7 @@ test.describe("superficie de admin — usuario común", () => {
   test("un fetch directo al endpoint de admin desde el browser de un usuario común da 404 y no muta nada", async ({
     page,
   }) => {
-    const creado = await createAuthenticatedUser("avanzado", "user");
+    const creado = await createAuthenticatedUser("completo", "user");
     userIdA = creado.userId;
     await login(page, creado.email, PASSWORD);
 
@@ -62,7 +62,7 @@ test.describe("superficie de admin — usuario común", () => {
       const res = await fetch(`/api/admin/usuarios/${userId}/nivel`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nivel: "avanzado", motivo: "intento no autorizado" }),
+        body: JSON.stringify({ nivel: "completo", motivo: "intento no autorizado" }),
       });
       return { status: res.status, body: await res.json().catch(() => null) };
     }, creado.userId);
@@ -76,9 +76,9 @@ test.describe("superficie de admin — usuario común", () => {
   test("un usuario no puede ver el pago de otro por URL directa al detalle de admin", async ({
     page,
   }) => {
-    const creado = await createAuthenticatedUser("avanzado", "user");
+    const creado = await createAuthenticatedUser("completo", "user");
     userIdA = creado.userId;
-    const otro = await createAuthenticatedUser("principiante", "user");
+    const otro = await createAuthenticatedUser("ninguno", "user");
     userIdB = otro.userId;
 
     await login(page, creado.email, PASSWORD);

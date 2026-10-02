@@ -16,7 +16,10 @@ import "server-only";
 export type EdgeConfigWriteResult = { ok: true } | { ok: false; status: number; message: string };
 
 export interface EdgeConfigWriteItem {
-  key: "precios" | "flags";
+  // VGRP-59/60 (Bloque 13 — plan único) sumó la clave `plan` (nombre
+  // comercial del plan) a las claves escribibles de Edge Config, junto a las
+  // ya existentes `precios`/`flags`.
+  key: "precios" | "plan" | "flags";
   value: unknown;
 }
 

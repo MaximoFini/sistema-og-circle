@@ -1,5 +1,9 @@
 // VGRP-32 — tests de integración de lib/data/servicios.ts contra el proyecto real de
 // Supabase (mismo criterio que lib/data/agentes.test.ts).
+//
+// VGRP-59/60 (Bloque 13 — plan único): `nivel_requerido` dejó de existir en la tabla
+// `servicios_financieros` — el gating ahora es binario (con acceso / sin acceso), vía
+// `tieneAcceso()`.
 
 import { afterEach, describe, expect, it } from "vitest";
 import { createTestAdminClient } from "../../test/helpers/db-client";
@@ -23,7 +27,6 @@ function claimsConNivel(nivel: string): AppMetadataClaims {
 
 async function crearServicioTest(valores: {
   titulo: string;
-  nivel_requerido: "ninguno" | "principiante" | "avanzado";
   descripcion?: string;
   activo?: boolean;
 }) {
@@ -32,7 +35,6 @@ async function crearServicioTest(valores: {
     .insert({
       titulo: valores.titulo,
       descripcion: valores.descripcion ?? "descripcion-secreta-de-test",
-      nivel_requerido: valores.nivel_requerido,
       activo: valores.activo ?? true,
       orden: 0,
     })
@@ -44,13 +46,10 @@ async function crearServicioTest(valores: {
 }
 
 describe("obtenerServiciosFinancieros", () => {
-  it("expone la descripción cuando el nivel alcanza", async () => {
-    const servicio = await crearServicioTest({
-      titulo: "Test alcanza",
-      nivel_requerido: "principiante",
-    });
+  it("expone la descripción cuando el claim tiene el plan completo", async () => {
+    const servicio = await crearServicioTest({ titulo: "Test con acceso" });
 
-    const items = await obtenerServiciosFinancieros(admin, claimsConNivel("avanzado"));
+    const items = await obtenerServiciosFinancieros(admin, claimsConNivel("completo"));
     const item = items.find((i) => i.id === servicio.id);
 
     expect(item?.descripcion).toBe("descripcion-secreta-de-test");
@@ -59,11 +58,10 @@ describe("obtenerServiciosFinancieros", () => {
   it("US-2 — el título SIEMPRE se ve, aunque la descripción (con datos SWIFT) esté bloqueada", async () => {
     const servicio = await crearServicioTest({
       titulo: "Pagos vía SWIFT",
-      nivel_requerido: "avanzado",
       descripcion: "IBAN-secreto-no-debe-salir",
     });
 
-    const items = await obtenerServiciosFinancieros(admin, claimsConNivel("principiante"));
+    const items = await obtenerServiciosFinancieros(admin, claimsConNivel("ninguno"));
     const item = items.find((i) => i.id === servicio.id);
 
     expect(item).toBeDefined();
@@ -72,11 +70,8 @@ describe("obtenerServiciosFinancieros", () => {
     expect(JSON.stringify(item)).not.toContain("IBAN-secreto-no-debe-salir");
   });
 
-  it("sin sesión (claims null) nunca expone la descripción de una fila gateada", async () => {
-    const servicio = await crearServicioTest({
-      titulo: "Test sin sesión",
-      nivel_requerido: "principiante",
-    });
+  it("sin sesión (claims null) nunca expone la descripción", async () => {
+    const servicio = await crearServicioTest({ titulo: "Test sin sesión" });
 
     const items = await obtenerServiciosFinancieros(admin, null);
     const item = items.find((i) => i.id === servicio.id);
@@ -85,13 +80,9 @@ describe("obtenerServiciosFinancieros", () => {
   });
 
   it("excluye filas activo=false", async () => {
-    const servicio = await crearServicioTest({
-      titulo: "Test inactivo",
-      nivel_requerido: "ninguno",
-      activo: false,
-    });
+    const servicio = await crearServicioTest({ titulo: "Test inactivo", activo: false });
 
-    const items = await obtenerServiciosFinancieros(admin, claimsConNivel("avanzado"));
+    const items = await obtenerServiciosFinancieros(admin, claimsConNivel("completo"));
 
     expect(items.some((i) => i.id === servicio.id)).toBe(false);
   });

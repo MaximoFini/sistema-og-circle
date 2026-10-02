@@ -72,9 +72,9 @@ describe("POST /api/admin/usuarios/[id]/nivel", () => {
       },
     );
     mockActivarNivel.mockResolvedValue({
-      resultado: { nivelAnterior: "ninguno", nivelNuevo: "avanzado" },
+      resultado: { nivelAnterior: "ninguno", nivelNuevo: "completo" },
       valorAnterior: { nivel: "ninguno" },
-      valorNuevo: { nivel: "avanzado", motivo: "ok" },
+      valorNuevo: { nivel: "completo", motivo: "ok" },
     });
   });
 
@@ -87,7 +87,7 @@ describe("POST /api/admin/usuarios/[id]/nivel", () => {
       ok: false,
       response: Response.json({ error: "No autenticado." }, { status: 401 }),
     });
-    const res = await call({ nivel: "avanzado", motivo: "x" });
+    const res = await call({ nivel: "completo", motivo: "x" });
     expect(res.status).toBe(401);
     expect(mockActivarNivel).not.toHaveBeenCalled();
   });
@@ -97,19 +97,19 @@ describe("POST /api/admin/usuarios/[id]/nivel", () => {
       ok: false,
       response: Response.json({ error: "No encontrado." }, { status: 404 }),
     });
-    const res = await call({ nivel: "avanzado", motivo: "x" });
+    const res = await call({ nivel: "completo", motivo: "x" });
     expect(res.status).toBe(404);
     expect(mockActivarNivel).not.toHaveBeenCalled();
   });
 
   it("body sin motivo -> 400", async () => {
-    const res = await call({ nivel: "avanzado" });
+    const res = await call({ nivel: "completo" });
     expect(res.status).toBe(400);
     expect(mockActivarNivel).not.toHaveBeenCalled();
   });
 
   it("motivo en blanco -> 400", async () => {
-    const res = await call({ nivel: "avanzado", motivo: "   " });
+    const res = await call({ nivel: "completo", motivo: "   " });
     expect(res.status).toBe(400);
     expect(mockActivarNivel).not.toHaveBeenCalled();
   });
@@ -121,7 +121,7 @@ describe("POST /api/admin/usuarios/[id]/nivel", () => {
   });
 
   it("id no-uuid -> 404", async () => {
-    const res = await call({ nivel: "avanzado", motivo: "x" }, "no-es-uuid");
+    const res = await call({ nivel: "completo", motivo: "x" }, "no-es-uuid");
     expect(res.status).toBe(404);
     expect(mockActivarNivel).not.toHaveBeenCalled();
   });
@@ -136,15 +136,15 @@ describe("POST /api/admin/usuarios/[id]/nivel", () => {
 
   it("usuario inexistente (activarNivel lanza UsuarioNoEncontrado) -> 404 sin audit", async () => {
     mockActivarNivel.mockRejectedValue(new UsuarioNoEncontradoMock());
-    const res = await call({ nivel: "avanzado", motivo: "x" });
+    const res = await call({ nivel: "completo", motivo: "x" });
     expect(res.status).toBe(404);
     expect(mockRegistrar).not.toHaveBeenCalled();
   });
 
   it("happy path -> 200 y conAuditoria con accion='cambiar_nivel', entidad='profiles'", async () => {
-    const res = await call({ nivel: "avanzado", motivo: "pagó por transferencia" });
+    const res = await call({ nivel: "completo", motivo: "pagó por transferencia" });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "avanzado" });
+    expect(await res.json()).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "completo" });
     expect(mockConAuditoria).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

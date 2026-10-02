@@ -33,9 +33,10 @@ import { getEnv } from "../env";
 
 export type NivelComprable = Exclude<NivelAcceso, "ninguno">;
 
+// VGRP-59/60 (Bloque 13 — plan único): un solo nivel comprable ('completo'),
+// así que no hace falta un nombre por nivel — el título es el del único plan.
 const TITULOS_NIVEL: Record<NivelComprable, string> = {
-  principiante: "Acceso Nivel Principiante — OG Circle",
-  avanzado: "Acceso Nivel Avanzado — OG Circle",
+  completo: "Acceso — OG Circle",
 };
 
 export type ArmarPreferenciaResult =
@@ -74,7 +75,9 @@ export async function armarPreferencia(
     return { ok: false, error: precios.error };
   }
 
-  const unitPrice = precios.precios[nivel];
+  // VGRP-59/60 — un solo precio (`precios.plan`); `nivel` ya no indexa el
+  // objeto de precios (antes `precios[nivel]` con dos claves posibles).
+  const unitPrice = precios.precios.plan;
 
   const preferenceData: PreferenceRequest = {
     items: [

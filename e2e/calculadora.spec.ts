@@ -9,22 +9,22 @@ import { findSeedUser } from "../test/helpers/seed-users";
 // usuarios, sólo loguea, navega y cotiza (la cotización es cálculo en el
 // cliente, no escribe nada en la base).
 //
-//  1. principiante -> menú "Calculadora" -> /calculadora -> cotiza en courier
+//  1. completo -> menú "Calculadora" -> /calculadora -> cotiza en courier
 //     integral (el único régimen que no pasa por la IA) y ve el total en USD.
-//  2. principiante en Inicio -> "Abrir calculadora" es un link interno.
+//  2. completo en Inicio -> "Abrir calculadora" es un link interno.
 //  3. ninguno -> /calculadora termina en /comprar (middleware, RUTAS_CON_PLAN).
 //  4. ninguno -> POST /api/cotizador/dolar da 403 (requierePlan en el endpoint).
 //
 // No depende de dolarapi: si el TC BNA automático no llegó, se carga a mano.
 // =============================================================================
 
-const PRINCIPIANTE = findSeedUser("principiante");
+const COMPLETO = findSeedUser("completo");
 const NINGUNO = findSeedUser("ninguno");
 
 async function login(page: Page, email: string, password: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña", { exact: true }).fill(password);
+  await page.getByLabel("Contraseña").fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -36,7 +36,7 @@ const RUTAS_IA =
 const HOSTS_IA = /(anthropic\.com|openai\.com|googleapis\.com\/.*generative|generativelanguage)/;
 
 test.describe("calculadora embebida (VGRP-57)", () => {
-  test("principiante entra desde el menú y cotiza en courier integral sin llamar a la IA", async ({
+  test("completo entra desde el menú y cotiza en courier integral sin llamar a la IA", async ({
     page,
   }) => {
     const requestsIa: string[] = [];
@@ -45,7 +45,7 @@ test.describe("calculadora embebida (VGRP-57)", () => {
       if (RUTAS_IA.test(url) || HOSTS_IA.test(url)) requestsIa.push(url);
     });
 
-    await login(page, PRINCIPIANTE.email, PRINCIPIANTE.password);
+    await login(page, COMPLETO.email, COMPLETO.password);
 
     await page.getByRole("button", { name: "Abrir menú" }).click();
     const menu = page.getByRole("dialog", { name: "Navegación" });
@@ -93,7 +93,7 @@ test.describe("calculadora embebida (VGRP-57)", () => {
   test("el CTA 'Abrir calculadora' de Inicio es un link interno a /calculadora, sin target", async ({
     page,
   }) => {
-    await login(page, PRINCIPIANTE.email, PRINCIPIANTE.password);
+    await login(page, COMPLETO.email, COMPLETO.password);
 
     const link = page.getByRole("link", { name: "Abrir calculadora" });
     await expect(link).toBeVisible();
@@ -121,7 +121,7 @@ test.describe("calculadora embebida (VGRP-57)", () => {
 // VGRP-58 (D3) — el cotizador marítimo, elegido con el selector adentro de
 // /calculadora. Sin ruta propia: mismo entry point que VGRP-57.
 //
-//  1. principiante -> /calculadora -> elige "Marítimo" -> carga volumen, peso,
+//  1. completo -> /calculadora -> elige "Marítimo" -> carga volumen, peso,
 //     FOB y TC a mano (sin escribir producto: cero llamadas a la IA, cero
 //     dependencia de que el CDA responda) -> ve las dos opciones
 //     (consolidado + full).
@@ -130,7 +130,7 @@ test.describe("calculadora embebida (VGRP-57)", () => {
 // =============================================================================
 
 test.describe("cotizador marítimo embebido (VGRP-58)", () => {
-  test("principiante elige 'Marítimo' en el selector y cotiza con datos manuales, sin IA", async ({
+  test("completo elige 'Marítimo' en el selector y cotiza con datos manuales, sin IA", async ({
     page,
   }) => {
     const requestsIa: string[] = [];
@@ -139,7 +139,7 @@ test.describe("cotizador marítimo embebido (VGRP-58)", () => {
       if (RUTAS_IA.test(url) || HOSTS_IA.test(url)) requestsIa.push(url);
     });
 
-    await login(page, PRINCIPIANTE.email, PRINCIPIANTE.password);
+    await login(page, COMPLETO.email, COMPLETO.password);
     await page.goto("/calculadora");
     await expect(
       page.getByRole("heading", { level: 1, name: "Calculadora de costos" }),

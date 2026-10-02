@@ -12,14 +12,16 @@ vinculado al proyecto de Vercel `sistema-og-circle`. La env var `EDGE_CONFIG` es
 seteada en production, preview y development (tipo Config, no Secret), así que
 `vercel env pull .env.local` la baja para desarrollo local.
 
-Las tres claves (`precios`, `flags`, `links`) están cargadas con los valores de la
-sección siguiente. El módulo `lib/config/` sigue tolerando la ausencia del store: sin
-`EDGE_CONFIG` seteada se comporta como si la lectura hubiera fallado y aplica las reglas
-de fallback de la tabla de abajo.
+Las cuatro claves (`precios`, `plan`, `flags`, `links`) están cargadas con los valores de
+la sección siguiente. `plan` se sumó en VGRP-59/60 (Bloque 13 — plan único): el nombre
+comercial del único plan, separado de `precios` porque es copy, no dinero. El módulo
+`lib/config/` sigue tolerando la ausencia del store: sin `EDGE_CONFIG` seteada se
+comporta como si la lectura hubiera fallado y aplica las reglas de fallback de la tabla
+de abajo.
 
 Editar un valor no requiere deploy (se refleja en segundos).
 
-**`precios` y `flags` — desde `/admin/config` (VGRP-40, recomendado).** Un admin
+**`precios`, `plan` y `flags` — desde `/admin/config` (VGRP-40, recomendado).** Un admin
 logueado puede cambiarlos desde el panel: los precios piden confirmación explícita
 (valor anterior → nuevo) antes de guardar, y todo cambio queda en el audit log
 (`admin_audit_log`, `entidad = "config"`). Por debajo escribe vía la API REST de Vercel
@@ -36,15 +38,15 @@ vercel global-config update sistema-og-circle --patch \
   '{"items":[{"operation":"update","key":"links","value":{"calculadora":"...","whatsapp":"...","traxcargo":"..."}}]}'
 ```
 
-La misma CLI sigue sirviendo como vía alternativa para `precios`/`flags` si el panel no
-está disponible por algún motivo.
+La misma CLI sigue sirviendo como vía alternativa para `precios`/`plan`/`flags` si el
+panel no está disponible por algún motivo.
 
 ## Claves
 
 | Clave | Tipo | Qué controla | Si falla la lectura o la validación |
 |---|---|---|---|
-| `precios.principiante` | `number` (entero positivo, ARS) | Precio del plan Principiante | **Sin fallback.** `getPrecios()` devuelve `{ ok: false, error }`. El caller debe deshabilitar el checkout — nunca se muestra ni se cobra un número adivinado. |
-| `precios.avanzado` | `number` (entero positivo, ARS) | Precio del plan Avanzado | Igual que arriba — `getPrecios()` señala el fallo, sin fallback. |
+| `precios.plan` | `number` (entero positivo, ARS) | Precio del único plan (VGRP-59/60, Bloque 13 — antes dos claves, `precios.principiante`/`precios.avanzado`) | **Sin fallback.** `getPrecios()` devuelve `{ ok: false, error }`. El caller debe deshabilitar el checkout — nunca se muestra ni se cobra un número adivinado. |
+| `plan.nombre` | `string` (no vacío) | Nombre comercial del único plan (hoy "Plan X") | Fail-open: default hardcodeado en `lib/config/index.ts` (`DEFAULT_PLAN`) — es copy, no dinero. |
 | `flags.checkout_habilitado` | `boolean` | Si el checkout está activo | Default conservador: `false` (checkout apagado). |
 | `flags.registro_habilitado` | `boolean` | Si el registro de usuarios está activo | Default conservador: `false` (registro apagado). |
 | `flags.fase` | `"1" \| "2" \| "3" \| "4"` | Fase actual del proyecto | Default conservador: `"2"`. |
@@ -63,8 +65,10 @@ Estado actual del store `sistema-og-circle`:
 ```json
 {
   "precios": {
-    "principiante": 75000,
-    "avanzado": 125000
+    "plan": 90000
+  },
+  "plan": {
+    "nombre": "Plan X"
   },
   "flags": {
     "checkout_habilitado": false,

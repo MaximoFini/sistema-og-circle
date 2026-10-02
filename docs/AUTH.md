@@ -11,7 +11,8 @@ Un Custom Access Token Hook de Supabase Auth
 access token (login, refresh) y le agrega dos claims a `app_metadata` leyendo
 la fila de `public.profiles` del usuario:
 
-- `app_metadata.nivel`: `'ninguno' | 'principiante' | 'avanzado'`
+- `app_metadata.nivel`: `'ninguno' | 'completo'` (VGRP-59/60, Bloque 13 — plan
+  único; antes era `'ninguno' | 'principiante' | 'avanzado'`)
 - `app_metadata.rol`: `'user' | 'admin'`
 
 Con esto, decidir qué mostrar (nivel del dashboard, si el usuario es admin)
@@ -69,8 +70,9 @@ ningún otro lado.
   Nunca lanza.
 - `getRol(claims)` → `RolUsuario`. Mismo criterio, default `'user'`.
 - `hasNivel(claims, minimo)` → `boolean`. Compara contra el orden
-  `ninguno < principiante < avanzado`. Pensado para gating futuro
-  (middleware de VGRP-17, guards de página/Server Action).
+  `ninguno < completo`. Para gating nuevo preferir `tieneAcceso(claims)`
+  (VGRP-60) — más expresivo ahora que sólo hay un plan, sin pedirle al caller
+  que piense en un "nivel mínimo" que ya no existe.
 
 Los tipos `NivelAcceso` / `RolUsuario` se reexportan desde acá pero vienen de
 `lib/database.types.ts` — no hay strings de los enums duplicados en ningún
@@ -90,13 +92,13 @@ otro lado.
 
 ```ts
 import { getVerifiedClaims } from "@/lib/auth/server";
-import { getNivel, hasNivel } from "@/lib/auth/claims";
+import { getNivel, tieneAcceso } from "@/lib/auth/claims";
 
 export default async function DashboardPage() {
   const claims = await getVerifiedClaims();
   const nivel = getNivel(claims);
 
-  if (!hasNivel(claims, "principiante")) {
+  if (!tieneAcceso(claims)) {
     // mostrar upsell / redirigir, según defina VGRP-17
   }
 

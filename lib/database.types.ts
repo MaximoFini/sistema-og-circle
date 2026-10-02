@@ -10,6 +10,13 @@
 // `agentes`, `videos`, `profesionales`, `servicios_financieros` — ver
 // supabase/migrations/20260909041306_contenido_agentes_videos_profesionales_servicios.sql.
 //
+// Regenerado de nuevo 2026-10-02 (VGRP-59/Bloque 13) tras aplicar
+// supabase/migrations/20261002190000_plan_unico.sql al proyecto real:
+// nivel_acceso pasa a ('ninguno'|'completo') y se dropea nivel_requerido de
+// agentes/videos/servicios_financieros. El output de generate_typescript_types
+// coincidió con la edición a mano que se había hecho antes de aplicar la
+// migración — sin cambios de contenido, sólo se confirma contra el esquema real.
+//
 // El generador no infiere nulabilidad de parámetros de función escalares ni el
 // tipo de elemento de `name[]` — dos ajustes A MANO sobre el output crudo,
 // marcados donde están, que hay que volver a aplicar si se regenera nuevo:
@@ -78,7 +85,6 @@ export type Database = {
           created_at: string;
           especialidad: string;
           id: string;
-          nivel_requerido: Database["public"]["Enums"]["nivel_acceso"];
           nombre: string;
           orden: number;
           updated_at: string;
@@ -89,7 +95,6 @@ export type Database = {
           created_at?: string;
           especialidad: string;
           id?: string;
-          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
           nombre: string;
           orden?: number;
           updated_at?: string;
@@ -100,7 +105,6 @@ export type Database = {
           created_at?: string;
           especialidad?: string;
           id?: string;
-          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
           nombre?: string;
           orden?: number;
           updated_at?: string;
@@ -301,7 +305,6 @@ export type Database = {
           created_at: string;
           descripcion: string | null;
           id: string;
-          nivel_requerido: Database["public"]["Enums"]["nivel_acceso"];
           orden: number;
           titulo: string;
           updated_at: string;
@@ -311,7 +314,6 @@ export type Database = {
           created_at?: string;
           descripcion?: string | null;
           id?: string;
-          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
           orden?: number;
           titulo: string;
           updated_at?: string;
@@ -321,7 +323,6 @@ export type Database = {
           created_at?: string;
           descripcion?: string | null;
           id?: string;
-          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
           orden?: number;
           titulo?: string;
           updated_at?: string;
@@ -333,7 +334,6 @@ export type Database = {
           created_at: string;
           descripcion: string | null;
           id: string;
-          nivel_requerido: Database["public"]["Enums"]["nivel_acceso"];
           orden: number;
           provider_ref: string | null;
           publicado: boolean;
@@ -345,7 +345,6 @@ export type Database = {
           created_at?: string;
           descripcion?: string | null;
           id?: string;
-          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
           orden?: number;
           provider_ref?: string | null;
           publicado?: boolean;
@@ -357,7 +356,6 @@ export type Database = {
           created_at?: string;
           descripcion?: string | null;
           id?: string;
-          nivel_requerido?: Database["public"]["Enums"]["nivel_acceso"];
           orden?: number;
           provider_ref?: string | null;
           publicado?: boolean;
@@ -433,7 +431,7 @@ export type Database = {
       };
     };
     Enums: {
-      nivel_acceso: "ninguno" | "principiante" | "avanzado";
+      nivel_acceso: "ninguno" | "completo";
       rol_usuario: "user" | "admin";
     };
     CompositeTypes: {
@@ -560,7 +558,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      nivel_acceso: ["ninguno", "principiante", "avanzado"],
+      nivel_acceso: ["ninguno", "completo"],
       rol_usuario: ["user", "admin"],
     },
   },

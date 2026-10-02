@@ -6,6 +6,12 @@
 // (obtenerAgentes, resolverSecreto, RLS de la tabla si el service role no la
 // bypasseara) corre contra Supabase real.
 //
+// VGRP-59/60 (Bloque 13 — plan único): `nivel_requerido` dejó de existir en
+// la tabla `agentes` — el gating ahora es binario (con acceso / sin acceso),
+// vía `tieneAcceso()`. A diferencia del modelo anterior, `tieneAcceso(null)`
+// es SIEMPRE false (no hay "piso" que un claim ausente cumpla), así que sin
+// sesión el contacto nunca se expone, sin excepción.
+//
 // Éste es "el único camino por el que un contacto real llega al browser" —
 // el test más importante del ticket es que el nivel salga SIEMPRE del claim
 // verificado, nunca de nada que el caller pueda inyectar en el request.
@@ -35,13 +41,12 @@ afterEach(async () => {
   }
 });
 
-async function crearAgente(nivel_requerido: "ninguno" | "principiante" | "avanzado") {
+async function crearAgente() {
   const { data, error } = await admin
     .from("agentes")
     .insert({
       nombre: `${MARCADOR} ${randomUUID()}`,
       especialidad: "Especialidad de test",
-      nivel_requerido,
       activo: true,
       contacto: "contacto-real-secreto-de-test",
     })
@@ -53,11 +58,11 @@ async function crearAgente(nivel_requerido: "ninguno" | "principiante" | "avanza
 }
 
 describe("GET /api/agentes — integración real (VGRP-49)", () => {
-  it("sesión principiante: una fila que requiere 'avanzado' llega con contacto: null y publicMeta presente", async () => {
-    const agente = await crearAgente("avanzado");
+  it("sesión sin plan ('ninguno'): llega con contacto: null y publicMeta presente", async () => {
+    const agente = await crearAgente();
     mockGetVerifiedClaims.mockResolvedValue({
       sub: "u1",
-      app_metadata: { nivel: "principiante", rol: "user" },
+      app_metadata: { nivel: "ninguno", rol: "user" },
     });
 
     const res = await GET();
@@ -72,10 +77,9 @@ describe("GET /api/agentes — integración real (VGRP-49)", () => {
     expect(item?.publicMeta).toEqual({
       nombre: agente.nombre,
       especialidad: agente.especialidad,
-      nivelRequerido: "avanzado",
     });
     expect(JSON.stringify(body)).not.toContain("contacto-real-secreto-de-test");
-    expect(body.nivelActual).toBe("principiante");
+    expect(body.nivelActual).toBe("ninguno");
   });
 
   // EL TEST MÁS IMPORTANTE DEL TICKET (VGRP-49): el nivel sale del claim
@@ -83,28 +87,28 @@ describe("GET /api/agentes — integración real (VGRP-49)", () => {
   // Request en su firma real — se lo pasamos igual con datos "maliciosos"
   // para confirmar en runtime que no cambian nada, ni con un `as any` que se
   // salte el chequeo de tipos.
-  it("ningún query param/header/body puede hacer que una sesión principiante reciba el contacto de una fila 'avanzado'", async () => {
-    const agente = await crearAgente("avanzado");
+  it("ningún query param/header/body puede hacer que una sesión sin plan reciba el contacto real", async () => {
+    const agente = await crearAgente();
     mockGetVerifiedClaims.mockResolvedValue({
       sub: "u1",
-      app_metadata: { nivel: "principiante", rol: "user" },
+      app_metadata: { nivel: "ninguno", rol: "user" },
     });
 
     const requestMalicioso = new Request(
-      "https://ogcircle.example/api/agentes?nivel=avanzado&nivelActual=avanzado",
+      "https://ogcircle.example/api/agentes?nivel=completo&nivelActual=completo",
       {
         method: "GET",
         headers: {
-          "x-nivel": "avanzado",
-          "x-forzar-nivel": "avanzado",
-          cookie: "nivel=avanzado",
+          "x-nivel": "completo",
+          "x-forzar-nivel": "completo",
+          cookie: "nivel=completo",
         },
         body: undefined,
       },
     );
     // biome-ignore lint/suspicious/noExplicitAny: GET real no acepta argumentos — se fuerza para confirmar que, aunque se le pasen, se ignoran.
     const res = await (GET as any)(requestMalicioso, {
-      params: Promise.resolve({ nivel: "avanzado" }),
+      params: Promise.resolve({ nivel: "completo" }),
     });
     const body = await res.json();
 
@@ -112,14 +116,14 @@ describe("GET /api/agentes — integración real (VGRP-49)", () => {
       (a) => a.id === agente.id,
     );
     expect(item?.contacto).toBeNull();
-    expect(body.nivelActual).toBe("principiante");
+    expect(body.nivelActual).toBe("ninguno");
   });
 
-  it("sesión avanzado: recibe el contacto real, y nivelActual coincide con el claim", async () => {
-    const agente = await crearAgente("avanzado");
+  it("sesión con plan completo: recibe el contacto real, y nivelActual coincide con el claim", async () => {
+    const agente = await crearAgente();
     mockGetVerifiedClaims.mockResolvedValue({
       sub: "u2",
-      app_metadata: { nivel: "avanzado", rol: "user" },
+      app_metadata: { nivel: "completo", rol: "user" },
     });
 
     const res = await GET();
@@ -129,24 +133,24 @@ describe("GET /api/agentes — integración real (VGRP-49)", () => {
       (a) => a.id === agente.id,
     );
     expect(item?.contacto).toBe("contacto-real-secreto-de-test");
-    expect(body.nivelActual).toBe("avanzado");
+    expect(body.nivelActual).toBe("completo");
   });
 
   it("sin sesión (claims=null): nunca expone contacto, nivelActual='ninguno'", async () => {
-    const agente = await crearAgente("ninguno");
+    const agente = await crearAgente();
     mockGetVerifiedClaims.mockResolvedValue(null);
 
     const res = await GET();
     const body = await res.json();
 
-    // nivel_requerido='ninguno' es el piso (hasNivel(null,'ninguno')===true,
-    // ver lib/auth/claims.ts) — el propio resolverSecreto() SÍ expondría este
-    // contacto sin sesión. Para probar el gating real hace falta una fila que
-    // exija más que el piso.
+    // VGRP-59/60 — a diferencia del modelo de 3 niveles (donde
+    // nivel_requerido='ninguno' era un piso que incluso una sesión ausente
+    // cumplía), con un solo plan tieneAcceso(null) es SIEMPRE false: sin
+    // sesión, el contacto nunca se expone, sin excepción.
     const item = (body.agentes as Array<{ id: string; contacto: string | null }>).find(
       (a) => a.id === agente.id,
     );
-    expect(item?.contacto).toBe("contacto-real-secreto-de-test");
+    expect(item?.contacto).toBeNull();
     expect(body.nivelActual).toBe("ninguno");
   });
 });

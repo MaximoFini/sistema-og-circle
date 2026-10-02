@@ -13,8 +13,8 @@
 // visible al instante" — esa asunción es justo la que la caché rompe.
 //
 // Usa un `BrowserContext` aparte (login como el admin seed) para no pisar la
-// sesión del `page` principal del test, que loguea como el usuario
-// principiante/avanzado bajo prueba.
+// sesión del `page` principal del test, que loguea como el usuario con/sin
+// plan bajo prueba.
 
 import type { Browser } from "@playwright/test";
 import { SEED_ADMIN_USER } from "./seed-users";
@@ -50,7 +50,6 @@ export async function sembrarAgenteViaAdmin(
   valores: {
     nombre: string;
     especialidad: string;
-    nivel_requerido: "ninguno" | "principiante" | "avanzado";
     contacto: string;
     orden?: number;
   },
@@ -63,7 +62,6 @@ export async function sembrarServicioViaAdmin(
   valores: {
     titulo: string;
     descripcion: string;
-    nivel_requerido: "ninguno" | "principiante" | "avanzado";
     orden?: number;
   },
 ): Promise<{ id: string }> {
