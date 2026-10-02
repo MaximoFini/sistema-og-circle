@@ -7,7 +7,7 @@
 // paralelo) — sólo leen precios/claims y hablan con la API de Mercado Pago.
 
 import { track } from "@vercel/analytics/server";
-import { getNivel } from "@/lib/auth/claims";
+import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
 import type { NivelAcceso } from "@/lib/database.types";
 import { getPreferenceClient } from "@/lib/mercadopago/client";
@@ -46,6 +46,21 @@ export async function crearCheckout(nivel: NivelAcceso): Promise<CrearCheckoutRe
 
   if (!esNivelComprable(nivel)) {
     return { ok: false, error: "Ese nivel no está disponible para compra." };
+  }
+
+  // Auditoría de Mercado Pago (decisión del equipo): no dejar comprar un
+  // nivel igual o inferior al que el usuario ya tiene. Sin este chequeo, un
+  // usuario Avanzado podía volver a pagar Principiante (downgrade sin
+  // sentido, y `nivel_vigente()` igual lo deja en Avanzado — plata tirada),
+  // y uno Principiante podía "comprar" Principiante de nuevo. El upgrade a
+  // un nivel SUPERIOR sigue permitido, a precio de lista completo (el
+  // upgrade por diferencia es Fase 3, todavía no existe).
+  const nivelActual = getNivel(claims);
+  if (nivelAlcanzaOSupera(nivelActual, nivel)) {
+    return {
+      ok: false,
+      error: `Ya tenés el nivel ${nivelActual}, no hace falta que compres ${nivel} de nuevo.`,
+    };
   }
 
   // `AppMetadataClaims` (lib/auth/claims.ts) sólo tipa `app_metadata` — el

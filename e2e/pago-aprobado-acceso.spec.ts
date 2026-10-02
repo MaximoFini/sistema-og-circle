@@ -174,6 +174,53 @@ test.describe("pago aprobado → acceso activado", () => {
     await expect(page.getByRole("heading", { name: "Nivel completo" })).toBeVisible();
   });
 
+  // Auditoría de Mercado Pago — bug encontrado: la condición vieja de
+  // "confirmado" era `nivel !== "ninguno"`. Para un upgrade (alguien que YA
+  // es Principiante y compra Avanzado), esa condición es verdadera ANTES de
+  // que el pago nuevo se proyecte — la pantalla redirigía al dashboard de
+  // inmediato, sin esperar la confirmación real de la compra de Avanzado.
+  test("upgrade principiante → avanzado: NO desbloquea hasta que el nivel alcanzado llega a avanzado", async ({
+    page,
+  }) => {
+    const creado = await createAuthenticatedUser("principiante");
+    userId = creado.userId;
+    const PASSWORD = "test-password-1!";
+    const admin = createTestAdminClient();
+
+    await login(page, creado.email, PASSWORD);
+
+    // El usuario YA tiene nivel 'principiante' en este punto — con la
+    // condición vieja (`nivel !== "ninguno"`), esta pantalla hubiera
+    // redirigido a /dashboard de inmediato, sin que el pago de Avanzado se
+    // haya proyectado todavía.
+    await page.goto("/comprar/pendiente?nivel=avanzado");
+    await expect(page.getByText("Estamos confirmando tu pago")).toBeVisible();
+
+    // Unos cuantos ciclos de polling con el nivel todavía en 'principiante':
+    // la pantalla tiene que seguir esperando, nunca navegar a /dashboard
+    // mostrando el pago de Avanzado como si ya hubiera sido confirmado.
+    await page.waitForTimeout(3 * 2500);
+    expect(page.url()).toContain("/comprar/pendiente");
+
+    // Recién ahora llega la proyección real del pago de Avanzado (lo que en
+    // producción dispara el webhook) — mismas dos funciones de producción
+    // que usa `app/api/webhooks/mercadopago/route.ts`.
+    const proveedorRef = `e2e-pago-upgrade-${randomUUID()}`;
+    const insertado = await insertarPago(admin, {
+      userId: creado.userId,
+      proveedorRef,
+      nivelComprado: "avanzado",
+      montoArs: 125000,
+      estado: "approved",
+      payloadRaw: { id: proveedorRef, status: "approved" },
+    });
+    if (!insertado.inserted) throw new Error("no se pudo sembrar el pago aprobado");
+    await proyectarNivel(admin, creado.userId);
+
+    await page.waitForURL("**/dashboard", { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Nivel avanzado" })).toBeVisible();
+  });
+
   test("pago rejected: la pantalla de pendiente no desbloquea nada (no hay loop infinito ni acceso falso)", async ({
     page,
   }) => {

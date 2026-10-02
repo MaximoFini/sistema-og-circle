@@ -60,6 +60,23 @@ describe("armarPreferencia", () => {
     expect(result.preferenceData.auto_return).toBe("approved");
   });
 
+  // Auditoría de Mercado Pago: antes, el webhook sólo recibía notificaciones
+  // si alguien configuraba la URL a mano en el panel de MP. `notification_url`
+  // viajando en la preferencia misma hace que eso no dependa de un paso
+  // manual externo.
+  it("incluye notification_url apuntando al webhook propio, con el mismo origen que back_urls", async () => {
+    mockGetPrecios.mockResolvedValue({ ok: true, precios: PRECIOS_OK });
+
+    const { armarPreferencia } = await import("./preferencia");
+    const result = await armarPreferencia("principiante", "user-123");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("no debería ser ok:false");
+    expect(result.preferenceData.notification_url).toBe(
+      "https://ogcircle.example/api/webhooks/mercadopago",
+    );
+  });
+
   it("devuelve un error explícito (sin lanzar ni inventar un precio) cuando getPrecios() falla", async () => {
     mockGetPrecios.mockResolvedValue({
       ok: false,

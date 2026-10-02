@@ -38,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/auth/browser";
 import type { NivelAcceso } from "@/lib/database.types";
+import { compraFueConfirmada } from "@/lib/mercadopago/confirmacion";
 import { consultarNivelActual } from "../_actions";
 import styles from "./pendiente.module.css";
 
@@ -93,7 +94,11 @@ export function PendienteClient({ whatsappUrl }: PendienteClientProps) {
       const { nivel } = await consultarNivelActual();
       if (!montadoRef.current) return;
 
-      if (nivel !== "ninguno") {
+      // Ver el comentario de `compraFueConfirmada` (lib/mercadopago/confirmacion.ts):
+      // `nivel !== "ninguno"` NO alcanza para un upgrade (ej. Principiante
+      // comprando Avanzado), porque esa condición ya era cierta antes de que
+      // el webhook confirmara el pago nuevo.
+      if (compraFueConfirmada(nivel, nivelEsperado)) {
         clearInterval(intervalId);
         setEstado("confirmado");
         router.push("/dashboard");
@@ -105,7 +110,7 @@ export function PendienteClient({ whatsappUrl }: PendienteClientProps) {
       montadoRef.current = false;
       clearInterval(intervalId);
     };
-  }, [router]);
+  }, [router, nivelEsperado]);
 
   if (estado === "timeout") {
     return (

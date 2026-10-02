@@ -1,13 +1,14 @@
 import * as Sentry from "@sentry/nextjs";
 import { track } from "@vercel/analytics/server";
 import { z } from "zod";
-import { normalizarNivelLegacy } from "@/lib/auth/claims";
+import { getPrecios } from "@/lib/config";
 import { insertarPago, proyectarNivel } from "@/lib/data/pagos";
 import type { Json } from "@/lib/database.types";
 import { notificarPagoAprobado } from "@/lib/email/pago-aprobado";
 import { getEnv } from "@/lib/env";
 import { getPaymentClient } from "@/lib/mercadopago/client";
 import { mapearEstadoMercadoPago } from "@/lib/mercadopago/mapEstado";
+import type { NivelComprable } from "@/lib/mercadopago/preferencia";
 import { validarFirmaMercadoPago } from "@/lib/mercadopago/validarFirma";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -117,6 +118,34 @@ function reportarPagoSinCorrelacion(detalle: string): void {
   );
 }
 
+const NIVELES_COMPRABLES = new Set<NivelAcceso>(["principiante", "avanzado"]);
+
+// Nota: narrowea a `NivelComprable` (excluye "ninguno"), no al `NivelAcceso`
+// completo — la auditoría de Mercado Pago agregó la validación de monto más
+// abajo, que indexa `precios.precios[nivelComprado]` y ese objeto sólo tiene
+// las claves `principiante`/`avanzado` (ver `lib/config/schema.ts`).
+function esNivelComprable(valor: unknown): valor is NivelComprable {
+  return typeof valor === "string" && NIVELES_COMPRABLES.has(valor as NivelAcceso);
+}
+
+/**
+ * Log de un pago aprobado cuyo monto NO coincide con el precio vigente del
+ * nivel comprado (auditoría de Mercado Pago, decisión del equipo).
+ *
+ * El pago YA quedó registrado en el ledger (`insertarPago` corrió antes de
+ * esta validación) — lo único que se evita es `proyectarNivel`: nunca se le
+ * da acceso a alguien por un monto que no coincide con lo que ese nivel
+ * cuesta. Severidad alta (no "warning" como `reportarPagoSinCorrelacion`):
+ * folamente puede pasar por una manipulación de la preferencia o un cambio
+ * de precio en Edge Config a mitad de un checkout en curso, y en ambos casos
+ * un admin tiene que mirarlo — por eso se ackea con 200 (no tiene sentido que
+ * MP reintente lo mismo) pero se alerta como fallo real, no como aviso.
+ */
+function reportarMontoInesperado(detalle: string): void {
+  console.error(`[mercadopago-webhook] monto inesperado: ${detalle}`);
+  Sentry.captureMessage(`[mercadopago-webhook] monto inesperado: ${detalle}`, "error");
+}
+
 export async function POST(request: Request): Promise<Response> {
   let secret: string;
   try {
@@ -219,32 +248,82 @@ export async function POST(request: Request): Promise<Response> {
       payloadRaw: pago as unknown as Json,
     });
 
-    // Duplicado: ya se procesó esta notificación (mismo proveedor_ref +
-    // estado) anteriormente. NO se vuelve a llamar a `proyectarNivel` — ya se
-    // proyectó la primera vez. Se responde 200 de inmediato.
-    if (!resultado.inserted) {
-      return Response.json({}, { status: 200 });
-    }
+    // `esPrimerRegistro` distingue "primera vez que vemos este
+    // (proveedor_ref, estado)" de "reintento de MP para algo ya visto". Se
+    // usa SÓLO para no repetir side effects que no deberían duplicarse
+    // (evento de analytics, email) — nunca para decidir si `proyectarNivel`
+    // corre, ver el comentario de abajo sobre por qué eso sería el bug que
+    // esta auditoría encontró.
+    const esPrimerRegistro = resultado.inserted;
 
+    // -------------------------------------------------------------------
+    // Por qué `proyectarNivel` se llama SIEMPRE que el estado es
+    // approved/refunded, sin importar `esPrimerRegistro`
+    // -------------------------------------------------------------------
+    // Antes, un pago duplicado (`!resultado.inserted`) cortaba acá con un
+    // 200 inmediato, sin volver a llamar a `proyectarNivel`. Eso es exacto
+    // SI y SÓLO SI la primera vez `proyectarNivel` llegó a correr. Pero si
+    // la primera vez `insertarPago` insertó la fila bien y DESPUÉS
+    // `proyectarNivel` tiró (red, Postgres, lo que sea), el handler
+    // respondía 500 — MP reintenta — y en el reintento `insertarPago`
+    // encuentra la fila ya insertada (23505 → `inserted: false`) y el
+    // código viejo cortaba ahí mismo: el pago queda en el ledger para
+    // siempre pero el nivel nunca se proyecta. Alguien pagó y no tiene
+    // acceso, el peor bug posible del sistema (PRD §3.8) — y encima el
+    // propio mecanismo de reintento que debería recuperarlo es lo que lo
+    // tapaba, porque a partir de ahí MP deja de reintentar.
+    //
+    // `proyectarNivel` es una proyección PURA del ledger completo (ver el
+    // comentario de idempotencia en `lib/data/pagos.ts`): llamarla de nuevo
+    // ante un duplicado no tiene ningún efecto distinto a la primera vez
+    // que corrió bien, y es lo que permite que un reintento se recupere solo
+    // de un fallo transitorio anterior.
     if (estadoInterno === "approved") {
-      await proyectarNivel(admin, userId);
+      // Auditoría de Mercado Pago (decisión del equipo): el monto pagado
+      // tiene que coincidir con el precio VIGENTE del nivel comprado. Un
+      // mismatch (preferencia manipulada, o el precio cambió en Edge Config
+      // a mitad de un checkout en curso) deja el pago en el ledger para
+      // trazabilidad, pero NUNCA activa el nivel sin que un admin lo mire.
+      const precios = await getPrecios();
+      const precioEsperado = precios.ok ? precios.precios[nivelComprado] : undefined;
+      const montoValido = precioEsperado !== undefined && montoArs === precioEsperado;
 
-      // VGRP-41 — evento de conversión por nivel (PRD: cuántos inician
-      // checkout vs. cuántos terminan pagando). Mismo criterio de "no
-      // bloquear lo importante" que `notificarPagoAprobado` de acá abajo:
-      // nunca puede tirar abajo el 200 del webhook.
-      try {
-        await track("pago_aprobado", { nivel: nivelComprado });
-      } catch (error) {
-        reportarFalloDeProcesamiento("track('pago_aprobado') falló", error);
+      if (!montoValido) {
+        // Alerta de una sola vez, igual que track/notificarPagoAprobado del
+        // camino feliz: un reintento de MP para el mismo pago ya mal
+        // registrado no necesita volver a avisarle al admin lo mismo.
+        if (esPrimerRegistro) {
+          reportarMontoInesperado(
+            `paymentId=${paymentId} userId=${userId} nivel=${nivelComprado} montoArs=${montoArs} precioEsperado=${String(precioEsperado)}`,
+          );
+        }
+        return Response.json({}, { status: 200 });
       }
 
-      // Fire-and-forget: nunca bloquea la respuesta del webhook ni puede
-      // tirar abajo el 200 (ver el comentario de `notificarPagoAprobado`).
-      try {
-        notificarPagoAprobado({ userId, nivel: nivelComprado, montoArs });
-      } catch (error) {
-        reportarFalloDeProcesamiento("notificarPagoAprobado falló", error);
+      await proyectarNivel(admin, userId);
+
+      // Side effects que SÍ deben ser de una sola vez: sólo en la primera
+      // vez que se ve este pago, nunca en un reintento (evitaría un segundo
+      // email de confirmación o un segundo evento de conversión para la
+      // misma compra).
+      if (esPrimerRegistro) {
+        // VGRP-41 — evento de conversión por nivel (PRD: cuántos inician
+        // checkout vs. cuántos terminan pagando). Mismo criterio de "no
+        // bloquear lo importante" que `notificarPagoAprobado` de acá abajo:
+        // nunca puede tirar abajo el 200 del webhook.
+        try {
+          await track("pago_aprobado", { nivel: nivelComprado });
+        } catch (error) {
+          reportarFalloDeProcesamiento("track('pago_aprobado') falló", error);
+        }
+
+        // Fire-and-forget: nunca bloquea la respuesta del webhook ni puede
+        // tirar abajo el 200 (ver el comentario de `notificarPagoAprobado`).
+        try {
+          notificarPagoAprobado({ userId, nivel: nivelComprado, montoArs });
+        } catch (error) {
+          reportarFalloDeProcesamiento("notificarPagoAprobado falló", error);
+        }
       }
     }
 
@@ -256,6 +335,8 @@ export async function POST(request: Request): Promise<Response> {
     // falta volver a llamar a `proyectarNivel` para que ese recálculo se
     // refleje en `profiles.nivel` y en el claim del JWT — es la misma
     // función que usa el camino de aprobación arriba, sin lógica nueva.
+    // Se llama sin importar `esPrimerRegistro`, por la misma razón de
+    // recuperación ante reintento explicada arriba.
     //
     // Sin email ni evento de conversión acá: no hay "confirmación" que
     // mandar y "pago_aprobado" no aplica a este caso.

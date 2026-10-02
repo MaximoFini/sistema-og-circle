@@ -83,6 +83,18 @@ dashboard de Sentry tiene que crear una **Alert Rule**:
 Sin esta Alert Rule, Sentry va a seguir capturando la excepción igual (aparece en el
 dashboard), pero nadie se entera por email hasta que alguien la mire manualmente.
 
+### Alert Rule — monto inesperado en un pago aprobado (auditoría de Mercado Pago)
+
+Distinta de la de arriba: `reportarMontoInesperado` (`route.ts`) usa
+`Sentry.captureMessage(..., "error")`, no `captureException` — el webhook responde 200
+(el pago queda bien registrado en el ledger), pero el nivel NUNCA se activa cuando el
+monto pagado no coincide con el precio vigente del nivel comprado en Edge Config. Esto
+sólo puede pasar por una preferencia manipulada o un precio que cambió a mitad de un
+checkout en curso — en ambos casos, alguien tiene que mirarlo y activar el nivel a mano
+desde el panel (`/admin/pagos`) si corresponde. Mismo mecanismo de Alert Rule que la
+sección de arriba, pero con un filtro separado por el string `monto inesperado` (o por
+level `error` + el tag `mercadopago-webhook`, que ambos mensajes comparten).
+
 ## Hueco de auditoría del panel de admin — VGRP-35 (`admin-audit-gap`)
 
 `lib/data/admin/audit-log.ts::conAuditoria()` envuelve toda mutación del panel
@@ -125,6 +137,9 @@ pagos quedaron "a medio proyectar" y volver a correr la proyección a mano.
 
 - [ ] `SENTRY_DSN` y `NEXT_PUBLIC_SENTRY_DSN` cargadas en Vercel (production).
 - [ ] Alert Rule de Sentry creada para el webhook de Mercado Pago (ver arriba).
+- [ ] Alert Rule de Sentry creada para "monto inesperado" (auditoría de Mercado Pago,
+      ver arriba) — sin ella, un pago cuyo monto no coincide con el precio del nivel
+      queda silenciosamente sin activar, sin que nadie se entere.
 - [ ] **Verificar que la connection string de Supabase en producción usa el pooler en
       modo *transaction* (puerto `6543`), no la conexión directa (`5432`).** Esto es una
       verificación manual de configuración, no algo que el código pueda chequear en

@@ -20,10 +20,19 @@ const mockNotificarPagoAprobado = vi.fn();
 const mockCaptureException = vi.fn();
 const mockCaptureMessage = vi.fn();
 const mockTrack = vi.fn();
+const mockGetPrecios = vi.fn();
 
 vi.mock("@/lib/data/pagos", () => ({
   insertarPago: (...args: unknown[]) => mockInsertarPago(...args),
   proyectarNivel: (...args: unknown[]) => mockProyectarNivel(...args),
+}));
+
+// Auditoría de Mercado Pago — validación de monto: el handler ahora consulta
+// `getPrecios()` (Edge Config) para cada pago approved. Se mockea acá por el
+// mismo motivo que el resto de este archivo mockea sus dependencias externas
+// (no pegarle a Edge Config real desde un test unitario).
+vi.mock("@/lib/config", () => ({
+  getPrecios: () => mockGetPrecios(),
 }));
 
 vi.mock("@/lib/supabase/service-role", () => ({
@@ -85,6 +94,7 @@ describe("POST /api/webhooks/mercadopago", () => {
     mockCaptureException.mockReset();
     mockCaptureMessage.mockReset();
     mockTrack.mockReset();
+    mockGetPrecios.mockReset();
 
     vi.stubEnv("MERCADOPAGO_WEBHOOK_SECRET", "test-secret");
     vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", "test-token");
@@ -95,14 +105,29 @@ describe("POST /api/webhooks/mercadopago", () => {
       get: vi.fn().mockResolvedValue(PAGO_APROBADO_MP),
     });
     mockTrack.mockResolvedValue(undefined);
+    mockGetPrecios.mockResolvedValue({
+      ok: true,
+      precios: { principiante: 75000, avanzado: 125000 },
+    });
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("no llama a proyectarNivel cuando insertarPago devuelve inserted:false (duplicado)", async () => {
+  // Auditoría de Mercado Pago — bug encontrado: la versión anterior de este
+  // test afirmaba que un duplicado NUNCA debía llamar a `proyectarNivel`.
+  // Eso es lo que causaba el bug real: si `proyectarNivel` fallaba la
+  // primera vez (fila ya insertada, 500 → MP reintenta), el reintento
+  // encontraba el pago "duplicado" y cortaba sin reintentar la proyección —
+  // el usuario quedaba pagado y sin acceso para siempre. `proyectarNivel` es
+  // una proyección pura e idempotente (ver `lib/data/pagos.ts`), así que
+  // ahora SÍ se llama de nuevo ante un duplicado. Lo único que un duplicado
+  // evita son los side effects de una sola vez (track, email) — ver el test
+  // siguiente.
+  it("SÍ reintenta proyectarNivel ante un duplicado (recuperación de un fallo anterior)", async () => {
     mockInsertarPago.mockResolvedValue({ inserted: false, motivo: "duplicado" });
+    mockProyectarNivel.mockResolvedValue("principiante");
 
     const { POST } = await import("./route");
     const res = await POST(
@@ -114,7 +139,55 @@ describe("POST /api/webhooks/mercadopago", () => {
 
     expect(res.status).toBe(200);
     expect(mockInsertarPago).toHaveBeenCalledTimes(1);
-    expect(mockProyectarNivel).not.toHaveBeenCalled();
+    expect(mockProyectarNivel).toHaveBeenCalledTimes(1);
+  });
+
+  it("un duplicado NO repite track('pago_aprobado') ni notificarPagoAprobado (side effects de una sola vez)", async () => {
+    mockInsertarPago.mockResolvedValue({ inserted: false, motivo: "duplicado" });
+    mockProyectarNivel.mockResolvedValue("principiante");
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockProyectarNivel).toHaveBeenCalledTimes(1);
+    expect(mockTrack).not.toHaveBeenCalled();
+    expect(mockNotificarPagoAprobado).not.toHaveBeenCalled();
+  });
+
+  it("recuperación real: 1er intento falla en proyectarNivel (500), el reintento (duplicado) activa el nivel igual", async () => {
+    mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
+    mockProyectarNivel.mockRejectedValueOnce(new Error("timeout de Postgres"));
+
+    const { POST } = await import("./route");
+
+    const primerIntento = await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+    expect(primerIntento.status).toBe(500);
+
+    // El reintento de MP: la fila ya existe (23505 → duplicado), pero el
+    // nivel nunca llegó a proyectarse la primera vez.
+    mockInsertarPago.mockResolvedValue({ inserted: false, motivo: "duplicado" });
+    mockProyectarNivel.mockResolvedValueOnce("principiante");
+
+    const reintento = await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(reintento.status).toBe(200);
+    expect(mockProyectarNivel).toHaveBeenCalledTimes(2);
   });
 
   it("llama a proyectarNivel cuando insertarPago inserta un pago approved", async () => {
@@ -242,6 +315,101 @@ describe("POST /api/webhooks/mercadopago", () => {
     expect(mockInsertarPago).not.toHaveBeenCalled();
   });
 
+  // Auditoría de Mercado Pago — validación de monto (decisión del equipo):
+  // el webhook no confiaba en que el monto pagado coincidiera con el precio
+  // del nivel. Alguien manipulando la preferencia (o un precio que cambió en
+  // Edge Config a mitad de un checkout en curso) activaba el nivel igual.
+  it("monto que no coincide con el precio vigente: el pago queda insertado pero NO se proyecta el nivel", async () => {
+    mockGetPaymentClient.mockReturnValue({
+      get: vi.fn().mockResolvedValue({ ...PAGO_APROBADO_MP, transaction_amount: 1 }),
+    });
+    mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockInsertarPago).toHaveBeenCalledTimes(1);
+    expect(mockProyectarNivel).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalled();
+    expect(mockNotificarPagoAprobado).not.toHaveBeenCalled();
+  });
+
+  it("un monto inválido se reporta a Sentry con severidad 'error' (un admin tiene que revisarlo)", async () => {
+    mockGetPaymentClient.mockReturnValue({
+      get: vi.fn().mockResolvedValue({ ...PAGO_APROBADO_MP, transaction_amount: 1 }),
+    });
+    mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
+
+    const { POST } = await import("./route");
+    await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("monto inesperado"),
+      "error",
+    );
+  });
+
+  it("un reintento de MP para el mismo pago con monto inválido NO repite la alerta a Sentry", async () => {
+    mockGetPaymentClient.mockReturnValue({
+      get: vi.fn().mockResolvedValue({ ...PAGO_APROBADO_MP, transaction_amount: 1 }),
+    });
+    // Duplicado: ya se vio este (proveedor_ref, estado) antes.
+    mockInsertarPago.mockResolvedValue({ inserted: false, motivo: "duplicado" });
+
+    const { POST } = await import("./route");
+    await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(mockCaptureMessage).not.toHaveBeenCalled();
+  });
+
+  it("si getPrecios() falla (Edge Config caído), NO se proyecta el nivel (fail-closed, no fail-open, en dinero)", async () => {
+    mockGetPrecios.mockResolvedValue({ ok: false, error: "Edge Config no disponible" });
+    mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockProyectarNivel).not.toHaveBeenCalled();
+  });
+
+  it("monto que SÍ coincide con el precio vigente: proyecta el nivel con normalidad", async () => {
+    mockInsertarPago.mockResolvedValue({ inserted: true, pago: { id: "pago-1" } });
+    mockProyectarNivel.mockResolvedValue("principiante");
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      req("https://ogcircle.example/api/webhooks/mercadopago?data.id=123456789&type=payment", {
+        "x-signature": "ts=1700000000000,v1=deadbeef",
+        "x-request-id": "req-1",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockProyectarNivel).toHaveBeenCalledTimes(1);
+  });
+
   it("responde 500 cuando insertarPago lanza un error real (no duplicado)", async () => {
     mockInsertarPago.mockRejectedValue(new Error("fallo de red inesperado"));
 
@@ -303,6 +471,7 @@ describe("POST /api/webhooks/mercadopago — observabilidad (VGRP-41)", () => {
     mockCaptureException.mockReset();
     mockCaptureMessage.mockReset();
     mockTrack.mockReset();
+    mockGetPrecios.mockReset();
 
     vi.stubEnv("MERCADOPAGO_WEBHOOK_SECRET", "test-secret");
     vi.stubEnv("MERCADOPAGO_ACCESS_TOKEN", "test-token");
@@ -313,6 +482,10 @@ describe("POST /api/webhooks/mercadopago — observabilidad (VGRP-41)", () => {
       get: vi.fn().mockResolvedValue(PAGO_APROBADO_MP),
     });
     mockTrack.mockResolvedValue(undefined);
+    mockGetPrecios.mockResolvedValue({
+      ok: true,
+      precios: { principiante: 75000, avanzado: 125000 },
+    });
   });
 
   afterEach(() => {

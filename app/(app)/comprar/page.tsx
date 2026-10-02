@@ -1,5 +1,8 @@
+import { Button } from "@/components/ui";
 import { Icon } from "@/components/ui/Icon";
-import { getPlan, getPrecios } from "@/lib/config";
+import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
+import { getVerifiedClaims } from "@/lib/auth/server";
+import { getPrecios } from "@/lib/config";
 import { formatearPrecio } from "@/lib/format";
 import { ComprarButton } from "./ComprarButton";
 import styles from "./comprar.module.css";
@@ -36,7 +39,16 @@ import styles from "./comprar.module.css";
 export const dynamic = "force-dynamic";
 
 export default async function ComprarPage() {
-  const [precios, plan] = await Promise.all([getPrecios(), getPlan()]);
+  // Auditoría de Mercado Pago (decisión del equipo): un usuario no debe ver
+  // habilitado el botón de comprar un nivel igual o inferior al que ya
+  // tiene — `crearCheckout` (_actions.ts) ya lo bloquea del lado del
+  // servidor, esto es sólo para que la UI no ofrezca algo que va a fallar.
+  //
+  // `getVerifiedClaims()` (JWT) y `getPrecios()` (Edge Config) son dos
+  // lecturas independientes — en paralelo en vez de en serie, ya que esta
+  // página es `force-dynamic` y ninguna depende del resultado de la otra.
+  const [claims, precios] = await Promise.all([getVerifiedClaims(), getPrecios()]);
+  const nivelActual = getNivel(claims);
 
   if (!precios.ok) {
     return (
@@ -62,17 +74,40 @@ export default async function ComprarPage() {
         <h1 className={styles.title}>Comprar acceso</h1>
       </div>
 
-      <div className={styles.card}>
-        <p className={styles.nivelNombre}>{plan.nombre}</p>
-        <p className={styles.precio}>
-          {formatearPrecio.format(precios.precios.plan)}
-          <span>pago único</span>
-        </p>
-        <p className={styles.copy}>
-          Acceso completo a la plataforma. Se activa apenas Mercado Pago confirma el pago.
-        </p>
-        <ComprarButton nivel="completo" />
-      </div>
+      {NIVELES_COMPRABLES.map((nivel) => {
+        // Ya tiene este nivel o uno superior: no tiene sentido ofrecerle el
+        // botón de compra (crearCheckout lo rechazaría igual del lado del
+        // servidor — ver el comentario de arriba).
+        const yaAlcanzado = nivelAlcanzaOSupera(nivelActual, nivel);
+
+        return (
+          // Avanzado es el nivel completo: se destaca sólo con el reflejo ámbar del borde.
+          <div
+            key={nivel}
+            className={
+              nivel === "avanzado" ? `${styles.card} ${styles.cardDestacada}` : styles.card
+            }
+          >
+            <p className={styles.nivelNombre}>{nivel}</p>
+            <p className={styles.precio}>
+              {formatearPrecio.format(precios.precios[nivel])}
+              <span>pago único</span>
+            </p>
+            <p className={styles.copy}>
+              {yaAlcanzado
+                ? `Ya tenés acceso ${nivelActual}, que incluye este nivel.`
+                : `Acceso ${nivel} a la plataforma. Se activa apenas Mercado Pago confirma el pago.`}
+            </p>
+            {yaAlcanzado ? (
+              <Button variant="ghost" fullWidth disabled>
+                Ya tenés este nivel
+              </Button>
+            ) : (
+              <ComprarButton nivel={nivel} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

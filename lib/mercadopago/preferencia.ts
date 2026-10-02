@@ -104,6 +104,15 @@ export async function armarPreferencia(
     // sólo cuando el pago fue aprobado. Ningún otro valor de `auto_return`
     // aplica acá — el PRD no contempla mostrar la pantalla de éxito de MP.
     auto_return: "approved",
+    // Auditoría de Mercado Pago: antes, el webhook sólo recibía
+    // notificaciones si alguien lo configuraba A MANO en el panel de
+    // Desarrolladores de la cuenta de MP (Tus integraciones → la app →
+    // Webhooks). Eso es un paso manual fácil de olvidar y que nadie
+    // verificaba — fijar `notification_url` en la preferencia misma hace que
+    // la URL de notificación viaje con cada preferencia creada, sin depender
+    // de ninguna configuración externa. Mismo origen que `back_urls`
+    // (`getSiteUrl()`), nunca hardcodeado a un dominio fijo.
+    notification_url: `${getSiteUrl()}/api/webhooks/mercadopago`,
   };
 
   return { ok: true, preferenceData };

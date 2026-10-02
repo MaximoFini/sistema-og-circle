@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNivel, getRol, hasNivel, tieneAcceso } from "./claims";
+import { getNivel, getRol, hasNivel, nivelAlcanzaOSupera } from "./claims";
 
 describe("getNivel", () => {
   it("lee un nivel válido de app_metadata", () => {
@@ -56,6 +56,16 @@ describe("hasNivel", () => {
     expect(hasNivel(claims, "completo")).toBe(true);
   });
 });
+
+describe("nivelAlcanzaOSupera", () => {
+  it("respeta el orden ninguno < principiante < avanzado", () => {
+    expect(nivelAlcanzaOSupera("ninguno", "ninguno")).toBe(true);
+    expect(nivelAlcanzaOSupera("ninguno", "principiante")).toBe(false);
+    expect(nivelAlcanzaOSupera("principiante", "principiante")).toBe(true);
+    expect(nivelAlcanzaOSupera("principiante", "avanzado")).toBe(false);
+    expect(nivelAlcanzaOSupera("avanzado", "principiante")).toBe(true);
+    expect(nivelAlcanzaOSupera("avanzado", "avanzado")).toBe(true);
+  });
 
 describe("tieneAcceso", () => {
   it("true con el plan completo", () => {
