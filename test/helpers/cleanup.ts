@@ -182,7 +182,7 @@ export async function cleanupAllTestArtifacts(): Promise<{ usersDeleted: number 
 // una corrida que se cortó a la mitad.
 // -----------------------------------------------------------------------------
 
-const MARCADOR_CONTENIDO_TEST = "[test]";
+export const MARCADOR_CONTENIDO_TEST = "[test]";
 
 const TABLAS_CONTENIDO_POR_COLUMNA_MARCADORA = [
   { tabla: "agentes", columna: "nombre" },
