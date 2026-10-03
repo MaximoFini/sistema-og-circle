@@ -94,3 +94,78 @@ describe("post a /api/cotizador/*", () => {
     expect(DESTINO_SIN_PLAN).toBe("/comprar");
   });
 });
+
+describe("analyzeProduct (streaming NDJSON)", () => {
+  /** Respuesta 200 que entrega el cuerpo en los trozos de red indicados. */
+  function ndjson(...trozos: string[]): Response {
+    const codificador = new TextEncoder();
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          for (const t of trozos) controller.enqueue(codificador.encode(t));
+          controller.close();
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/x-ndjson" } },
+    );
+  }
+  const linea = (evento: unknown) => `${JSON.stringify(evento)}\n`;
+
+  it("va avisando el análisis parcial y resuelve con el `fin` del servidor", async () => {
+    const definitivo = { publicoObjetivo: "runners", angulosVenta: ["a"], ideasContenido: [] };
+    // La segunda línea llega partida en dos trozos de red.
+    const segunda = linea({ tipo: "texto", texto: ' 18", "angulosVenta": ["a' });
+    fetchMock.mockResolvedValue(
+      ndjson(
+        linea({ tipo: "texto", texto: '{"publicoObjetivo": "Jóvenes de' }),
+        segunda.slice(0, 10),
+        segunda.slice(10),
+        linea({ tipo: "fin", analisis: definitivo }),
+      ),
+    );
+    const onParcial = vi.fn();
+
+    await expect(analyzeProduct({ producto: "x" }, { onParcial })).resolves.toEqual(definitivo);
+
+    expect(onParcial).toHaveBeenCalledTimes(2);
+    expect(onParcial).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ publicoObjetivo: "Jóvenes de" }),
+    );
+    expect(onParcial).toHaveBeenLastCalledWith(
+      expect.objectContaining({ publicoObjetivo: "Jóvenes de 18", angulosVenta: ["a"] }),
+    );
+  });
+
+  it("un evento `error` lanza ErrorApi con su mensaje", async () => {
+    fetchMock.mockResolvedValue(
+      ndjson(
+        linea({ tipo: "texto", texto: "{" }),
+        linea({ tipo: "error", error: "JSON inválido." }),
+      ),
+    );
+    const err = await analyzeProduct({ producto: "x" }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(ErrorApi);
+    expect((err as ErrorApi).message).toBe("JSON inválido.");
+  });
+
+  it("si el stream termina sin `fin` ni `error`: ErrorApi de conexión cortada", async () => {
+    fetchMock.mockResolvedValue(ndjson(linea({ tipo: "texto", texto: "{" })));
+    await expect(analyzeProduct({ producto: "x" })).rejects.toThrow(/Se cortó la conexión/);
+  });
+
+  it("cancelado con signal: rechaza con el AbortError, no con ErrorApi", async () => {
+    const control = new AbortController();
+    control.abort();
+    fetchMock.mockRejectedValue(new DOMException("aborted", "AbortError"));
+
+    const err = await analyzeProduct({ producto: "x" }, { signal: control.signal }).catch(
+      (e: unknown) => e,
+    );
+
+    expect(err).not.toBeInstanceOf(ErrorApi);
+    expect((err as DOMException).name).toBe("AbortError");
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].signal).toBe(control.signal);
+  });
+});
