@@ -32,4 +32,15 @@ export async function teardown() {
       `[global-teardown] Limpieza post-test: ${filasBorradas} fila(s) de contenido de test borrada(s).`,
     );
   }
+
+  // VGRP-62 — cuentas de cobro de test (titular con el marcador "[test]"). No
+  // cuelgan de un usuario, mismo criterio que el contenido de arriba.
+  const { createTestAdminClient } = await import("./helpers/db-client");
+  const { limpiarCuentasDeTest } = await import("./helpers/cuenta-cobro-seed");
+  const { filasLimpiadas } = await limpiarCuentasDeTest(createTestAdminClient());
+  if (filasLimpiadas > 0) {
+    console.log(
+      `[global-teardown] Limpieza post-test: ${filasLimpiadas} cuenta(s) de cobro de test borrada(s).`,
+    );
+  }
 }

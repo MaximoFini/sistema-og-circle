@@ -499,6 +499,7 @@ export type Database = {
       };
     };
     Functions: {
+      activar_cuenta_cobro: { Args: { p_id: string }; Returns: Json };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
       nivel_vigente: {
         Args: { p_user_id: string };

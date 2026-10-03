@@ -26,6 +26,8 @@ const ARCHIVOS = [
   "lib/data/agentes.ts",
   "lib/data/videos.ts",
   "lib/data/admin/contenido.ts",
+  // VGRP-62 — datos de las cuentas bancarias de cobro: CRUD del panel admin.
+  "lib/data/admin/cuentas.ts",
   // VGRP-57 — calculadora: el cliente de Anthropic lee ANTHROPIC_API_KEY; el
   // guard y las respuestas son la cadena de gating de /api/cotizador/*.
   "lib/cotizador/server/anthropic.ts",
