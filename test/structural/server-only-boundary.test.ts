@@ -31,6 +31,11 @@ const ARCHIVOS = [
   "lib/cotizador/server/anthropic.ts",
   "lib/cotizador/server/guard.ts",
   "lib/cotizador/server/respuestas.ts",
+  // VGRP-68 — stubs del cobro por transferencia (los dueños reemplazan el
+  // cuerpo; el `import "server-only"` se queda).
+  "lib/data/cuenta-cobro.ts",
+  "lib/data/comprobante-usuario.ts",
+  "lib/pagos/transferencia/resolver.ts",
 ];
 
 /** Primeras líneas de código real: se descartan comentarios de línea (`//`),
