@@ -24,7 +24,7 @@ const NINGUNO = findSeedUser("ninguno");
 async function login(page: Page, email: string, password: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }

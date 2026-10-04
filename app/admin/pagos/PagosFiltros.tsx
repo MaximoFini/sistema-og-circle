@@ -1,25 +1,14 @@
 import { Button, TextFieldBase } from "@/components/ui";
 import styles from "../admin.module.css";
+import { ESTADO_LABELS, ESTADOS } from "./estados";
 
 // VGRP-37 — filtros del ledger de pagos. Form nativo `method="get"`: al enviar
 // navega a `/admin/pagos?estado=...&desde=...&hasta=...&ref=...` y el Server
 // Component vuelve a consultar. No necesita JS de cliente — "cargar más" es un
 // link con el cursor (ver page.tsx).
 
-// Estados que hoy puede tomar un pago de Mercado Pago en el ledger. `estado` es
-// texto libre en la base (`pagos.estado`), pero estos son los valores reales que
-// escribe el webhook (VGRP-23) — un `<select>` acotado es más útil que un input
-// libre para el admin.
-const ESTADOS = ["approved", "pending", "in_process", "rejected", "refunded", "cancelled"] as const;
-
-const ESTADO_LABELS: Record<(typeof ESTADOS)[number], string> = {
-  approved: "Aprobado",
-  pending: "Pendiente",
-  in_process: "En proceso",
-  rejected: "Rechazado",
-  refunded: "Reembolsado",
-  cancelled: "Cancelado",
-};
+// Un `<select>` acotado a los estados reales es más útil que un input libre
+// para el admin (ver ./estados.ts).
 
 export function PagosFiltros({
   estado,

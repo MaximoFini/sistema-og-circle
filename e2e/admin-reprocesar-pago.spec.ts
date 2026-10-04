@@ -11,7 +11,7 @@ import "../test/helpers/load-env";
 // VGRP-37 (37-T12) — ledger de pagos + reproceso, con UI real.
 //
 // Se siembra un pago `approved` con el nivel SIN APLICAR (insert directo por
-// service role, sin proyectar). El admin abre `/admin/pagos`, ve el badge "sin
+// service role, sin proyectar). El admin abre `/admin/pagos`, ve el badge "Sin
 // aplicar", entra al detalle, reprocesa, y el nivel del usuario sube (el badge
 // deja de aparecer).
 //
@@ -57,12 +57,12 @@ test("el admin reprocesa un pago aprobado sin aplicar y el nivel del usuario sub
 
     await page.goto(`/admin/pagos?ref=${encodeURIComponent(ref)}`);
     const fila = page.getByRole("link", { name: new RegExp(objetivo.email) });
-    await expect(fila).toContainText("sin aplicar");
+    await expect(fila).toContainText("Sin aplicar");
     await fila.click();
 
     await page.waitForURL(`**/admin/pagos/${ins.pago.id}`);
     await page.getByRole("button", { name: "Reprocesar pago" }).click();
-    await expect(page.getByText(/Reproceso aplicado: ninguno → avanzado/)).toBeVisible();
+    await expect(page.getByText(/Reproceso aplicado: ninguno → completo/)).toBeVisible();
 
     const { data: perfil } = await admin
       .from("profiles")

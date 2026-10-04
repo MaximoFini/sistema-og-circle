@@ -4,6 +4,7 @@ import { TextLink } from "@/components/ui";
 import { listarPagos } from "@/lib/data/admin/pagos";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
+import { estadoLabel, nivelLabel, origenPago } from "./estados";
 import { PagosFiltros } from "./PagosFiltros";
 
 // VGRP-37 — Ledger de pagos. Server Component: consulta `listarPagos` por
@@ -103,7 +104,7 @@ async function ResultadosPagos({
           la pena por lo poco que tarda hoy este query. */}
       <p className={styles.lede}>
         Ledger completo. Los aprobados que no quedaron aplicados están marcados{" "}
-        <span className={styles.badgeSinAplicar}>sin aplicar</span>.
+        <span className={styles.badgeSinAplicar}>Sin aplicar</span>.
         {totalSinAplicar !== null && totalSinAplicar > 0
           ? ` Hay ${totalSinAplicar} en total.`
           : null}
@@ -119,13 +120,13 @@ async function ResultadosPagos({
             <TextLink key={p.id} href={`/admin/pagos/${p.id}`} className={styles.userRow}>
               <span className={styles.userEmail}>{p.user_email}</span>
               <span className={styles.pagoDatos}>
-                {p.nivel_comprado} · {monto(p.monto_ars)}
+                {nivelLabel(p.nivel_comprado)} · {monto(p.monto_ars)}
               </span>
               <span className={styles.badgeFila}>
-                <span className={styles.badgeEstado}>{p.estado}</span>
-                {p.sin_aplicar ? <span className={styles.badgeSinAplicar}>sin aplicar</span> : null}
+                <span className={styles.badgeEstado}>{estadoLabel(p.estado)}</span>
+                {p.sin_aplicar ? <span className={styles.badgeSinAplicar}>Sin aplicar</span> : null}
               </span>
-              <span className={styles.filaMeta}>{p.proveedor_ref}</span>
+              <span className={styles.filaMeta}>{origenPago(p)}</span>
               <span className={styles.userAlta}>{fecha(p.created_at)}</span>
             </TextLink>
           ))}

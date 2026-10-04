@@ -1,16 +1,18 @@
 import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
-import { listarUsuarios } from "@/lib/data/admin/usuarios";
+import { listarUsuarios, ORDENES_USUARIOS, type OrdenUsuarios } from "@/lib/data/admin/usuarios";
 import { Constants } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
+import { nivelLabel } from "../pagos/estados";
 import { UsuariosFiltros } from "./UsuariosFiltros";
 
 // VGRP-36 — Listado de usuarios. Server Component: consulta `listarUsuarios`
 // por service role (bypassa RLS; la barrera de autorización es el rol de la
-// capa de ruta — middleware + layout). Búsqueda por email parcial + filtro por
-// nivel + paginación keyset ("Cargar más"). Mobile-first: filas apiladas, no
+// capa de ruta — middleware + layout). Búsqueda parcial por email, nombre o
+// teléfono + filtros por nivel, rol, términos y fecha de alta + orden +
+// paginación keyset ("Cargar más"). Mobile-first: filas apiladas, no
 // tabla.
 //
 // Los filtros van por querystring y se validan con Zod. Si son inválidos, la
@@ -22,8 +24,21 @@ export const dynamic = "force-dynamic";
 const searchSchema = z.object({
   q: z.string().trim().min(1).max(200).optional(),
   nivel: z.enum(Constants.public.Enums.nivel_acceso).optional(),
+  rol: z.enum(Constants.public.Enums.rol_usuario).optional(),
+  terminos: z.enum(["si", "no"]).optional(),
+  desde: z.iso.date().optional(),
+  hasta: z.iso.date().optional(),
+  orden: z.enum(ORDENES_USUARIOS).optional(),
   cursor: z.string().min(1).max(500).optional(),
 });
+
+type Filtros = Omit<z.infer<typeof searchSchema>, "cursor">;
+
+// El form nativo manda `campo=` cuando un input queda vacío o el select está
+// en "Todos": eso es "sin filtro", no un valor inválido.
+function param(v: string | string[] | undefined): string | undefined {
+  return typeof v === "string" && v.trim() !== "" ? v : undefined;
+}
 
 function formatearFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-AR", {
@@ -33,26 +48,24 @@ function formatearFecha(iso: string): string {
   });
 }
 
-function construirQuery(base: { q?: string; nivel?: string }, cursor?: string): string {
+function construirQuery(base: Filtros, cursor?: string): string {
   const params = new URLSearchParams();
-  if (base.q) params.set("q", base.q);
-  if (base.nivel) params.set("nivel", base.nivel);
+  for (const [k, v] of Object.entries(base)) if (v) params.set(k, v);
   if (cursor) params.set("cursor", cursor);
   const qs = params.toString();
   return qs ? `/admin/usuarios?${qs}` : "/admin/usuarios";
 }
 
-async function ResultadosUsuarios({
-  q,
-  nivel,
-  cursor,
-}: {
-  q?: string;
-  nivel?: (typeof Constants.public.Enums.nivel_acceso)[number];
-  cursor?: string;
-}) {
+async function ResultadosUsuarios({ filtros, cursor }: { filtros: Filtros; cursor?: string }) {
   const admin = createServiceRoleClient();
-  const { usuarios, nextCursor } = await listarUsuarios(admin, { q, nivel, limit: 20, cursor });
+  const { desde, hasta, ...resto } = filtros;
+  const { usuarios, nextCursor } = await listarUsuarios(admin, {
+    ...resto,
+    desde: desde ? `${desde}T00:00:00.000Z` : undefined,
+    hasta: hasta ? `${hasta}T23:59:59.999Z` : undefined,
+    limit: 20,
+    cursor,
+  });
 
   return (
     <>
@@ -63,7 +76,7 @@ async function ResultadosUsuarios({
           {usuarios.map((u) => (
             <TextLink key={u.id} href={`/admin/usuarios/${u.id}`} className={styles.userRow}>
               <span className={styles.userEmail}>{u.email}</span>
-              <span className={styles.nivelPill}>{u.nivel}</span>
+              <span className={styles.nivelPill}>{nivelLabel(u.nivel)}</span>
               <span className={styles.userAlta}>{formatearFecha(u.created_at)}</span>
             </TextLink>
           ))}
@@ -71,7 +84,7 @@ async function ResultadosUsuarios({
       )}
 
       {nextCursor ? (
-        <TextLink href={construirQuery({ q, nivel }, nextCursor)} className={styles.cargarMas}>
+        <TextLink href={construirQuery(filtros, nextCursor)} className={styles.cargarMas}>
           Cargar más
         </TextLink>
       ) : null}
@@ -86,9 +99,14 @@ export default async function UsuariosPage({
 }) {
   const raw = await searchParams;
   const parsed = searchSchema.safeParse({
-    q: typeof raw.q === "string" ? raw.q : undefined,
-    nivel: typeof raw.nivel === "string" ? raw.nivel : undefined,
-    cursor: typeof raw.cursor === "string" ? raw.cursor : undefined,
+    q: param(raw.q),
+    nivel: param(raw.nivel),
+    rol: param(raw.rol),
+    terminos: param(raw.terminos),
+    desde: param(raw.desde),
+    hasta: param(raw.hasta),
+    orden: param(raw.orden),
+    cursor: param(raw.cursor),
   });
 
   if (!parsed.success) {
@@ -103,19 +121,22 @@ export default async function UsuariosPage({
     );
   }
 
-  const { q, nivel, cursor } = parsed.data;
+  const { cursor, ...filtros } = parsed.data;
+  // Sin `orden` explícito es "recientes"; se normaliza para que el cursor y la
+  // consulta usen siempre el mismo orden.
+  const orden: OrdenUsuarios = filtros.orden ?? "recientes";
 
   return (
     <div className={styles.page}>
       <h1 className={styles.h1}>Usuarios</h1>
       <p className={styles.lede}>
-        Buscá por email, abrí la ficha y activá o cambiá el nivel a mano.
+        Buscá por email, nombre o teléfono, abrí la ficha y activá o cambiá el nivel a mano.
       </p>
 
-      <UsuariosFiltros q={q} nivel={nivel} />
+      <UsuariosFiltros {...filtros} />
 
       <Suspense fallback={<p className={styles.vacio}>Cargando usuarios…</p>}>
-        <ResultadosUsuarios q={q} nivel={nivel} cursor={cursor} />
+        <ResultadosUsuarios filtros={{ ...filtros, orden }} cursor={cursor} />
       </Suspense>
     </div>
   );

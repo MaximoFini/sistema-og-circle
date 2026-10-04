@@ -61,7 +61,10 @@ describe("listarUsuarios", () => {
     // uuid es único entre los dos usuarios recién creados.
     const fragmento = a.email.slice(12, 24);
 
-    const { usuarios } = await listarUsuarios(admin, { q: fragmento, limit: 50 });
+    const { usuarios } = await listarUsuarios(admin, {
+      q: fragmento,
+      limit: 50,
+    });
     expect(usuarios).toHaveLength(1);
     expect(usuarios[0].id).toBe(a.userId);
   });
@@ -70,7 +73,10 @@ describe("listarUsuarios", () => {
     const av = await nuevoUsuario("completo");
     await nuevoUsuario("ninguno");
 
-    const { usuarios } = await listarUsuarios(admin, { nivel: "completo", limit: 100 });
+    const { usuarios } = await listarUsuarios(admin, {
+      nivel: "completo",
+      limit: 100,
+    });
     expect(usuarios.some((u) => u.id === av.userId)).toBe(true);
     expect(usuarios.every((u) => u.nivel === "completo")).toBe(true);
   });
@@ -84,10 +90,106 @@ describe("listarUsuarios", () => {
     expect(p1.usuarios).toHaveLength(2);
     expect(p1.nextCursor).not.toBeNull();
 
-    const p2 = await listarUsuarios(admin, { limit: 2, cursor: p1.nextCursor ?? undefined });
+    const p2 = await listarUsuarios(admin, {
+      limit: 2,
+      cursor: p1.nextCursor ?? undefined,
+    });
     const ids1 = new Set(p1.usuarios.map((u) => u.id));
     for (const u of p2.usuarios) expect(ids1.has(u.id)).toBe(false);
   });
+});
+
+describe("listarUsuarios — filtros del panel (correcciones UI)", () => {
+  it("busca también por nombre y por teléfono", async () => {
+    const a = await nuevoUsuario("ninguno");
+    const b = await nuevoUsuario("ninguno");
+    const sufijo = randomUUID().slice(0, 8);
+    await admin
+      .from("profiles")
+      .update({ nombre: `Nombre, (raro) ${sufijo}` })
+      .eq("id", a.userId);
+    await admin
+      .from("profiles")
+      .update({ telefono: `+54 9 11 ${sufijo}` })
+      .eq("id", b.userId);
+
+    // Comas y paréntesis no rompen el `.or()` de PostgREST.
+    const porNombre = await listarUsuarios(admin, {
+      q: `, (raro) ${sufijo}`,
+      limit: 50,
+    });
+    expect(porNombre.usuarios.map((u) => u.id)).toEqual([a.userId]);
+
+    const porTelefono = await listarUsuarios(admin, {
+      q: `11 ${sufijo}`,
+      limit: 50,
+    });
+    expect(porTelefono.usuarios.map((u) => u.id)).toEqual([b.userId]);
+  });
+
+  it("filtra por términos aceptados / sin aceptar", async () => {
+    const con = await nuevoUsuario("ninguno");
+    const sin = await nuevoUsuario("ninguno");
+    await admin
+      .from("profiles")
+      .update({
+        terminos_aceptados_at: new Date().toISOString(),
+        terminos_version: "test",
+      })
+      .eq("id", con.userId);
+    await admin.from("profiles").update({ terminos_aceptados_at: null }).eq("id", sin.userId);
+
+    const aceptados = await listarUsuarios(admin, {
+      terminos: "si",
+      limit: 100,
+    });
+    const ids = aceptados.usuarios.map((u) => u.id);
+    expect(ids).toContain(con.userId);
+    expect(ids).not.toContain(sin.userId);
+
+    const sinAceptar = await listarUsuarios(admin, {
+      terminos: "no",
+      limit: 100,
+    });
+    expect(sinAceptar.usuarios.map((u) => u.id)).not.toContain(con.userId);
+  });
+
+  it("filtra por rol", async () => {
+    const { usuarios } = await listarUsuarios(admin, {
+      rol: "admin",
+      limit: 100,
+    });
+    expect(usuarios.some((u) => u.id === actorId)).toBe(true);
+  });
+
+  it.each(["antiguos", "alfabetico"] as const)(
+    "keyset en orden %s: páginas disjuntas y ordenadas",
+    async (orden) => {
+      await nuevoUsuario("ninguno");
+      await nuevoUsuario("ninguno");
+      await nuevoUsuario("ninguno");
+
+      const p1 = await listarUsuarios(admin, { orden, limit: 2 });
+      expect(p1.usuarios).toHaveLength(2);
+      expect(p1.nextCursor).not.toBeNull();
+      const p2 = await listarUsuarios(admin, {
+        orden,
+        limit: 2,
+        cursor: p1.nextCursor ?? undefined,
+      });
+
+      const ids1 = new Set(p1.usuarios.map((u) => u.id));
+      for (const u of p2.usuarios) expect(ids1.has(u.id)).toBe(false);
+
+      const ultima = p1.usuarios[1];
+      const primera = p2.usuarios[0];
+      if (orden === "alfabetico") {
+        expect(primera.email >= ultima.email).toBe(true);
+      } else {
+        expect(primera.created_at >= ultima.created_at).toBe(true);
+      }
+    },
+  );
 });
 
 describe("obtenerUsuario", () => {
@@ -127,9 +229,15 @@ describe("activarNivel", () => {
       actorId,
     });
 
-    expect(out.resultado).toEqual({ nivelAnterior: "ninguno", nivelNuevo: "completo" });
+    expect(out.resultado).toEqual({
+      nivelAnterior: "ninguno",
+      nivelNuevo: "completo",
+    });
     expect(out.valorAnterior).toEqual({ nivel: "ninguno" });
-    expect(out.valorNuevo).toEqual({ nivel: "completo", motivo: "activación manual de prueba" });
+    expect(out.valorNuevo).toEqual({
+      nivel: "completo",
+      motivo: "activación manual de prueba",
+    });
 
     const { data: perfil } = await admin
       .from("profiles")
@@ -142,14 +250,22 @@ describe("activarNivel", () => {
 
   it("es idempotente: mismo nivel dos veces, sin error, anterior == nuevo la segunda vez", async () => {
     const u = await nuevoUsuario("ninguno");
-    await activarNivel(admin, { userId: u.userId, nivel: "completo", motivo: "m1", actorId });
+    await activarNivel(admin, {
+      userId: u.userId,
+      nivel: "completo",
+      motivo: "m1",
+      actorId,
+    });
     const out = await activarNivel(admin, {
       userId: u.userId,
       nivel: "completo",
       motivo: "m2",
       actorId,
     });
-    expect(out.resultado).toEqual({ nivelAnterior: "completo", nivelNuevo: "completo" });
+    expect(out.resultado).toEqual({
+      nivelAnterior: "completo",
+      nivelNuevo: "completo",
+    });
   });
 
   it("baja a 'ninguno'", async () => {
@@ -260,7 +376,12 @@ describe("activarNivel", () => {
 
   it("usuario inexistente -> lanza UsuarioNoEncontrado", async () => {
     await expect(
-      activarNivel(admin, { userId: randomUUID(), nivel: "completo", motivo: "x", actorId }),
+      activarNivel(admin, {
+        userId: randomUUID(),
+        nivel: "completo",
+        motivo: "x",
+        actorId,
+      }),
     ).rejects.toBeInstanceOf(UsuarioNoEncontrado);
   });
 });

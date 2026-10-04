@@ -40,17 +40,25 @@ export function encodeCursor(k: CursorKeyset): string {
 }
 
 /** Filtro PostgREST `.or(...)` para "(created_at, id) < (cursor)" en orden
- *  desc. `keyset` ya viene validado por `decodeCursor` (createdAt = ISO
- *  datetime con offset, id = uuid): ninguno de los dos contiene caracteres
- *  que rompan el `.or()` sin comillas. La paginación keyset con timestamps
+ *  desc (o "> (cursor)" en orden asc). `keyset` ya viene validado por
+ *  `decodeCursor` (createdAt = ISO datetime con offset, id = uuid): ninguno
+ *  de los dos contiene caracteres que rompan el `.or()` sin comillas. La paginación keyset con timestamps
  *  con offset la ejercitan `audit-log.test.ts` y `usuarios.test.ts` (test
  *  "keyset: dos páginas disjuntas") contra la base real. */
-export function keysetFilter(keyset: CursorKeyset): string {
-  return `created_at.lt.${keyset.createdAt},and(created_at.eq.${keyset.createdAt},id.lt.${keyset.id})`;
+export function keysetFilter(keyset: CursorKeyset, direccion: "asc" | "desc" = "desc"): string {
+  const op = direccion === "desc" ? "lt" : "gt";
+  return `created_at.${op}.${keyset.createdAt},and(created_at.eq.${keyset.createdAt},id.${op}.${keyset.id})`;
 }
 
 /** Escapa los comodines de LIKE/ILIKE (`%`, `_`, `\`) para que el texto que
  *  tipea el admin se busque literal como substring, no como patrón. */
 export function escaparLike(s: string): string {
   return s.replace(/[\\%_]/g, "\\$&");
+}
+
+/** Encierra un valor arbitrario entre comillas dobles para usarlo dentro de un
+ *  filtro `.or(...)` de PostgREST: así las comas, paréntesis y puntos del texto
+ *  no se interpretan como sintaxis del filtro. Escapa `\` y `"`. */
+export function valorPostgrest(s: string): string {
+  return `"${s.replace(/[\\"]/g, "\\$&")}"`;
 }

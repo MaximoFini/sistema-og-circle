@@ -468,7 +468,11 @@ a.notFoundLink {
 }
 
 .filaCambio {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .filaCambio strong {
@@ -641,20 +645,6 @@ a.userRow:focus-visible {
 }
 
 /* --- Contenido (VGRP-38) --------------------------------------------- */
-
-.checkboxCampo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--fs-callout);
-  color: var(--text-secondary);
-}
-
-.checkboxCampo input {
-  accent-color: var(--accent);
-  width: 18px;
-  height: 18px;
-}
 
 .formAcciones {
   display: flex;

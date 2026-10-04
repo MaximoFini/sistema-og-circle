@@ -38,7 +38,7 @@ async function loginComo(
 ): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }
@@ -47,6 +47,11 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
   page,
   browser,
 }) => {
+  // Dos logins completos (admin + usuario) y cuatro navegaciones: contra el dev
+  // server local (que compila cada ruta la primera vez) tarda ~40s, más que los
+  // 30s por defecto. Contra el build de CI sobra margen.
+  test.setTimeout(60_000);
+
   const tituloOriginal = `Video revalidate ${randomUUID()}`;
   const tituloNuevo = `Video revalidado ${randomUUID()}`;
 
@@ -64,12 +69,6 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     await paginaAdmin.goto("/admin/contenido/videos/nuevo");
     await paginaAdmin.getByLabel("Stage").selectOption("2");
     await paginaAdmin.getByLabel("Título").fill(tituloOriginal);
-    // Orden bien negativo a propósito: la grilla de stage 2 es de tamaño FIJO (3,
-    // CANTIDAD_STAGE — lib/data/videos.ts) y corta por "orden" ascendente. Sin esto,
-    // si ya hay 3+ videos de stage 2 reales cargados (contenido real de producción,
-    // no sólo de test), este video quedaría afuera de la grilla por orden y el test
-    // fallaría por una razón que no tiene nada que ver con revalidateTag.
-    await paginaAdmin.getByLabel("Orden").fill("-999999");
     await paginaAdmin.getByRole("button", { name: "Crear" }).click();
     await paginaAdmin.waitForURL("**/admin/contenido/videos");
 
@@ -82,6 +81,21 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     expect(buscarError).toBeNull();
     const videoId = video?.id as string;
     expect(videoId).toBeTruthy();
+
+    // Orden bien negativo a propósito: la grilla de stage 2 es de tamaño FIJO (3,
+    // CANTIDAD_STAGE — lib/data/videos.ts) y corta por "orden" ascendente, y un
+    // video nuevo queda AL FINAL (el form ya no tiene campo "orden" — se reordena
+    // arrastrando, commit 85683e6). Sin esto, si ya hay 3+ videos de stage 2 reales
+    // cargados, este quedaría afuera de la grilla y el test fallaría por una razón
+    // que no tiene nada que ver con revalidateTag. Va directo por service role (no
+    // por el reorden del panel, que reasignaría el orden de los videos reales) y
+    // ANTES de la primera lectura de Inicio: el create ya invalidó el tag, así que
+    // esa primera lectura trae este orden.
+    const { error: ordenError } = await admin
+      .from("videos")
+      .update({ orden: -999999 })
+      .eq("id", videoId);
+    expect(ordenError).toBeNull();
 
     // 2) El usuario carga Inicio: el título ORIGINAL ya tiene que estar (el
     // create de arriba ya revalidó el tag antes de este punto) — ancla: si esto

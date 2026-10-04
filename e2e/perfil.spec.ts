@@ -15,7 +15,7 @@ import "../test/helpers/load-env";
 async function loginComo(page: import("@playwright/test").Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill("test-password-1!");
+  await page.getByLabel("Contraseña", { exact: true }).fill("test-password-1!");
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
 }

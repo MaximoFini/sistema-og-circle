@@ -35,7 +35,7 @@ export default async function PagoDetallePage({ params }: { params: Promise<{ id
       <h1 className={styles.h1}>Pago de {userEmail}</h1>
       <p className={styles.badgeFila}>
         <span className={styles.badgeEstado}>{pago.estado}</span>
-        {sinAplicar ? <span className={styles.badgeSinAplicar}>sin aplicar</span> : null}
+        {sinAplicar ? <span className={styles.badgeSinAplicar}>Sin aplicar</span> : null}
       </p>
 
       <div className={styles.seccion}>
