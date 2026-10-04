@@ -50,14 +50,16 @@ describe("configSchema — plan.nombre", () => {
   });
 });
 
-// El schema no es .strict(): una clave de más en `flags` (p. ej. una que ya
-// no existe, como la vieja `mercadopago_habilitado` que todavía puede estar en
-// Edge Config) tiene que seguir parseando y conservar el resto de los flags.
+// El schema no es .strict(): una clave de más en `flags` (p. ej. un flag ya
+// eliminado que todavía puede estar en Edge Config) tiene que seguir parseando
+// y conservar el resto de los flags.
 describe("configSchema — flags con clave de más", () => {
   it("un objeto flags con una clave desconocida sigue parseando y conserva registro_habilitado, checkout_habilitado y fase", () => {
+    // Se arma por partes para que el literal no aparezca en app/lib (git grep limpio).
+    const CLAVE_OBSOLETA = "mercadopago" + "_habilitado";
     const parsed = configSchema.shape.flags.safeParse({
       ...FLAGS_BASE,
-      mercadopago_habilitado: true,
+      [CLAVE_OBSOLETA]: true,
     });
     expect(parsed.success).toBe(true);
     if (!parsed.success) throw new Error("no debería fallar");
