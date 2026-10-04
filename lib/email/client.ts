@@ -44,9 +44,8 @@ export function getResendClient(): Resend | null {
  *
  * ⚠️ `onboarding@resend.dev` es el remitente de PRUEBA de Resend: solo entrega a la
  * casilla del dueño de la cuenta de Resend, a nadie más. Es lo único que se puede
- * usar hasta que exista un dominio propio con SPF y DKIM verificados (el equipo
- * todavía no compró dominio: la landing vive en `vegroup.vercel.app`, un subdominio
- * de Vercel donde no se pueden crear registros DNS).
+ * usar hasta que el dominio propio (`ogcircle.com.ar`, DNS en DonWeb) tenga SPF y
+ * DKIM verificados en Resend.
  *
  * El `from` y el `reply-to` definitivos son una DECISIÓN ABIERTA del equipo y
  * dependen del dominio que se compre — no están inventados acá a propósito. Ver

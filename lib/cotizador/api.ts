@@ -160,7 +160,11 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
 /** Las líneas no vacías de un cuerpo NDJSON, a medida que llegan. */
 async function* lineas(cuerpo: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  const lector = cuerpo.pipeThrough(new TextDecoderStream()).getReader();
+  // El cast es sólo de tipos: con TS 5.9 + el lib DOM, `TextDecoderStream`
+  // declara su lado writable como `BufferSource` y `pipeThrough` exige
+  // `Uint8Array` — en runtime acepta Uint8Array sin problema.
+  const decodificador = new TextDecoderStream() as ReadableWritablePair<string, Uint8Array>;
+  const lector = cuerpo.pipeThrough(decodificador).getReader();
   let pendiente = "";
   try {
     for (;;) {

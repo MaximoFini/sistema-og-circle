@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { obtenerUsuario } from "@/lib/data/admin/usuarios";
+import { formatearPrecio } from "@/lib/format";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../../admin.module.css";
-import { estadoLabel, nivelLabel, origenPago } from "../../pagos/estados";
+import { estadoLabel, nivelLabel, origenPago, rolLabel } from "../../etiquetas";
 import { CambiarNivelForm } from "./CambiarNivelForm";
 
 // VGRP-36 — Ficha de un usuario. Server Component: datos, nivel activo,
@@ -11,24 +12,6 @@ import { CambiarNivelForm } from "./CambiarNivelForm";
 // El cambio de nivel vive en `CambiarNivelForm` (Client Component).
 
 export const dynamic = "force-dynamic";
-
-function monto(ars: number): string {
-  return ars.toLocaleString("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  });
-}
-
-// `progreso` es jsonb libre; hoy la única forma que escribe la app es
-// `{ videosVistos: uuid[] }` (components/video/_actions.ts).
-function leerVideosVistos(progreso: unknown): string[] {
-  if (progreso && typeof progreso === "object" && "videosVistos" in progreso) {
-    const v = (progreso as { videosVistos: unknown }).videosVistos;
-    if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
-  }
-  return [];
-}
 
 function fecha(iso: string): string {
   return new Date(iso).toLocaleString("es-AR", {
@@ -46,17 +29,16 @@ export default async function UsuarioDetallePage({ params }: { params: Promise<{
   const detalle = await obtenerUsuario(admin, id);
   if (!detalle) notFound();
 
-  const { perfil, nivelActivo, pagos, overrides, videos } = detalle;
-  const vistos = new Set(leerVideosVistos(perfil.progreso));
-  const totalPublicados = videos.filter((v) => v.publicado).length;
-  // En el orden del catálogo (stage, orden), no en el orden en que los vio.
-  const videosVistos = videos.filter((v) => vistos.has(v.id));
+  const { perfil, nivelActivo, pagos, overrides, progreso } = detalle;
+  const { vistos, eliminados, totalPublicados } = progreso;
   // El conteo compara contra lo publicado; los no publicados se listan aparte.
-  const vistosPublicados = videosVistos.filter((v) => v.publicado).length;
-  const titulosVistos = videosVistos.map((v) =>
-    v.publicado ? v.titulo : `${v.titulo} (no publicado)`,
-  );
-  const eliminados = vistos.size - videosVistos.length;
+  const vistosPublicados = vistos.filter((v) => v.publicado).length;
+  const listaVistos = vistos.map((v) => (v.publicado ? v.titulo : `${v.titulo} (no publicado)`));
+  if (eliminados > 0) {
+    listaVistos.push(
+      eliminados === 1 ? "1 video que ya no existe" : `${eliminados} videos que ya no existen`,
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -80,7 +62,7 @@ export default async function UsuarioDetallePage({ params }: { params: Promise<{
           <dt>Nivel en el perfil</dt>
           <dd>{nivelLabel(perfil.nivel)}</dd>
           <dt>Rol</dt>
-          <dd>{perfil.rol}</dd>
+          <dd>{rolLabel(perfil.rol)}</dd>
           <dt>Alta</dt>
           <dd>{fecha(perfil.created_at)}</dd>
           <dt>Términos</dt>
@@ -94,7 +76,7 @@ export default async function UsuarioDetallePage({ params }: { params: Promise<{
 
       <div className={styles.seccion}>
         <h2 className={styles.seccionTitulo}>Progreso</h2>
-        {vistos.size === 0 ? (
+        {listaVistos.length === 0 ? (
           <p className={styles.vacio}>Todavía no vio ningún video.</p>
         ) : (
           <dl className={styles.dl}>
@@ -103,12 +85,7 @@ export default async function UsuarioDetallePage({ params }: { params: Promise<{
               {vistosPublicados} de {totalPublicados}
             </dd>
             <dt>Cuáles</dt>
-            <dd>
-              {titulosVistos.join(" · ")}
-              {eliminados > 0
-                ? `${titulosVistos.length > 0 ? " · " : ""}${eliminados} video${eliminados === 1 ? "" : "s"} que ya no existe${eliminados === 1 ? "" : "n"}`
-                : null}
-            </dd>
+            <dd>{listaVistos.join(" · ")}</dd>
           </dl>
         )}
       </div>
@@ -122,7 +99,8 @@ export default async function UsuarioDetallePage({ params }: { params: Promise<{
             {pagos.map((p) => (
               <div key={p.id} className={styles.userRow}>
                 <span className={styles.userEmail}>
-                  {nivelLabel(p.nivel_comprado)} · {monto(p.monto_ars)} · {estadoLabel(p.estado)}
+                  {nivelLabel(p.nivel_comprado)} · {formatearPrecio.format(p.monto_ars)} ·{" "}
+                  {estadoLabel(p.estado)}
                 </span>
                 <span className={styles.filaMeta}>{origenPago(p)}</span>
                 <span className={styles.userAlta}>{fecha(p.created_at)}</span>
