@@ -19,7 +19,7 @@ export function AuditoriaFiltros({
       <TextFieldBase
         id="actor"
         name="actor"
-        label="Actor (email)"
+        label="Admin que hizo la acción"
         placeholder="Buscar por email"
         defaultValue={actor ?? ""}
         autoComplete="off"

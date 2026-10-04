@@ -2,10 +2,10 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
 import { listarAuditLog } from "@/lib/data/admin/audit-log";
-import type { Json } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
 import { AuditoriaFiltros } from "./AuditoriaFiltros";
+import { type ContextoAudit, describirAccion } from "./describir";
 
 // VGRP-35 — Pantalla de auditoría. Server Component: consulta `listarAuditLog`
 // por service role (bypassa RLS; la barrera de autorización es el rol de la
@@ -36,20 +36,43 @@ function formatearFecha(iso: string): string {
   });
 }
 
-// VGRP-36 guardaba siempre { nivel }; VGRP-40 (actualizar_config) guarda el
-// objeto completo de precios o de flags — sin un campo `nivel` en común. En
-// vez de una función por `accion`, esta resume CUALQUIER objeto plano como
-// "clave: valor, clave: valor", con el caso de `nivel` como atajo (ya
-// probado en producción, se sigue mostrando igual que antes).
-function resumirCambio(valor: Json | null): string {
-  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return "—";
+// El form nativo manda `campo=` cuando un input queda vacío: eso es "sin
+// filtro", no un valor inválido.
+function param(v: string | string[] | undefined): string | undefined {
+  return typeof v === "string" && v.trim() !== "" ? v : undefined;
+}
 
-  const obj = valor as Record<string, Json | undefined>;
-  if (typeof obj.nivel === "string") return obj.nivel;
+/** Resuelve en dos consultas (no una por fila) a quién pertenecen los perfiles
+ *  y pagos que referencian las filas visibles, para nombrarlos en el texto. */
+async function resolverContexto(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  filas: { entidad: string; entidadId: string | null }[],
+): Promise<ContextoAudit> {
+  const ids = (entidad: string) => [
+    ...new Set(
+      filas.filter((f) => f.entidad === entidad && f.entidadId).map((f) => f.entidadId as string),
+    ),
+  ];
+  const pagoIds = ids("pagos");
+  const { data: pagos } = pagoIds.length
+    ? await admin.from("pagos").select("id, user_id, monto_ars").in("id", pagoIds)
+    : { data: [] };
 
-  const entradas = Object.entries(obj).filter(([, v]) => v !== undefined);
-  if (entradas.length === 0) return "—";
-  return entradas.map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
+  const perfilIds = [...new Set([...ids("profiles"), ...(pagos ?? []).map((p) => p.user_id)])];
+  const { data: perfiles } = perfilIds.length
+    ? await admin.from("profiles").select("id, email").in("id", perfilIds)
+    : { data: [] };
+
+  const emails = new Map((perfiles ?? []).map((p) => [p.id, p.email]));
+  return {
+    emails,
+    pagos: new Map(
+      (pagos ?? []).map((p) => [
+        p.id,
+        { email: emails.get(p.user_id) ?? null, monto: p.monto_ars },
+      ]),
+    ),
+  };
 }
 
 // Escapa los comodines de LIKE/ILIKE (`%`, `_`, `\`) para que el texto que
@@ -100,7 +123,7 @@ async function ResultadosAuditoria({
     actoresResueltos = (perfiles ?? []).map((p) => p.email);
   }
 
-  const { filas, nextCursor } =
+  const { filas: crudas, nextCursor } =
     actor && (actorIds?.length ?? 0) === 0
       ? { filas: [], nextCursor: null }
       : await listarAuditLog(admin, {
@@ -111,11 +134,17 @@ async function ResultadosAuditoria({
           cursor,
         });
 
+  const contexto = await resolverContexto(admin, crudas);
+  const filas = crudas.map((f) => ({
+    ...f,
+    descripcion: describirAccion(f, contexto),
+  }));
+
   return (
     <>
       {actoresResueltos.length > 1 ? (
         <p className={styles.vacio}>
-          Mostrando {actoresResueltos.length} actores que coinciden con “{actor}”:{" "}
+          Mostrando {actoresResueltos.length} usuarios que coinciden con “{actor}”:{" "}
           {actoresResueltos.join(", ")}.
         </p>
       ) : null}
@@ -128,13 +157,11 @@ async function ResultadosAuditoria({
             <div key={f.id} className={styles.fila}>
               <span className={styles.filaFecha}>{formatearFecha(f.createdAt)}</span>
               <span className={styles.filaActor}>{f.actorEmail ?? f.actorId ?? "—"}</span>
-              <span className={styles.filaAccion}>
-                {f.accion} · {f.entidad}
-                {f.entidadId ? ` (${f.entidadId})` : ""}
-              </span>
+              <span className={styles.filaAccion}>{f.descripcion.titulo}</span>
               <span className={styles.filaCambio}>
-                <strong>{resumirCambio(f.valorAnterior)}</strong> →{" "}
-                <strong>{resumirCambio(f.valorNuevo)}</strong>
+                {f.descripcion.detalle.map((linea, i) => (
+                  <span key={i}>{linea}</span>
+                ))}
               </span>
             </div>
           ))}
@@ -160,10 +187,10 @@ export default async function AuditoriaPage({
 }) {
   const raw = await searchParams;
   const parsed = searchSchema.safeParse({
-    actor: typeof raw.actor === "string" ? raw.actor : undefined,
-    desde: typeof raw.desde === "string" ? raw.desde : undefined,
-    hasta: typeof raw.hasta === "string" ? raw.hasta : undefined,
-    cursor: typeof raw.cursor === "string" ? raw.cursor : undefined,
+    actor: param(raw.actor),
+    desde: param(raw.desde),
+    hasta: param(raw.hasta),
+    cursor: param(raw.cursor),
   });
 
   if (!parsed.success) {
