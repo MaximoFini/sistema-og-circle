@@ -58,7 +58,10 @@ export async function escribirEdgeConfig(
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        items: items.map((i) => ({ operation: "update", key: i.key, value: i.value })),
+        // `upsert` y no `update`: Vercel rechaza `update` sobre una clave que
+        // todavía no existe en el store (pasó con `plan`, que se sumó al
+        // schema después de crear la Edge Config de prod).
+        items: items.map((i) => ({ operation: "upsert", key: i.key, value: i.value })),
       }),
     });
 

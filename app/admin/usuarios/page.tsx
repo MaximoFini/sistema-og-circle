@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
-import { listarUsuarios, ORDENES_USUARIOS, type OrdenUsuarios } from "@/lib/data/admin/usuarios";
+import { listarUsuarios, ORDENES_USUARIOS } from "@/lib/data/admin/usuarios";
 import { Constants } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
-import { nivelLabel } from "../pagos/estados";
+import { nivelLabel } from "../etiquetas";
+import { normalizarParams, rangoDia } from "../searchParams";
 import { UsuariosFiltros } from "./UsuariosFiltros";
 
 // VGRP-36 — Listado de usuarios. Server Component: consulta `listarUsuarios`
@@ -34,12 +35,6 @@ const searchSchema = z.object({
 
 type Filtros = Omit<z.infer<typeof searchSchema>, "cursor">;
 
-// El form nativo manda `campo=` cuando un input queda vacío o el select está
-// en "Todos": eso es "sin filtro", no un valor inválido.
-function param(v: string | string[] | undefined): string | undefined {
-  return typeof v === "string" && v.trim() !== "" ? v : undefined;
-}
-
 function formatearFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-AR", {
     day: "2-digit",
@@ -61,8 +56,7 @@ async function ResultadosUsuarios({ filtros, cursor }: { filtros: Filtros; curso
   const { desde, hasta, ...resto } = filtros;
   const { usuarios, nextCursor } = await listarUsuarios(admin, {
     ...resto,
-    desde: desde ? `${desde}T00:00:00.000Z` : undefined,
-    hasta: hasta ? `${hasta}T23:59:59.999Z` : undefined,
+    ...rangoDia(desde, hasta),
     limit: 20,
     cursor,
   });
@@ -98,16 +92,7 @@ export default async function UsuariosPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const raw = await searchParams;
-  const parsed = searchSchema.safeParse({
-    q: param(raw.q),
-    nivel: param(raw.nivel),
-    rol: param(raw.rol),
-    terminos: param(raw.terminos),
-    desde: param(raw.desde),
-    hasta: param(raw.hasta),
-    orden: param(raw.orden),
-    cursor: param(raw.cursor),
-  });
+  const parsed = searchSchema.safeParse(normalizarParams(raw));
 
   if (!parsed.success) {
     return (
@@ -122,9 +107,6 @@ export default async function UsuariosPage({
   }
 
   const { cursor, ...filtros } = parsed.data;
-  // Sin `orden` explícito es "recientes"; se normaliza para que el cursor y la
-  // consulta usen siempre el mismo orden.
-  const orden: OrdenUsuarios = filtros.orden ?? "recientes";
 
   return (
     <div className={styles.page}>
@@ -136,7 +118,7 @@ export default async function UsuariosPage({
       <UsuariosFiltros {...filtros} />
 
       <Suspense fallback={<p className={styles.vacio}>Cargando usuarios…</p>}>
-        <ResultadosUsuarios filtros={{ ...filtros, orden }} cursor={cursor} />
+        <ResultadosUsuarios filtros={filtros} cursor={cursor} />
       </Suspense>
     </div>
   );
