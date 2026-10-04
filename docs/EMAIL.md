@@ -11,7 +11,7 @@ rompería la app.**
 | Pieza | Estado |
 |---|---|
 | Código (`lib/email/`, `emails/`, `app/api/auth/send-email/`) | ✅ Hecho en este ticket |
-| Dominio propio | ❌ No existe. La landing vive en `vegroup.vercel.app` |
+| Dominio propio | ✅ `ogcircle.com.ar` (DNS en DonWeb). Landing en la raíz, plataforma en `plataforma.ogcircle.com.ar` |
 | Cuenta de Resend + API key | ❌ Pendiente (paso manual) |
 | SPF y DKIM verificados | ❌ Pendiente, bloqueado por el dominio |
 | Send Email Hook registrado en Supabase | ❌ Pendiente **a propósito** — ver abajo |

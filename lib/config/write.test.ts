@@ -74,7 +74,7 @@ describe("escribirEdgeConfig", () => {
     expect(init.headers).toMatchObject({ Authorization: "Bearer token-de-test" });
     expect(JSON.parse(init.body as string)).toEqual({
       items: [
-        { operation: "update", key: "precios", value: { principiante: 75000, avanzado: 130000 } },
+        { operation: "upsert", key: "precios", value: { principiante: 75000, avanzado: 130000 } },
       ],
     });
   });

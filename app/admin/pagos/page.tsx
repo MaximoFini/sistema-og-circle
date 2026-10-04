@@ -2,9 +2,11 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
 import { listarPagos } from "@/lib/data/admin/pagos";
+import { formatearPrecio } from "@/lib/format";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
-import { estadoLabel, nivelLabel, origenPago } from "./estados";
+import { estadoLabel, nivelLabel, origenPago } from "../etiquetas";
+import { normalizarParams, rangoDia } from "../searchParams";
 import { PagosFiltros } from "./PagosFiltros";
 
 // VGRP-37 — Ledger de pagos. Server Component: consulta `listarPagos` por
@@ -35,14 +37,6 @@ function fecha(iso: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
-}
-
-function monto(ars: number): string {
-  return ars.toLocaleString("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
   });
 }
 
@@ -83,8 +77,7 @@ async function ResultadosPagos({
   const admin = createServiceRoleClient();
   const { pagos, nextCursor, totalSinAplicar } = await listarPagos(admin, {
     estado,
-    desde: desde ? `${desde}T00:00:00.000Z` : undefined,
-    hasta: hasta ? `${hasta}T23:59:59.999Z` : undefined,
+    ...rangoDia(desde, hasta),
     proveedorRef,
     limit: 20,
     cursor,
@@ -120,7 +113,7 @@ async function ResultadosPagos({
             <TextLink key={p.id} href={`/admin/pagos/${p.id}`} className={styles.userRow}>
               <span className={styles.userEmail}>{p.user_email}</span>
               <span className={styles.pagoDatos}>
-                {nivelLabel(p.nivel_comprado)} · {monto(p.monto_ars)}
+                {nivelLabel(p.nivel_comprado)} · {formatearPrecio.format(p.monto_ars)}
               </span>
               <span className={styles.badgeFila}>
                 <span className={styles.badgeEstado}>{estadoLabel(p.estado)}</span>
@@ -151,13 +144,7 @@ export default async function PagosPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const raw = await searchParams;
-  const parsed = searchSchema.safeParse({
-    estado: typeof raw.estado === "string" ? raw.estado : undefined,
-    desde: typeof raw.desde === "string" ? raw.desde : undefined,
-    hasta: typeof raw.hasta === "string" ? raw.hasta : undefined,
-    ref: typeof raw.ref === "string" ? raw.ref : undefined,
-    cursor: typeof raw.cursor === "string" ? raw.cursor : undefined,
-  });
+  const parsed = searchSchema.safeParse(normalizarParams(raw));
 
   if (!parsed.success) {
     return (

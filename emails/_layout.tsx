@@ -210,8 +210,8 @@ export function EmailLayout({ preview, titulo, children }: EmailLayoutProps) {
           </Text>
           <Text style={{ ...estiloPie, color: CHAMPAGNE, margin: "0" }}>
             OG Circle —{" "}
-            <Link href="https://vegroup.vercel.app" style={{ color: CHAMPAGNE }}>
-              vegroup.vercel.app
+            <Link href="https://ogcircle.com.ar" style={{ color: CHAMPAGNE }}>
+              ogcircle.com.ar
             </Link>
           </Text>
         </Container>
