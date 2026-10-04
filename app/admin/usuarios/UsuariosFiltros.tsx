@@ -1,31 +1,13 @@
 import { Button, TextFieldBase } from "@/components/ui";
 import { ORDENES_USUARIOS, type OrdenUsuarios } from "@/lib/data/admin/usuarios";
-import { Constants, type NivelAcceso } from "@/lib/database.types";
 import styles from "../admin.module.css";
+import { NIVEL_LABELS, NIVELES, ROL_LABELS, ROLES } from "../etiquetas";
 
 // VGRP-36 — filtros del listado de usuarios. Form nativo `method="get"`: al
 // enviar navega a `/admin/usuarios?q=...&nivel=...&rol=...&orden=...` y el
 // Server Component vuelve a consultar. No necesita JS de cliente — "cargar
-// más" es un link con el cursor (ver page.tsx).
-//
-// VGRP-59/60 (Bloque 13 — plan único): el enum sólo trae dos valores ahora
-// (ninguno/completo) — "ninguno"/"completo" son identificadores internos, no
-// copy para el admin, así que se muestran como "Sin acceso"/"Con acceso" en
-// vez de capitalizar el valor crudo del enum.
-
-const NIVELES = Constants.public.Enums.nivel_acceso;
-const ROLES = Constants.public.Enums.rol_usuario;
-type RolUsuario = (typeof ROLES)[number];
-
-const ETIQUETAS_NIVEL: Record<NivelAcceso, string> = {
-  ninguno: "Sin acceso",
-  completo: "Con acceso",
-};
-
-const ETIQUETAS_ROL: Record<RolUsuario, string> = {
-  user: "Usuario",
-  admin: "Admin",
-};
+// más" es un link con el cursor (ver page.tsx). Las etiquetas de nivel y rol
+// son las mismas que muestran las filas y la ficha (../etiquetas.ts).
 
 const ETIQUETAS_ORDEN: Record<OrdenUsuarios, string> = {
   recientes: "Más nuevos primero",
@@ -66,7 +48,7 @@ export function UsuariosFiltros({
           <option value="">Todos</option>
           {NIVELES.map((n) => (
             <option key={n} value={n}>
-              {ETIQUETAS_NIVEL[n]}
+              {NIVEL_LABELS[n]}
             </option>
           ))}
         </select>
@@ -77,7 +59,7 @@ export function UsuariosFiltros({
           <option value="">Todos</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>
-              {ETIQUETAS_ROL[r]}
+              {ROL_LABELS[r]}
             </option>
           ))}
         </select>

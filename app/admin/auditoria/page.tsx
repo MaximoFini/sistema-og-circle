@@ -2,8 +2,10 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
 import { listarAuditLog } from "@/lib/data/admin/audit-log";
+import { escaparLike } from "@/lib/data/admin/keyset";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
+import { normalizarParams, rangoDia } from "../searchParams";
 import { AuditoriaFiltros } from "./AuditoriaFiltros";
 import { type ContextoAudit, describirAccion } from "./describir";
 
@@ -36,14 +38,16 @@ function formatearFecha(iso: string): string {
   });
 }
 
-// El form nativo manda `campo=` cuando un input queda vacío: eso es "sin
-// filtro", no un valor inválido.
-function param(v: string | string[] | undefined): string | undefined {
-  return typeof v === "string" && v.trim() !== "" ? v : undefined;
+interface PagoConDueño {
+  id: string;
+  monto_ars: number;
+  profiles: { email: string } | null;
 }
 
-/** Resuelve en dos consultas (no una por fila) a quién pertenecen los perfiles
- *  y pagos que referencian las filas visibles, para nombrarlos en el texto. */
+/** Resuelve, en dos consultas en paralelo (no una por fila), a quién
+ *  pertenecen los perfiles y pagos que referencian las filas visibles, para
+ *  nombrarlos en el texto. El email del dueño de un pago viene embebido por la
+ *  FK `pagos.user_id -> profiles` (mismo patrón que `listarAuditLog`). */
 async function resolverContexto(
   admin: ReturnType<typeof createServiceRoleClient>,
   filas: { entidad: string; entidadId: string | null }[],
@@ -54,31 +58,30 @@ async function resolverContexto(
     ),
   ];
   const pagoIds = ids("pagos");
-  const { data: pagos } = pagoIds.length
-    ? await admin.from("pagos").select("id, user_id, monto_ars").in("id", pagoIds)
-    : { data: [] };
+  const perfilIds = ids("profiles");
 
-  const perfilIds = [...new Set([...ids("profiles"), ...(pagos ?? []).map((p) => p.user_id)])];
-  const { data: perfiles } = perfilIds.length
-    ? await admin.from("profiles").select("id, email").in("id", perfilIds)
-    : { data: [] };
+  const [pagosRes, perfilesRes] = await Promise.all([
+    pagoIds.length
+      ? admin
+          .from("pagos")
+          .select("id, monto_ars, profiles:user_id(email)")
+          .in("id", pagoIds)
+          .returns<PagoConDueño[]>()
+      : { data: [] as PagoConDueño[] },
+    perfilIds.length
+      ? admin.from("profiles").select("id, email").in("id", perfilIds)
+      : { data: [] },
+  ]);
 
-  const emails = new Map((perfiles ?? []).map((p) => [p.id, p.email]));
   return {
-    emails,
+    emails: new Map((perfilesRes.data ?? []).map((p) => [p.id, p.email])),
     pagos: new Map(
-      (pagos ?? []).map((p) => [
+      (pagosRes.data ?? []).map((p) => [
         p.id,
-        { email: emails.get(p.user_id) ?? null, monto: p.monto_ars },
+        { email: p.profiles?.email ?? null, monto: p.monto_ars },
       ]),
     ),
   };
-}
-
-// Escapa los comodines de LIKE/ILIKE (`%`, `_`, `\`) para que el texto que
-// tipea el admin se busque literal como substring, no como patrón.
-function escaparLike(s: string): string {
-  return s.replace(/[\\%_]/g, "\\$&");
 }
 
 function construirQuery(
@@ -128,8 +131,7 @@ async function ResultadosAuditoria({
       ? { filas: [], nextCursor: null }
       : await listarAuditLog(admin, {
           actorIds,
-          desde: desde ? `${desde}T00:00:00.000Z` : undefined,
-          hasta: hasta ? `${hasta}T23:59:59.999Z` : undefined,
+          ...rangoDia(desde, hasta),
           limit: 20,
           cursor,
         });
@@ -186,12 +188,7 @@ export default async function AuditoriaPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const raw = await searchParams;
-  const parsed = searchSchema.safeParse({
-    actor: param(raw.actor),
-    desde: param(raw.desde),
-    hasta: param(raw.hasta),
-    cursor: param(raw.cursor),
-  });
+  const parsed = searchSchema.safeParse(normalizarParams(raw));
 
   if (!parsed.success) {
     return (
