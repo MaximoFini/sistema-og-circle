@@ -50,29 +50,19 @@ describe("configSchema — plan.nombre", () => {
   });
 });
 
-// VGRP-61 — el valor de `flags` que hoy está en producción no trae
-// `mercadopago_habilitado`. Tiene que seguir parseando (con MP apagado) y sin
-// invalidar los otros flags: si fallara el parse entero, getFlags() caería a
-// DEFAULT_FLAGS y apagaría también el registro.
-describe("configSchema — flags.mercadopago_habilitado", () => {
-  it("sin la clave, parsea con mercadopago_habilitado=false y conserva el resto", () => {
-    const parsed = configSchema.shape.flags.safeParse(FLAGS_BASE);
-    expect(parsed.success).toBe(true);
-    if (!parsed.success) throw new Error("no debería fallar");
-    expect(parsed.data).toEqual({ ...FLAGS_BASE, mercadopago_habilitado: false });
-  });
-
-  it("respeta un valor explícito", () => {
+// El schema no es .strict(): una clave de más en `flags` (p. ej. una que ya
+// no existe, como la vieja `mercadopago_habilitado` que todavía puede estar en
+// Edge Config) tiene que seguir parseando y conservar el resto de los flags.
+describe("configSchema — flags con clave de más", () => {
+  it("un objeto flags con una clave desconocida sigue parseando y conserva registro_habilitado, checkout_habilitado y fase", () => {
     const parsed = configSchema.shape.flags.safeParse({
       ...FLAGS_BASE,
       mercadopago_habilitado: true,
     });
-    expect(parsed.success && parsed.data.mercadopago_habilitado).toBe(true);
-  });
-
-  it("un valor no booleano es inválido", () => {
-    expect(
-      configSchema.shape.flags.safeParse({ ...FLAGS_BASE, mercadopago_habilitado: "true" }).success,
-    ).toBe(false);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error("no debería fallar");
+    expect(parsed.data.registro_habilitado).toBe(true);
+    expect(parsed.data.checkout_habilitado).toBe(true);
+    expect(parsed.data.fase).toBe("1");
   });
 });

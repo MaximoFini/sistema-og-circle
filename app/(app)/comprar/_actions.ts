@@ -9,7 +9,6 @@
 import { track } from "@vercel/analytics/server";
 import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
-import { getFlags } from "@/lib/config";
 import type { NivelAcceso } from "@/lib/database.types";
 import { getPreferenceClient } from "@/lib/mercadopago/client";
 import { armarPreferencia, type NivelComprable } from "@/lib/mercadopago/preferencia";
@@ -36,14 +35,6 @@ function esNivelComprable(nivel: NivelAcceso): nivel is NivelComprable {
  * `app/(app)/comprar/ComprarButton.tsx`.
  */
 export async function crearCheckout(nivel: NivelAcceso): Promise<CrearCheckoutResult> {
-  // VGRP-61 — barrera real del apagado de MP (un Server Action se invoca
-  // directo, la UI no alcanza). Va primero: no depende del usuario. getFlags()
-  // es fail-closed (sin Edge Config, MP apagado).
-  const flags = await getFlags();
-  if (!flags.mercadopago_habilitado) {
-    return { ok: false, error: "El pago con Mercado Pago no está disponible." };
-  }
-
   // Server Actions son endpoints HTTP propios: el middleware los cubre (no
   // están en `PUBLIC_EXACT`), pero CLAUDE.md es explícito en que eso no
   // alcanza — se puede invocar un Server Action directo, sin pasar por el
