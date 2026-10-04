@@ -75,31 +75,17 @@ test.describe("pago aprobado → acceso activado", () => {
   });
 
   test("el checkout arma una preferencia real y navega a Mercado Pago", async ({ page }) => {
-    // -------------------------------------------------------------------
-    // HALLAZGO EMPÍRICO — mismo tipo de límite de entorno que ya documenta
-    // `e2e/registro-login-dashboard.spec.ts` para /registro, verificado a
-    // mano antes de marcar este test como skip.
-    // -------------------------------------------------------------------
-    // `app/(app)/comprar/page.tsx` es un Server Component sin `dynamic =
-    // "force-dynamic"`, así que Next lo PRERENDERIZA ESTÁTICO en build time
-    // (confirmado en el output de `pnpm build`: `/comprar` sale marcada `○`,
-    // no `ƒ`). `getPrecios()` corre UNA VEZ en ese momento — y como este
-    // entorno no tiene un store de Edge Config vinculado (VGRP-39, mismo
-    // hallazgo que ya documenta `docs/EDGE-CONFIG.md`), esa llamada falla
-    // (fail-closed) y el resultado ("Checkout no disponible", sin botones de
-    // compra) queda HORNEADO en el HTML estático del build — no hay ningún
-    // camino de UI real que pueda ver los botones de compra en este build,
-    // sin importar qué credenciales de Mercado Pago haya en `.env.local`.
-    //
-    // Confirmado navegando a /comprar con Playwright real contra este mismo
-    // build: renderiza el card de error, cero botones de nivel montados.
+    // Skip deliberado: este test necesita dos cosas que el entorno de e2e
+    // no tiene por defecto — un store de Edge Config vinculado (sin él,
+    // getPrecios() devuelve ok:false y /comprar no muestra el botón) y
+    // credenciales de PRUEBA de Mercado Pago (MERCADOPAGO_ACCESS_TOKEN) para
+    // que crearCheckout arme una preferencia real. No se pudo verificar que
+    // corra en este entorno, así que no se saca el skip.
     test.skip(
       true,
-      "app/(app)/comprar/page.tsx se prerenderiza estático en build time y getPrecios() falla " +
-        "sin un store de Edge Config vinculado (VGRP-39) — el resultado queda horneado en el " +
-        "HTML del build, así que ningún test contra este build puede ver los botones de compra " +
-        "reales. Cuando exista el store (o el equipo decida agregar `dynamic = 'force-dynamic'` " +
-        "a esa página), reemplazar este skip por el flujo real de abajo.",
+      "requiere un store de Edge Config vinculado (precios/plan) y credenciales de PRUEBA de " +
+        "Mercado Pago (MERCADOPAGO_ACCESS_TOKEN) en el entorno de e2e; sin ellas /comprar no " +
+        "muestra el botón de compra. Sacar el skip cuando el entorno de e2e las tenga.",
     );
 
     const creado = await createAuthenticatedUser("ninguno");

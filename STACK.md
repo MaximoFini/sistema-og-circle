@@ -19,7 +19,7 @@
 | Migraciones | **Supabase CLI** (SQL versionado en `supabase/migrations/`) | — | Migraciones en el repo, no clics en un dashboard. |
 | Config mutable | **Vercel Edge Config** | — | Precios, % early adopter, flags de fase, links externos. Editable en segundos, sin deploy, lectura sin latencia de red. |
 | Estilos | **CSS con tokens + CSS Modules** (nada de Tailwind) | — | §6. |
-| Pagos | **`mercadopago`** (SDK oficial) | 2.x | Único método 100 % automatizable. Webhook con firma HMAC + `proveedor_ref UNIQUE`. **Desactivado por flag desde el 02/10/2026** (VGRP-61): el cobro pasa a ser por transferencia; el código queda vivo y se reactiva con `flags.mercadopago_habilitado` sin deploy — ver `docs/EDGE-CONFIG.md`. |
+| Pagos | **`mercadopago`** (SDK oficial) | 2.x | Método de cobro de la plataforma. Único 100 % automatizable. Webhook con firma HMAC + `proveedor_ref UNIQUE`. |
 | Validación | **Zod** | 4.x | Frontera de confianza: webhook de MP, Server Actions, respuestas de IA. |
 | Emails | **Resend + React Email** | — | DX muy por encima de SendGrid; plantillas como componentes, mismo lenguaje que el resto. |
 | Rate limit / cache efímero | **Upstash Redis + `@upstash/ratelimit`** | — | §7 — ojo con `@vercel/kv`. |
