@@ -12,8 +12,7 @@
     "test": "vitest run",
     "test:e2e": "cross-env NODE_ENV=test playwright test",
     "test:cleanup": "cross-env NODE_ENV=test tsx scripts/cleanup-test-data.ts",
-    "db:seed:test": "cross-env NODE_ENV=test tsx supabase/seed/seed-test-users.ts",
-    "db:seed:cuenta": "cross-env NODE_ENV=test tsx supabase/seed/seed-cuenta-cobro.ts"
+    "db:seed:test": "cross-env NODE_ENV=test tsx supabase/seed/seed-test-users.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

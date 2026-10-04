@@ -111,112 +111,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      comprobantes_transferencia: {
-        Row: {
-          created_at: string;
-          cuenta_cobro_id: string;
-          estado: string;
-          id: string;
-          mime_type: string;
-          monto_esperado_ars: number;
-          motivo_rechazo: string | null;
-          resuelto_at: string | null;
-          resuelto_por: string | null;
-          storage_path: string;
-          tamano_bytes: number;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          cuenta_cobro_id: string;
-          estado?: string;
-          id: string;
-          mime_type: string;
-          monto_esperado_ars: number;
-          motivo_rechazo?: string | null;
-          resuelto_at?: string | null;
-          resuelto_por?: string | null;
-          storage_path: string;
-          tamano_bytes: number;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string;
-          cuenta_cobro_id?: string;
-          estado?: string;
-          id?: string;
-          mime_type?: string;
-          monto_esperado_ars?: number;
-          motivo_rechazo?: string | null;
-          resuelto_at?: string | null;
-          resuelto_por?: string | null;
-          storage_path?: string;
-          tamano_bytes?: number;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "comprobantes_transferencia_cuenta_cobro_id_fkey";
-            columns: ["cuenta_cobro_id"];
-            isOneToOne: false;
-            referencedRelation: "cuentas_cobro";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "comprobantes_transferencia_resuelto_por_fkey";
-            columns: ["resuelto_por"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "comprobantes_transferencia_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      cuentas_cobro: {
-        Row: {
-          activa: boolean;
-          alias: string;
-          banco: string;
-          cbu_cvu: string;
-          created_at: string;
-          cuit: string;
-          id: string;
-          notas: string | null;
-          titular: string;
-          updated_at: string;
-        };
-        Insert: {
-          activa?: boolean;
-          alias: string;
-          banco: string;
-          cbu_cvu: string;
-          created_at?: string;
-          cuit: string;
-          id?: string;
-          notas?: string | null;
-          titular: string;
-          updated_at?: string;
-        };
-        Update: {
-          activa?: boolean;
-          alias?: string;
-          banco?: string;
-          cbu_cvu?: string;
-          created_at?: string;
-          cuit?: string;
-          id?: string;
-          notas?: string | null;
-          titular?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       leads: {
         Row: {
           created_at: string;
@@ -499,7 +393,6 @@ export type Database = {
       };
     };
     Functions: {
-      activar_cuenta_cobro: { Args: { p_id: string }; Returns: Json };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
       nivel_vigente: {
         Args: { p_user_id: string };
