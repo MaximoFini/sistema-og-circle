@@ -11,7 +11,11 @@ const ENTIDADES_UI = [
     titulo: "Agentes de compra",
     desc: "Directorio de agentes en China. Contacto sensible.",
   },
-  { slug: "videos", titulo: "Videos", desc: "Stage 1 y 2. provider_ref sensible." },
+  {
+    slug: "videos",
+    titulo: "Videos",
+    desc: "Formación: importaciones y armá tu tienda. Link de YouTube sensible.",
+  },
   {
     slug: "profesionales",
     titulo: "Profesionales",

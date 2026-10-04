@@ -8,7 +8,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { Button, FormError } from "@/components/ui";
+import { Button, Checkbox, FormError } from "@/components/ui";
 import { videoProvider } from "@/lib/video/provider";
 import styles from "../../admin.module.css";
 
@@ -171,19 +171,15 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
     <form className={styles.formCambiarNivel} onSubmit={onSubmit}>
       {campos.map((campo) =>
         campo.tipo === "checkbox" ? (
-          // Caso aparte: el checkbox lleva su propia etiqueta inline (dentro
-          // del mismo <label>) — repetir el <span className={formLabel}> de
-          // arriba duplicaría el texto de la etiqueta.
-          <label key={campo.name} className={styles.formCampo}>
-            <span className={styles.checkboxCampo}>
-              <input
-                type="checkbox"
-                checked={Boolean(valores[campo.name])}
-                onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.checked }))}
-              />
-              {campo.label}
-            </span>
-          </label>
+          // Caso aparte: el Checkbox del sistema trae su propia etiqueta
+          // asociada — repetir el <span className={formLabel}> de arriba
+          // duplicaría el texto.
+          <Checkbox
+            key={campo.name}
+            label={campo.label}
+            checked={Boolean(valores[campo.name])}
+            onChange={(e) => setValores((v) => ({ ...v, [campo.name]: e.target.checked }))}
+          />
         ) : (
           // biome-ignore lint/a11y/noLabelWithoutControl: el control (textarea/select/input) SIEMPRE está anidado adentro, en una de las 4 ramas del ternario de abajo — el linter no sigue esa cadena para confirmarlo.
           <label key={campo.name} className={styles.formCampo}>
