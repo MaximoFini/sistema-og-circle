@@ -1,6 +1,6 @@
 import { Button, TextFieldBase } from "@/components/ui";
 import styles from "../admin.module.css";
-import { ESTADO_LABELS, ESTADOS } from "./estados";
+import { ESTADO_LABELS, ESTADOS } from "../etiquetas";
 
 // VGRP-37 — filtros del ledger de pagos. Form nativo `method="get"`: al enviar
 // navega a `/admin/pagos?estado=...&desde=...&hasta=...&ref=...` y el Server
@@ -8,7 +8,7 @@ import { ESTADO_LABELS, ESTADOS } from "./estados";
 // link con el cursor (ver page.tsx).
 
 // Un `<select>` acotado a los estados reales es más útil que un input libre
-// para el admin (ver ./estados.ts).
+// para el admin (ver ../etiquetas.ts).
 
 export function PagosFiltros({
   estado,

@@ -25,7 +25,15 @@ import {
   type Tables,
 } from "../../database.types";
 import { proyectarNivel } from "../pagos";
-import { decodeCursor, encodeCursor, escaparLike, keysetFilter, valorPostgrest } from "./keyset";
+import {
+  decodeCursor,
+  decodeCursorEmail,
+  encodeCursor,
+  escaparLike,
+  keysetFilter,
+  keysetFilterEmail,
+  valorPostgrest,
+} from "./keyset";
 import { PAGOS_COLUMNAS_RESUMEN, type PagoResumen } from "./pagos";
 
 type AdminClient = SupabaseClient<Database>;
@@ -81,29 +89,6 @@ export interface ListarUsuariosResultado {
   nextCursor: string | null;
 }
 
-// Cursor del orden alfabético: `(email, id)` en vez de `(created_at, id)` —
-// `profiles.email` no es UNIQUE, el `id` desempata. Mismo formato opaco
-// (base64url) que el cursor de keyset.ts; uno malformado se ignora.
-const cursorEmailSchema = z.object({
-  email: z.string().min(1).max(320),
-  id: z.uuid(),
-});
-
-function decodeCursorEmail(cursor: string | undefined): z.infer<typeof cursorEmailSchema> | null {
-  if (!cursor) return null;
-  try {
-    const raw = Buffer.from(cursor, "base64url").toString("utf8");
-    const parsed = cursorEmailSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
-}
-
-function encodeCursorEmail(c: z.infer<typeof cursorEmailSchema>): string {
-  return Buffer.from(JSON.stringify(c), "utf8").toString("base64url");
-}
-
 /**
  * Lista `profiles` con paginación KEYSET (cursor) — nunca offset. Orden
  * `recientes` (`created_at desc, id desc`, default), `antiguos` (asc) o
@@ -119,15 +104,15 @@ export async function listarUsuarios(
   const { q, nivel, rol, terminos, desde, hasta, orden, limit, cursor } =
     filtrosUsuariosSchema.parse(filtros);
 
-  let query = admin.from("profiles").select("id, email, nivel, created_at");
+  const alfabetico = orden === "alfabetico";
+  const ascending = orden !== "recientes";
 
-  if (orden === "alfabetico") {
-    query = query.order("email", { ascending: true }).order("id", { ascending: true });
-  } else {
-    const ascending = orden === "antiguos";
-    query = query.order("created_at", { ascending }).order("id", { ascending });
-  }
-  query = query.limit(limit + 1);
+  let query = admin
+    .from("profiles")
+    .select("id, email, nivel, created_at")
+    .order(alfabetico ? "email" : "created_at", { ascending })
+    .order("id", { ascending })
+    .limit(limit + 1);
 
   if (q) {
     const patron = valorPostgrest(`%${escaparLike(q)}%`);
@@ -142,15 +127,12 @@ export async function listarUsuarios(
 
   // Cada `.or()` va como un parámetro `or=` aparte y PostgREST los combina con
   // AND: el de búsqueda y el de keyset no se pisan.
-  if (orden === "alfabetico") {
+  if (alfabetico) {
     const c = decodeCursorEmail(cursor);
-    if (c) {
-      const email = valorPostgrest(c.email);
-      query = query.or(`email.gt.${email},and(email.eq.${email},id.gt.${c.id})`);
-    }
+    if (c) query = query.or(keysetFilterEmail(c));
   } else {
     const keyset = decodeCursor(cursor);
-    if (keyset) query = query.or(keysetFilter(keyset, orden === "antiguos" ? "asc" : "desc"));
+    if (keyset) query = query.or(keysetFilter(keyset, ascending ? "asc" : "desc"));
   }
 
   const { data, error } = await query;
@@ -161,13 +143,14 @@ export async function listarUsuarios(
   const usuarios = hasMore ? rows.slice(0, limit) : rows;
 
   const ultima = usuarios.at(-1);
-  let nextCursor: string | null = null;
-  if (hasMore && ultima) {
-    nextCursor =
-      orden === "alfabetico"
-        ? encodeCursorEmail({ email: ultima.email, id: ultima.id })
-        : encodeCursor({ createdAt: ultima.created_at, id: ultima.id });
-  }
+  const nextCursor =
+    hasMore && ultima
+      ? encodeCursor(
+          alfabetico
+            ? { email: ultima.email, id: ultima.id }
+            : { createdAt: ultima.created_at, id: ultima.id },
+        )
+      : null;
 
   return { usuarios, nextCursor };
 }
@@ -181,9 +164,26 @@ export interface UsuarioDetalle {
   nivelActivo: NivelAcceso;
   pagos: PagoResumen[];
   overrides: NivelOverride[];
-  /** Catálogo de videos (id + título) para traducir `perfil.progreso.videosVistos`
-   *  — que guarda sólo uuids — a algo legible en la ficha. */
-  videos: Pick<Tables<"videos">, "id" | "titulo" | "publicado">[];
+  /** `perfil.progreso.videosVistos` guarda sólo uuids: acá ya traducidos. */
+  progreso: ProgresoVideos;
+}
+
+export interface ProgresoVideos {
+  /** Vistos que siguen existiendo, en el orden del catálogo (stage, orden). */
+  vistos: Pick<Tables<"videos">, "titulo" | "publicado">[];
+  /** Vistos cuyo video ya se borró. */
+  eliminados: number;
+  totalPublicados: number;
+}
+
+// `progreso` es jsonb libre; hoy la única forma que escribe la app es
+// `{ videosVistos: uuid[] }` (components/video/_actions.ts).
+function leerVideosVistos(progreso: Json): string[] {
+  const v =
+    progreso && typeof progreso === "object" && !Array.isArray(progreso)
+      ? progreso.videosVistos
+      : undefined;
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 }
 
 /**
@@ -204,9 +204,12 @@ export async function obtenerUsuario(
   if (perfilError) throw perfilError;
   if (!perfil) return null;
 
-  // Las tres consultas son independientes entre sí (ya sabemos que el usuario
-  // existe): en paralelo.
-  const [nivelRes, pagosRes, overridesRes, videosRes] = await Promise.all([
+  const idsVistos = leerVideosVistos(perfil.progreso);
+
+  // Las consultas son independientes entre sí (ya sabemos que el usuario
+  // existe): en paralelo. De `videos` sólo se traen los vistos (y nada si no
+  // vio ninguno) más el conteo de publicados, no el catálogo entero.
+  const [nivelRes, pagosRes, overridesRes, vistosRes, publicadosRes] = await Promise.all([
     admin.rpc("nivel_vigente", { p_user_id: id }),
     // VGRP-54 punto 9 — PAGOS_COLUMNAS_RESUMEN excluye `payload_raw` (JSON
     // crudo de Mercado Pago, varios KB por fila; la ficha no lo muestra).
@@ -223,16 +226,24 @@ export async function obtenerUsuario(
       .select("*")
       .eq("user_id", id)
       .order("created_at", { ascending: false }),
-    admin
-      .from("videos")
-      .select("id, titulo, publicado")
-      .order("stage", { ascending: true })
-      .order("orden", { ascending: true }),
+    idsVistos.length > 0
+      ? admin
+          .from("videos")
+          .select("titulo, publicado")
+          .in("id", idsVistos)
+          .order("stage", { ascending: true })
+          .order("orden", { ascending: true })
+      : { data: [], error: null },
+    idsVistos.length > 0
+      ? admin.from("videos").select("id", { count: "exact", head: true }).eq("publicado", true)
+      : { count: 0, error: null },
   ]);
   if (nivelRes.error) throw nivelRes.error;
   if (pagosRes.error) throw pagosRes.error;
   if (overridesRes.error) throw overridesRes.error;
-  if (videosRes.error) throw videosRes.error;
+  if (vistosRes.error) throw vistosRes.error;
+  if (publicadosRes.error) throw publicadosRes.error;
+  const vistos = vistosRes.data ?? [];
   const { data: nivelActivo } = nivelRes;
   const { data: pagos } = pagosRes;
   const { data: overrides } = overridesRes;
@@ -242,7 +253,11 @@ export async function obtenerUsuario(
     nivelActivo: nivelActivo ?? "ninguno",
     pagos: pagos ?? [],
     overrides: overrides ?? [],
-    videos: videosRes.data ?? [],
+    progreso: {
+      vistos,
+      eliminados: new Set(idsVistos).size - vistos.length,
+      totalPublicados: publicadosRes.count ?? 0,
+    },
   };
 }
 
