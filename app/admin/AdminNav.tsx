@@ -14,7 +14,6 @@ import styles from "./admin.module.css";
 const SECCIONES = [
   { href: "/admin/usuarios", label: "Usuarios" },
   { href: "/admin/pagos", label: "Pagos" },
-  { href: "/admin/cuentas", label: "Cuentas" },
   { href: "/admin/auditoria", label: "Auditoría" },
   { href: "/admin/contenido", label: "Contenido" },
   { href: "/admin/config", label: "Config" },

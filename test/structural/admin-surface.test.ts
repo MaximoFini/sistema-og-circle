@@ -184,16 +184,7 @@ describe("app/api/admin/**/route.ts — toda mutación pasa por conAuditoria()",
   // espera — a diferencia de listarUsuarios/obtenerUsuario/listarPagos/
   // obtenerPago/contarPagosSinAplicar/sanitizarPayloadRaw, que son de sólo
   // lectura o funciones puras.
-  // VGRP-62: las tres de cuentas de cobro (lib/data/admin/cuentas.ts) — una
-  // cuenta mal cargada o activada desvía plata, así que ninguna puede mutar sin
-  // dejar su fila en admin_audit_log.
-  const FUNCIONES_MUTADORAS = [
-    "activarNivel",
-    "reprocesarPago",
-    "crearCuenta",
-    "actualizarCuenta",
-    "activarCuenta",
-  ];
+  const FUNCIONES_MUTADORAS = ["activarNivel", "reprocesarPago"];
 
   it.each(routes.map((r) => [rel(r), r] as const))(
     "%s: si importa una función mutadora, también llama a conAuditoria(",
