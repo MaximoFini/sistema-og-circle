@@ -18,10 +18,11 @@
 // =============================================================================
 
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { guardarOrigenSiFalta } from "@/lib/auth/origen-server";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { createSupabaseServerClient } from "@/lib/auth/server";
+import { dispararBienvenida } from "@/lib/email/bienvenida";
 import { terminosAceptadosFields } from "@/lib/legal/aceptacion";
 
 function nombreDeGoogle(metadata: Record<string, unknown>): string | null {
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
   // y no se le corta la entrada al usuario si esto falla.
   const { data: perfil } = await supabase
     .from("profiles")
-    .select("nombre, terminos_aceptados_at")
+    .select("nombre, email, terminos_aceptados_at, bienvenida_enviada_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -67,6 +68,20 @@ export async function GET(request: NextRequest) {
     };
     if (Object.keys(cambios).length > 0) {
       await supabase.from("profiles").update(cambios).eq("id", user.id);
+    }
+
+    // VGRP-26 — bienvenida en el primer ingreso. "Primer ingreso" = la columna
+    // `bienvenida_enviada_at` todavía está vacía: en los logins siguientes ya
+    // tiene fecha y no se reenvía. Fire-and-forget, como en `registrarse()`.
+    if (!perfil.bienvenida_enviada_at && perfil.email) {
+      // `after()` y no `void`: en Vercel la función puede congelarse tras el redirect.
+      after(() =>
+        dispararBienvenida({
+          userId: user.id,
+          email: perfil.email,
+          nombre: nombre ?? perfil.nombre,
+        }),
+      );
     }
   }
 

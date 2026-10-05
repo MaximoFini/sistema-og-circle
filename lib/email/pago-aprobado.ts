@@ -1,32 +1,56 @@
 import "server-only";
 
+import { PagoConfirmadoEmail } from "../../emails/pago-confirmado";
 import type { NivelAcceso } from "../database.types";
+import { getSiteUrl } from "../site-url";
+import { createServiceRoleClient } from "../supabase/service-role";
+import { enviarEmail, reportarFalloDeEmail } from "./send";
 
 /**
- * Punto de enganche para el email de confirmación de pago (VGRP-23).
- *
- * NO implementa la plantilla real — eso es VGRP-26, un ticket que no está en
- * este batch. Por ahora sólo deja constancia en el log de que un pago
- * aprobado debería disparar un email, con los datos que esa plantilla va a
- * necesitar.
- *
- * TODO(VGRP-26): reemplazar por enviarEmail() con la plantilla real de
- * confirmación de pago.
+ * Email de confirmación de pago (VGRP-26).
  *
  * El webhook de Mercado Pago la llama SIN `await` (fire-and-forget): el email
- * nunca bloquea la respuesta del webhook, igual que documenta el comentario
- * de referencia en `app/api/auth/send-email/route.tsx` sobre el diseño de
- * este mismo webhook. Por eso esta función tampoco debería poder lanzar — hoy
- * sólo hace un `console.info`, así que no hay ninguna vía de error real, pero
- * si VGRP-26 la reemplaza por algo que sí pueda fallar, tiene que preservar
- * esta propiedad (igual que `enviarEmail()` en `lib/email/send.ts`).
+ * nunca bloquea ni tira abajo el 200 del webhook. Por eso esta función NUNCA
+ * lanza: cualquier falla (perfil inexistente, error de Postgres, Resend caído)
+ * se reporta con `reportarFalloDeEmail` y termina ahí.
+ *
+ * `referencia` es el paymentId de Mercado Pago, para que el usuario pueda
+ * citarlo si consulta por el pago.
  */
-export function notificarPagoAprobado(datos: {
+export async function notificarPagoAprobado(datos: {
   userId: string;
   nivel: NivelAcceso;
   montoArs: number;
-}): void {
-  console.info(
-    `[pago-aprobado] userId=${datos.userId} nivel=${datos.nivel} montoArs=${datos.montoArs}`,
-  );
+  referencia: string;
+}): Promise<void> {
+  try {
+    const { data: perfil, error } = await createServiceRoleClient()
+      .from("profiles")
+      .select("email, nombre")
+      .eq("id", datos.userId)
+      .maybeSingle();
+
+    if (error) {
+      reportarFalloDeEmail("pago-confirmado", error);
+      return;
+    }
+    if (!perfil) {
+      reportarFalloDeEmail("pago-confirmado", `no existe profile para userId=${datos.userId}`);
+      return;
+    }
+
+    await enviarEmail({
+      para: perfil.email,
+      asunto: "Confirmamos tu compra en OG Circle",
+      plantilla: PagoConfirmadoEmail({
+        nombre: perfil.nombre ?? "",
+        montoArs: datos.montoArs,
+        referencia: datos.referencia,
+        url: `${getSiteUrl()}/dashboard`,
+      }),
+      motivo: "pago-confirmado",
+    });
+  } catch (error) {
+    reportarFalloDeEmail("pago-confirmado", error);
+  }
 }

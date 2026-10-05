@@ -3,19 +3,19 @@
 Cómo manda emails OG Circle: Resend + React Email, con las plantillas como
 componentes (STACK.md §1 y §7).
 
-## Estado actual (2026-08-22) — leer esto antes de tocar nada
+## Estado actual (2026-10-05) — leer esto antes de tocar nada
 
 **Todo el código está escrito y testeado. Nada está activo, y activarlo hoy
 rompería la app.**
 
 | Pieza | Estado |
 |---|---|
-| Código (`lib/email/`, `emails/`, `app/api/auth/send-email/`) | ✅ Hecho en este ticket |
-| Dominio propio | ✅ `ogcircle.com.ar` (DNS en DonWeb). Landing en la raíz, plataforma en `plataforma.ogcircle.com.ar` |
+| Código (`lib/email/`, `emails/`, `app/api/auth/send-email/`) | ✅ Hecho |
+| Dominio propio | ✅ Comprado: `ogcircle.com.ar` (DNS en DonWeb). Landing en la raíz, plataforma en `plataforma.ogcircle.com.ar` |
 | Cuenta de Resend + API key | ❌ Pendiente (paso manual) |
-| SPF y DKIM verificados | ❌ Pendiente, bloqueado por el dominio |
+| SPF y DKIM verificados | ❌ Pendiente: falta dar de alta el dominio en Resend |
 | Send Email Hook registrado en Supabase | ❌ Pendiente **a propósito** — ver abajo |
-| Sentry para los fallos de envío | ❌ Entra en VGRP-41 (Bloque 3) |
+| Sentry para los fallos de envío | ✅ Instalado (`@sentry/nextjs`, VGRP-41): `reportarFalloDeEmail()` y los problemas de configuración del hook van a Sentry con tags distintos |
 
 ### El riesgo que ordena todo este ticket
 
@@ -173,23 +173,22 @@ mitad de los clientes tampoco las soporta).
 ### Instrumentación de fallos
 
 `reportarFalloDeEmail(motivo, error)` en `lib/email/send.ts` es el **único** punto
-por donde se reporta un fallo de **entrega**. Hoy hace `console.error`.
+por donde se reporta un fallo de **entrega**. Llama a
+`Sentry.captureException()` con el tag `motivo` (ej. `reset-password`).
 
 Los problemas de **configuración o validación** del hook (secreto ausente o mal
 formado, payload inválido, tipo sin plantilla) van por `reportarProblemaDeHook()`,
-que vive en el route handler y es deliberadamente distinto: cuando entre Sentry,
-mezclar "Resend no entregó" con "el webhook está mal configurado" en el mismo
-evento haría que las dos alertas se tapen entre sí.
+que vive en el route handler y usa el tag `fuente: "send-email-hook-config"`. Es
+deliberadamente distinto: mezclar "Resend no entregó" con "el webhook está mal
+configurado" en la misma alerta haría que las dos se tapen entre sí.
+
+Ambas funciones tragan sus propias excepciones: reportar un fallo nunca rompe el
+envío ni la respuesta del hook. Sin DSN de Sentry, la llamada es no-op.
 
 Un caso concreto de diagnóstico honesto: un `SEND_EMAIL_HOOK_SECRET` con formato
 inválido devuelve **500** ("mal configurado"), no 401 ("firma inválida"). Si
 devolviera 401, quien está registrando el hook por primera vez creería que el
 problema está del lado de Supabase.
-
-**TODO(VGRP-41):** reemplazar el cuerpo por `Sentry.captureException()`. Sentry
-no está instalado en el repo — entra en VGRP-41 (Bloque 3, STACK.md §8). Este
-ticket deja el punto de enganche con nombre propio y nada más; no instala el
-paquete ni inventa la integración.
 
 Un email que no sale es un fallo **silencioso** por definición: el usuario no ve
 nada y el flujo sigue andando. Sin esta instrumentación, "nunca lanzar" se
@@ -205,9 +204,9 @@ Están en `.env.example`. Ninguna está seteada hoy.
 |---|---|---|
 | `RESEND_API_KEY` | API key de Resend | Dashboard de Resend → API Keys |
 | `SEND_EMAIL_HOOK_SECRET` | Secreto del hook, formato `v1,whsec_...` | Supabase → Authentication → Hooks, al crear el hook |
-| `EMAIL_FROM` | Remitente | **Decisión abierta**, depende del dominio |
-| `EMAIL_REPLY_TO` | Reply-to | **Decisión abierta**, depende del dominio |
-| `NEXT_PUBLIC_SUPABASE_URL` | Ya existía; se usa para armar el link de reset | `docs/SUPABASE-SETUP.md` |
+| `EMAIL_FROM` | Remitente | **Decisión abierta**, propuesta: `OG Circle <no-reply@mail.ogcircle.com.ar>` |
+| `EMAIL_REPLY_TO` | Reply-to | **Decisión abierta** |
+| `NEXT_PUBLIC_SITE_URL` | Origen del sitio; arma el link de reset (`<SITE_URL>/auth/confirm`) | Ya existía (`.env.example`) |
 
 Sin `EMAIL_FROM`, se usa `OG Circle <onboarding@resend.dev>` (remitente de prueba
 de Resend). Sin `RESEND_API_KEY`, `enviarEmail()` devuelve `{ ok: false }` y
@@ -215,10 +214,11 @@ reporta — no explota.
 
 ### Pendiente de decidir: `from` y `reply-to`
 
-**No están definidos y no se inventaron acá.** Dependen del dominio que se
-compre. Lo que hay que decidir cuando exista:
+**No están definidos por el equipo todavía.** El dominio ya existe; lo que falta
+decidir:
 
-- El `from` (algo del estilo `OG Circle <no-reply@<dominio>>`).
+- El `from`. Propuesta: `OG Circle <no-reply@mail.ogcircle.com.ar>` (subdominio
+  `mail.` dedicado, ver más abajo).
 - Si el `reply-to` va a una casilla que alguien **realmente lee**. Un mail
   transaccional con `reply-to` a un buzón muerto es peor que no tener reply-to:
   la gente responde pidiendo ayuda y nadie contesta. Si no hay quien lo lea,
@@ -262,9 +262,8 @@ del dominio, y el hook de verdad (registrarlo rompería producción — ver arri
 Ninguno de estos se puede hacer desde el repo. Van en este orden y **el paso 5 no
 se hace hasta que el 4 esté verde**.
 
-1. **Comprar el dominio.** Decisión del equipo, todavía no tomada. Mientras no
-   exista, todo lo demás está bloqueado.
-2. **Alta del dominio en Resend.** Dashboard de Resend → Domains → Add Domain.
+1. ~~Comprar el dominio.~~ Hecho: `ogcircle.com.ar`.
+2. **Alta del dominio (`mail.ogcircle.com.ar`) en Resend.** Dashboard de Resend → Domains → Add Domain.
    Resend devuelve los registros DNS a cargar.
 3. **Cargar SPF y DKIM en el DNS del dominio** (en el registrador, o en Vercel si
    el DNS se delega ahí). Resend indica los valores exactos:
@@ -304,16 +303,11 @@ y no requiere ningún deploy.
 
 ## Deuda conocida
 
-- **Link de confirmación — verificar end-to-end al activar.** El reset apunta a
-  `<SUPABASE_URL>/auth/v1/verify?token=<token_hash>&type=recovery&redirect_to=…`,
-  que es lo que resuelve `{{ .ConfirmationURL }}` en las plantillas por defecto:
-  el parámetro se llama `token` pero lo que va adentro es el **`token_hash`** del
-  payload, no el código de 6 dígitos. Esto **no está probado contra un proyecto
-  vivo** y ningún test lo cubre (los tests solo verifican el origen del redirect).
-  Es lo primero que hay que probar a mano en el paso 7 de los pasos manuales.
-  Cuando exista una ruta `/auth/confirm` que reciba `token_hash` y llame a
-  `supabase.auth.verifyOtp()`, conviene migrar: es el camino recomendado para el
-  flujo PKCE y deja el control del redirect del lado nuestro.
+- **Link de confirmación — resuelto.** El reset apunta a
+  `<SITE_URL>/auth/confirm?token_hash=<token_hash>&type=recovery&next=<path relativo>`.
+  La ruta `/auth/confirm` llama a `supabase.auth.verifyOtp()` y el destino `next`
+  pasa por la misma allowlist de origen (solo path relativo). Igual conviene
+  verificarlo a mano contra un proyecto vivo en el paso 7.
 - **`RESEND_API_KEY` es bloqueante una vez registrado el hook.** Sin la key,
   `enviarEmail()` devuelve `{ ok: false }` y el endpoint responde 500, así que
   **todos** los resets fallarían a la vista del usuario. Es coherente con el fail
@@ -321,5 +315,4 @@ y no requiere ningún deploy.
   antes de activar el hook, no después.
 - **Solo hay una plantilla** (`recovery`). Faltan `signup`, `magiclink`, `invite`
   y `email_change`, y son bloqueantes para registrar el hook.
-- **Sentry** — VGRP-41, ver "Instrumentación de fallos".
 - **Preview de React Email** no instalado (ver "Cómo probar hoy", punto 5).

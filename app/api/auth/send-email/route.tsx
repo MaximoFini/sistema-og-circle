@@ -1,7 +1,9 @@
+import * as Sentry from "@sentry/nextjs";
 import { Webhook } from "standardwebhooks";
 import { z } from "zod";
 import { ResetPasswordEmail } from "@/emails/reset-password";
 import { enviarEmail } from "@/lib/email/send";
+import { getSiteUrl } from "@/lib/mercadopago/preferencia";
 
 /**
  * Send Email Hook de Supabase Auth (VGRP-25).
@@ -78,14 +80,20 @@ function respuestaDeError(httpCode: number, message: string): Response {
 }
 
 /**
- * Log de los problemas del hook que NO son fallos de entrega de email: secreto
- * mal configurado, payload inválido, tipo sin plantilla. Se mantiene separado de
- * `reportarFalloDeEmail()` a propósito — cuando entre Sentry en VGRP-41, mezclar
- * "Resend no entregó" con "el webhook está mal configurado" en el mismo evento
- * haría que las dos alertas se tapen entre sí.
+ * Reporta a Sentry los problemas del hook que NO son fallos de entrega de email:
+ * secreto mal configurado, payload inválido, tipo sin plantilla. Se mantiene
+ * separado de `reportarFalloDeEmail()` a propósito, con un tag `fuente` distinto:
+ * mezclar "Resend no entregó" con "el webhook está mal configurado" en la misma
+ * alerta haría que las dos se tapen entre sí.
  */
 function reportarProblemaDeHook(detalle: string): void {
-  console.error(`[email-hook] ${detalle}`);
+  try {
+    Sentry.captureException(new Error(`[email-hook] ${detalle}`), {
+      tags: { fuente: "send-email-hook-config" },
+    });
+  } catch {
+    // Sentry falló: el 4xx/5xx al hook se devuelve igual.
+  }
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -150,10 +158,6 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const url = construirUrlDeConfirmacion(email_data, tipo);
-  if (!url) {
-    reportarProblemaDeHook("NEXT_PUBLIC_SUPABASE_URL no está configurada");
-    return respuestaDeError(500, "Falta configuración de Supabase.");
-  }
 
   const resultado = await enviarEmail({
     para: user.email,
@@ -181,37 +185,29 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 /**
- * Arma la URL de confirmación del reset.
+ * Arma la URL de confirmación del reset, apuntando a nuestra ruta
+ * `/auth/confirm`, que recibe `token_hash` y llama a `supabase.auth.verifyOtp()`
+ * (flujo recomendado, el control del redirect queda de nuestro lado).
  *
- * Se usa el endpoint `/auth/v1/verify` del propio Supabase, que es exactamente lo
- * que resuelve `{{ .ConfirmationURL }}` en las plantillas por defecto. Ventaja:
- * funciona hoy, sin depender de ninguna ruta de la app que todavía no existe.
- *
- * TODO: cuando exista una ruta `/auth/confirm` en la app (que reciba `token_hash`
- * y llame a `supabase.auth.verifyOtp()`), migrar a esa — es el camino recomendado
- * para el flujo PKCE y deja el control del redirect del lado nuestro.
+ * El `type` sale del payload y no está hardcodeado en "recovery" aunque hoy el
+ * caller ya filtre por ese tipo: cuando se implementen `signup`, `magiclink`,
+ * `invite` y `email_change`, un literal acá sería un desajuste silencioso —
+ * el link verificaría el token con el tipo equivocado.
  */
 function construirUrlDeConfirmacion(
   emailData: { token_hash: string; redirect_to: string; site_url: string },
-  // El `type` sale del payload y no está hardcodeado en "recovery" aunque hoy el
-  // caller ya filtre por ese tipo: cuando se implementen `signup`, `magiclink`,
-  // `invite` y `email_change`, un literal acá sería un desajuste silencioso —
-  // el link verificaría el token con el tipo equivocado.
   tipo: string,
-): string | null {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) {
-    return null;
-  }
-  const url = new URL("/auth/v1/verify", base);
-  url.searchParams.set("token", emailData.token_hash);
+): string {
+  const url = new URL("/auth/confirm", getSiteUrl());
+  url.searchParams.set("token_hash", emailData.token_hash);
   url.searchParams.set("type", tipo);
-  url.searchParams.set("redirect_to", resolverRedirect(emailData));
+  url.searchParams.set("next", resolverNext(emailData));
   return url.toString();
 }
 
 /**
- * Elige el `redirect_to` final, con allowlist por origen.
+ * Elige a dónde vuelve el usuario después de confirmar, como path RELATIVO
+ * (`next`), con allowlist por origen.
  *
  * `redirect_to` llega dentro del payload del hook. La firma ya garantiza que el
  * payload viene de Supabase, así que esto no protege de un atacante externo —
@@ -222,12 +218,13 @@ function construirUrlDeConfirmacion(
  * phishing creíble.
  *
  * Regla: solo se acepta un `redirect_to` que apunte al MISMO ORIGEN que
- * `site_url` (que lo fija la configuración del proyecto, no el request). En
- * cualquier otro caso se cae a `site_url`, que siempre es un destino seguro.
+ * `site_url` (que lo fija la configuración del proyecto, no el request). Se
+ * devuelve solo `pathname + search + hash`, nunca la URL absoluta: `next` no puede
+ * sacar al usuario de nuestro sitio. En cualquier otro caso se cae a "/".
  */
-function resolverRedirect(emailData: { redirect_to: string; site_url: string }): string {
+function resolverNext(emailData: { redirect_to: string; site_url: string }): string {
   if (!emailData.redirect_to) {
-    return emailData.site_url;
+    return "/";
   }
   try {
     const destino = new URL(emailData.redirect_to);
@@ -236,13 +233,12 @@ function resolverRedirect(emailData: { redirect_to: string; site_url: string }):
     // producen `origin === "null"`, así que comparar solo orígenes los dejaría
     // pasar si `site_url` también estuviera rota.
     const esWeb = destino.protocol === "https:" || destino.protocol === "http:";
-    // Se devuelve el string crudo y no `destino.toString()`: las dos ramas tienen
-    // que devolver el valor tal cual vino, sin canonicalizar una sí y la otra no.
-    return esWeb && destino.origin === permitido.origin
-      ? emailData.redirect_to
-      : emailData.site_url;
+    if (!esWeb || destino.origin !== permitido.origin) {
+      return "/";
+    }
+    return `${destino.pathname}${destino.search}${destino.hash}`;
   } catch {
-    // `redirect_to` no es una URL absoluta válida: no se adivina, se usa site_url.
-    return emailData.site_url;
+    // `redirect_to` no es una URL absoluta válida: no se adivina, se usa "/".
+    return "/";
   }
 }

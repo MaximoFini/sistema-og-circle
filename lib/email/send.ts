@@ -1,5 +1,6 @@
 import "server-only";
 
+import * as Sentry from "@sentry/nextjs";
 import type { ReactElement } from "react";
 import { getFrom, getReplyTo, getResendClient } from "./client";
 
@@ -51,23 +52,23 @@ export interface ParametrosEnvio {
 }
 
 /**
- * Punto de instrumentación de fallos de envío.
- *
- * TODO(VGRP-41): reemplazar el `console.error` por `Sentry.captureException()`.
- * Sentry NO está instalado en el repo todavía — entra en VGRP-41 (Bloque 3,
- * STACK.md §8) y este ticket no instala el paquete ni inventa la integración.
- * Lo único que se deja hecho acá es el punto de enganche, con nombre propio y
- * una sola llamada en todo el módulo, para que VGRP-41 sea cambiar el cuerpo de
- * esta función y nada más.
+ * Punto de instrumentación de fallos de ENTREGA de email (único en el módulo).
  *
  * Un email transaccional que no sale es un fallo SILENCIOSO por definición: el
  * usuario no ve nada, el flujo sigue andando, y nadie se entera hasta que alguien
- * escribe "nunca me llegó el mail". Sin esta instrumentación, la regla de "nunca
- * lanzar" de arriba se convierte en "nunca enterarse".
+ * escribe "nunca me llegó el mail". Por eso va a Sentry (VGRP-41, STACK.md §8).
+ *
+ * Si Sentry no está inicializado (sin DSN), `captureException` es no-op: fail-open,
+ * igual que el resto del repo. Si la propia llamada a Sentry lanza, también se
+ * traga: reportar un fallo nunca puede romper `enviarEmail()`.
  */
 export function reportarFalloDeEmail(motivo: string, error: unknown): void {
-  const detalle = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-  console.error(`[email] fallo de envío (motivo=${motivo}): ${detalle}`);
+  const normalizado = error instanceof Error ? error : new Error(String(error));
+  try {
+    Sentry.captureException(normalizado, { tags: { motivo } });
+  } catch {
+    // Sentry falló: no hay a dónde reportarlo y el envío igual tiene que devolver su resultado.
+  }
 }
 
 export async function enviarEmail(params: ParametrosEnvio): Promise<ResultadoEnvio> {

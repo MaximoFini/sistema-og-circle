@@ -259,6 +259,7 @@ export type Database = {
       };
       profiles: {
         Row: {
+          bienvenida_enviada_at: string | null;
           created_at: string;
           email: string;
           id: string;
@@ -273,6 +274,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          bienvenida_enviada_at?: string | null;
           created_at?: string;
           email: string;
           id: string;
@@ -287,6 +289,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          bienvenida_enviada_at?: string | null;
           created_at?: string;
           email?: string;
           id?: string;

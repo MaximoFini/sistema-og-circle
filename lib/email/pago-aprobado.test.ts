@@ -1,36 +1,107 @@
-// VGRP-46 — test de `notificarPagoAprobado()` (lib/email/pago-aprobado.ts).
+// VGRP-26 — test de `notificarPagoAprobado()` (lib/email/pago-aprobado.ts).
 //
-// Hoy es un stub (sólo `console.info`, ver VGRP-26 pendiente): no hay
-// plantilla real ni envío por Resend todavía, así que no hay nada que
-// mockear (`vi.mock`) acá. Lo único que se puede probar honestamente es la
-// propiedad de la que depende el webhook de Mercado Pago (VGRP-23): esta
-// función es fire-and-forget (el webhook la llama sin `await` y, en al menos
-// un punto, sin try/catch alrededor) y por lo tanto NUNCA puede lanzar — si
-// lo hiciera, tumbaría el 200 de la respuesta del webhook.
-//
-// El resto del comportamiento esperado (envío real por Resend con la
-// plantilla de confirmación de pago) todavía no existe en el repo — es
-// VGRP-26. No se inventa acá un mock de una plantilla que no existe: se deja
-// como `it.todo(...)`.
+// Propiedades que importan:
+// - Busca email/nombre en `profiles` con service role y envía vía `enviarEmail`
+//   con la referencia (paymentId) y la URL del dashboard.
+// - NUNCA lanza, aunque falle la búsqueda del perfil o el envío (el webhook la
+//   llama sin await y su 200 no puede depender de esto).
 
-import { describe, expect, it, vi } from "vitest";
-import { notificarPagoAprobado } from "./pago-aprobado";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mockEnviarEmail = vi.fn();
+const mockReportar = vi.fn();
+const mockMaybeSingle = vi.fn();
+
+vi.mock("./send", () => ({
+  enviarEmail: (...args: unknown[]) => mockEnviarEmail(...args),
+  reportarFalloDeEmail: (...args: unknown[]) => mockReportar(...args),
+}));
+
+vi.mock("../supabase/service-role", () => ({
+  createServiceRoleClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: () => mockMaybeSingle() }),
+      }),
+    }),
+  }),
+}));
+
+vi.mock("../../emails/pago-confirmado", () => ({
+  PagoConfirmadoEmail: (props: unknown) => ({ tipo: "pago-confirmado", props }),
+}));
+
+const DATOS = {
+  userId: "user-123",
+  nivel: "completo" as const,
+  montoArs: 90000,
+  referencia: "pay-999",
+};
 
 describe("notificarPagoAprobado", () => {
-  it("nunca lanza una excepción (fire-and-forget, invocada sin await/try-catch desde el webhook)", () => {
-    vi.spyOn(console, "info").mockImplementation(() => {});
-
-    expect(() =>
-      notificarPagoAprobado({ userId: "user-123", nivel: "completo", montoArs: 75000 }),
-    ).not.toThrow();
-
-    vi.restoreAllMocks();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ogcircle.example";
   });
 
-  // TODO(VGRP-26): implementar el envío real por Resend con la plantilla de
-  // confirmación de pago. Hasta que exista esa plantilla, no hay nada
-  // honesto que testear acá más allá de la propiedad de arriba.
-  it.todo(
-    "envía el email de confirmación de pago con la plantilla real por Resend (VGRP-26, no implementado todavía)",
-  );
+  it("envía el email de confirmación al email del perfil con referencia y URL del dashboard", async () => {
+    mockMaybeSingle.mockResolvedValue({
+      data: { email: "ana@example.com", nombre: "Ana" },
+      error: null,
+    });
+    mockEnviarEmail.mockResolvedValue({ ok: true, id: "re_1" });
+
+    const { notificarPagoAprobado } = await import("./pago-aprobado");
+    await notificarPagoAprobado(DATOS);
+
+    expect(mockEnviarEmail).toHaveBeenCalledTimes(1);
+    const arg = mockEnviarEmail.mock.calls[0][0];
+    expect(arg.para).toBe("ana@example.com");
+    expect(arg.motivo).toBe("pago-confirmado");
+    expect(arg.plantilla.props).toEqual({
+      nombre: "Ana",
+      montoArs: 90000,
+      referencia: "pay-999",
+      url: "https://ogcircle.example/dashboard",
+    });
+  });
+
+  it("no envía ni lanza si el perfil no existe", async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+
+    const { notificarPagoAprobado } = await import("./pago-aprobado");
+    await expect(notificarPagoAprobado(DATOS)).resolves.toBeUndefined();
+
+    expect(mockEnviarEmail).not.toHaveBeenCalled();
+    expect(mockReportar).toHaveBeenCalledWith("pago-confirmado", expect.any(String));
+  });
+
+  it("no lanza si la búsqueda del perfil devuelve error", async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: new Error("db caída") });
+
+    const { notificarPagoAprobado } = await import("./pago-aprobado");
+    await expect(notificarPagoAprobado(DATOS)).resolves.toBeUndefined();
+
+    expect(mockEnviarEmail).not.toHaveBeenCalled();
+    expect(mockReportar).toHaveBeenCalled();
+  });
+
+  it("no lanza si la búsqueda del perfil tira una excepción", async () => {
+    mockMaybeSingle.mockRejectedValue(new Error("red caída"));
+
+    const { notificarPagoAprobado } = await import("./pago-aprobado");
+    await expect(notificarPagoAprobado(DATOS)).resolves.toBeUndefined();
+    expect(mockReportar).toHaveBeenCalled();
+  });
+
+  it("no lanza si enviarEmail devuelve ok:false", async () => {
+    mockMaybeSingle.mockResolvedValue({
+      data: { email: "ana@example.com", nombre: null },
+      error: null,
+    });
+    mockEnviarEmail.mockResolvedValue({ ok: false, error: "503" });
+
+    const { notificarPagoAprobado } = await import("./pago-aprobado");
+    await expect(notificarPagoAprobado(DATOS)).resolves.toBeUndefined();
+  });
 });

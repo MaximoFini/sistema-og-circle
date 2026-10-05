@@ -9,11 +9,13 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { flattenError } from "zod";
 import { guardarOrigenSiFalta } from "@/lib/auth/origen-server";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { createSupabaseServerClient } from "@/lib/auth/server";
 import { getFlags } from "@/lib/config";
+import { dispararBienvenida } from "@/lib/email/bienvenida";
 import type { ActionState } from "@/lib/forms/action-state";
 import { terminosAceptadosFields } from "@/lib/legal/aceptacion";
 import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
@@ -140,6 +142,18 @@ export async function registrarse(
   // VGRP-76 — también best-effort; va por service role (el usuario no puede
   // escribir su propio origen).
   await guardarOrigenSiFalta(data.user.id);
+
+  // VGRP-26 — bienvenida por email. Fire-and-forget: no bloquea el redirect y
+  // `dispararBienvenida()` nunca lanza. Marca la columna sólo si el envío sale OK.
+  // `after()` y no `void`: en Vercel la función puede congelarse tras el redirect.
+  const userId = data.user.id;
+  after(() =>
+    dispararBienvenida({
+      userId,
+      email,
+      nombre,
+    }),
+  );
 
   redirect("/dashboard");
 }
