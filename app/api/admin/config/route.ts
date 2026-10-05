@@ -21,9 +21,10 @@
 // =============================================================================
 
 import * as Sentry from "@sentry/nextjs";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { getFlags, getPlan, getPrecios } from "@/lib/config";
+import { getFlags, getPlan, getPrecios, TAG_CONFIG_PLAN } from "@/lib/config";
 import { configSchema } from "@/lib/config/schema";
 import { escribirEdgeConfig } from "@/lib/config/write";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
@@ -95,6 +96,10 @@ export async function PATCH(req: Request): Promise<Response> {
       { status: 502 },
     );
   }
+
+  // VGRP-77 — la tarjeta de desbloqueo (rutas estáticas) muestra nombre y
+  // precio del plan desde `getOfertaPlan()`, cacheado con este tag.
+  if (clave === "precios" || clave === "plan") revalidateTag(TAG_CONFIG_PLAN);
 
   const admin = createServiceRoleClient();
   await conAuditoria(

@@ -1,9 +1,7 @@
-import NextLink from "next/link";
 import { notFound } from "next/navigation";
+import { InicioBloqueado } from "@/components/inicio/InicioBloqueado";
 import { InicioShell } from "@/components/inicio/InicioShell";
-import buttonStyles from "@/components/ui/Button.module.css";
-import { Icon } from "@/components/ui/Icon";
-import dashboardStyles from "../dashboard.module.css";
+import { isNivelAcceso, NIVELES } from "@/lib/auth/claims";
 
 // =============================================================================
 // VGRP-27 — Inicio para nivel 'ninguno' | 'completo', 100% prerenderizado
@@ -18,24 +16,16 @@ import dashboardStyles from "../dashboard.module.css";
 // nivel llega por el `params` de la URL interna, no por sesión. Es lo que
 // mantiene esta ruta estática (sale del CDN, PRD §3.5) — `middleware.ts` es
 // quien decide, leyendo el claim SIN pegarle a la base, a cuál de las dos
-// reescribir un pedido a `/dashboard`.
+// reescribir un pedido a `/dashboard`, y quien redirige a quien pide
+// `/dashboard/completo` a mano sin plan.
 //
-// El contenido de 'ninguno' es el mismo CTA de "comprar acceso" que tenía
-// `app/(app)/dashboard/page.tsx` para ese nivel — copiado tal cual (mismas
-// clases, mismo copy), no rediseñado. Esa página bare sigue existiendo sin
-// tocar, como red de contención si algún request llegara sin pasar por el
-// rewrite del middleware.
+// VGRP-77: 'ninguno' deja de ser una tarjeta vacía de "comprá acceso" y pasa a
+// ser el Inicio real, borroso, con la tarjeta de desbloqueo encima
+// (`InicioBloqueado`, sin los `embedUrl` de los videos).
 // =============================================================================
 
-const VARIANTES = ["ninguno", "completo"] as const;
-type Variante = (typeof VARIANTES)[number];
-
-function esVariante(value: string): value is Variante {
-  return (VARIANTES as readonly string[]).includes(value);
-}
-
 export function generateStaticParams() {
-  return VARIANTES.map((variante) => ({ variante }));
+  return NIVELES.map((variante) => ({ variante }));
 }
 
 // Cualquier valor fuera de VARIANTES no es un render dinámico sorpresa: 404.
@@ -56,29 +46,9 @@ export default async function InicioPorNivelPage({
   params: Promise<{ variante: string }>;
 }) {
   const { variante } = await params;
-  if (!esVariante(variante)) {
+  if (!isNivelAcceso(variante)) {
     notFound();
   }
 
-  if (variante === "ninguno") {
-    return (
-      <div className={dashboardStyles.wrap}>
-        <div className={dashboardStyles.card}>
-          <span className={dashboardStyles.icono}>
-            <Icon name="candado" size={26} />
-          </span>
-          <p className={dashboardStyles.eyebrow}>Tu cuenta</p>
-          <h1 className={dashboardStyles.title}>Todavía no tenés acceso a ningún nivel</h1>
-          <p className={dashboardStyles.copy}>
-            Comprá un nivel para desbloquear el contenido de la plataforma.
-          </p>
-          <NextLink href="/comprar" className={`${buttonStyles.button} ${buttonStyles.primary}`}>
-            Comprar acceso
-          </NextLink>
-        </div>
-      </div>
-    );
-  }
-
-  return <InicioShell />;
+  return variante === "ninguno" ? <InicioBloqueado /> : <InicioShell />;
 }

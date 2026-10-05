@@ -19,9 +19,9 @@ import "../test/helpers/load-env";
 // existe: `servicios_financieros` ahora filtra TODA la fila por RLS para
 // quien no tiene `nivel = 'completo'` (ver supabase/migrations/
 // 20261002190000_plan_unico.sql, policy "servicios_financieros_select_con_
-// acceso") — y un usuario 'ninguno' ni siquiera llega a la pantalla que monta
-// <ServiciosFinancierosGrid> (ve app/(app)/dashboard/page.tsx, VGRP-18, que
-// no la usa). El canario pasa a probar eso: 'ninguno' nunca ve el dato en
+// acceso"). Desde VGRP-77 un usuario 'ninguno' sí monta
+// <ServiciosFinancierosGrid> (el Inicio borroso detrás de la tarjeta de
+// desbloqueo). El canario prueba que 'ninguno' nunca ve el dato en
 // ningún lado, 'completo' lo ve entero (título + descripción, ya sin ningún
 // candado).
 //
@@ -79,7 +79,7 @@ test.describe("canario SWIFT — VGRP-52/59", () => {
     await cleanupUser(completo.userId);
   });
 
-  test("sin el plan completo: ni el título ni el dato SWIFT aparecen, ni en el HTML ni en ninguna respuesta de red", async ({
+  test("sin el plan completo: el dato SWIFT no aparece, ni en el HTML ni en ninguna respuesta de red", async ({
     page,
   }) => {
     const cuerpos: Promise<string>[] = [];
@@ -87,15 +87,19 @@ test.describe("canario SWIFT — VGRP-52/59", () => {
       cuerpos.push(response.text().catch(() => ""));
     });
 
+    // VGRP-77: un usuario 'ninguno' ve el Inicio real borroso, que SÍ monta
+    // <ServiciosFinancierosGrid> y pide /api/servicios-financieros. El título
+    // del servicio es contenido no sensible (viaja, borroso); el dato SWIFT no.
+    const respuestaServicios = page.waitForResponse((res) =>
+      res.url().includes("/api/servicios-financieros"),
+    );
     await loginComo(page, sinAcceso.email);
-    // Un usuario 'ninguno' cae en el dashboard bare (VGRP-18) — nunca monta
-    // <ServiciosFinancierosGrid>, así que ni el título es el ancla acá.
-    await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
+    await respuestaServicios;
+    await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
     await page.waitForLoadState("networkidle");
 
     const html = await page.content();
     expect(html).not.toContain(canario);
-    expect(html).not.toContain(titulo);
 
     const bodies = await Promise.all(cuerpos);
     for (const body of bodies) {

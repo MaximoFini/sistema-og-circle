@@ -8,6 +8,7 @@ export { ContenidoBloqueado, type ContenidoBloqueadoProps } from "./ContenidoBlo
 export { FormError, type FormErrorProps } from "./FormError";
 export { Icon, type IconName, type IconProps } from "./Icon";
 export { PasswordField, type PasswordFieldProps } from "./PasswordField";
+export { TarjetaDesbloqueo, type TarjetaDesbloqueoProps } from "./TarjetaDesbloqueo";
 export { TextField, type TextFieldProps } from "./TextField";
 export { TextFieldBase, type TextFieldBaseProps } from "./TextFieldBase";
 export { TextLink, type TextLinkProps } from "./TextLink";

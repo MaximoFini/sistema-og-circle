@@ -41,7 +41,8 @@ const OPCIONES_MODO: readonly { id: Modo; titulo: string; desc: string }[] = [
   { id: "maritimo", titulo: "Marítimo", desc: "Consolidado y contenedor completo · por TN/m³" },
 ];
 
-export function CotizadorSelector() {
+/** `bloqueado` (VGRP-77): fondo inerte de la calculadora sin plan; ver CotizadorCourier. */
+export function CotizadorSelector({ bloqueado = false }: { bloqueado?: boolean }) {
   const [modo, setModo] = useState<Modo>("courier");
   const id = useId();
 
@@ -72,7 +73,7 @@ export function CotizadorSelector() {
         ))}
       </fieldset>
 
-      {modo === "courier" ? <CotizadorCourier /> : <CotizadorMaritimo />}
+      {modo === "courier" ? <CotizadorCourier bloqueado={bloqueado} /> : <CotizadorMaritimo />}
     </div>
   );
 }

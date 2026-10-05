@@ -2,60 +2,47 @@
 
 // VGRP-76 — "Continuar con Google", compartido entre login y registro.
 //
-// `signInWithOAuth` corre desde el cliente del navegador (y no desde una
-// Server Action) porque el flujo PKCE guarda el `code_verifier` en una cookie
-// que el browser client escribe antes de salir a Google; el callback
-// (`app/auth/callback/google/route.ts`) la lee al canjear el `code`.
+// Vive adentro del <form> de cada pantalla, así que no puede ser otro form:
+// es un botón de submit con su propio `formAction` (la Server Action
+// `continuarConGoogle`, que arma la URL de Google en el servidor y redirige).
+// El navegador no carga `supabase-js` para esto — ver `_actions.ts`.
 //
 // Al volver, el callback registra la aceptación de Términos: por eso el texto
 // legal va pegado al botón, en las dos pantallas (decisión del Bloque 15:
 // sin pantalla de onboarding post-Google).
 
-import { useState } from "react";
-import { Button, FormError } from "@/components/ui";
-import { createSupabaseBrowserClient } from "@/lib/auth/browser";
+import { useOptimistic } from "react";
+import { Button } from "@/components/ui";
+import { continuarConGoogle } from "./_actions";
 import styles from "./auth.module.css";
 import { GoogleLogo } from "./GoogleLogo";
 
 export function BotonGoogle({ next, className }: { next: string; className?: string }) {
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // `useOptimistic` y no `useState`: un `setState` común dentro de la action
+  // no se pinta hasta que termina, y esta termina saliendo de la página (a
+  // Google, o a `/login?error=google`). Tampoco sirve marcarlo en `onClick`:
+  // un botón deshabilitado antes del submit cancela el submit.
+  const [cargando, marcarCargando] = useOptimistic(false);
 
-  async function continuarConGoogle() {
-    setCargando(true);
-    setError(null);
-
-    const callback = new URL("/auth/callback/google", window.location.origin);
-    callback.searchParams.set("next", next);
-
-    const { error } = await createSupabaseBrowserClient().auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: callback.toString() },
-    });
-
-    // Sin error, el navegador ya está saliendo hacia Google: el botón queda
-    // cargando hasta que la página cambie.
-    if (error) {
-      setCargando(false);
-      setError("No pudimos conectar con Google. Probá de nuevo o usá tu email.");
-    }
+  async function irAGoogle() {
+    marcarCargando(true);
+    await continuarConGoogle(next);
   }
 
   return (
     <div className={styles.social}>
       <Button
-        type="button"
+        type="submit"
         variant="ghost"
         fullWidth
+        formAction={irAGoogle}
+        formNoValidate
         loading={cargando}
-        onClick={continuarConGoogle}
         className={className}
       >
         <GoogleLogo />
         Continuar con Google
       </Button>
-
-      <FormError>{error}</FormError>
 
       <p className={styles.legalGoogle}>
         Al continuar con Google aceptás los{" "}

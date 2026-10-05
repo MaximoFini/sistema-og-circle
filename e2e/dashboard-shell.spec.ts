@@ -45,7 +45,7 @@ test.describe("shell del dashboard con el plan completo (VGRP-27/59)", () => {
       // confirmado también contra el output de red durante el desarrollo.
       expect(page.url()).toContain("/dashboard");
       await expect(page.getByRole("heading", { name: "Nivel completo" })).toBeVisible();
-      await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toHaveCount(0);
     } finally {
       await cleanupUser(created.userId);
     }

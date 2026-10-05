@@ -29,6 +29,11 @@ const BUDGET_OVERRIDES_KB = {
   // en el browser (lib/auth/browser.ts) — anotado como fuera de alcance de
   // este bloque en el propio ticket VGRP-56, medido en 256 kB.
   "/comprar/pendiente": 265,
+  // Cotizador courier + marítimo, todo de cliente (VGRP-57/58): 202 kB en
+  // `/calculadora` antes de VGRP-77, 203 kB al pasar a `/calculadora/[variante]`
+  // con la tarjeta de desbloqueo (next/link). Los paneles pesados ya se cargan
+  // en diferido.
+  "/calculadora/[variante]": 205,
 };
 
 const ROUTE_LINE = /^[┌├└│]\s*(?:[○●ƒ]\s+)?(\S+)\s+([\d.]+\s?(?:B|kB|MB))\s+([\d.]+\s?(?:B|kB|MB))/;

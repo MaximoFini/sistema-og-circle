@@ -119,6 +119,38 @@ export async function getLinks(): Promise<Config["links"]> {
   return leerConFallback(getLinksCached, leerLinks, "getLinks");
 }
 
+// VGRP-77 — nombre y precio del plan para la tarjeta de desbloqueo, que se
+// renderiza en rutas ESTÁTICAS (`/dashboard/ninguno`, `/calculadora/ninguno`).
+// `@vercel/edge-config` lee con `fetch(..., { cache: "no-store" })`: llamado
+// directo desde esas páginas las volvería dinámicas. Envuelto en
+// `unstable_cache` (mismo criterio que `getLinks()`), la lectura queda
+// cacheada con un tag propio que `PATCH /api/admin/config` invalida al
+// guardar `precios` o `plan`.
+//
+// Fail-closed en dinero igual que `getPrecios()`: si el precio no se pudo
+// leer, `precio` es `null` y la tarjeta no muestra ningún número — nunca uno
+// adivinado.
+export const TAG_CONFIG_PLAN = "config-plan";
+
+export interface OfertaPlan {
+  nombre: string;
+  precio: number | null;
+}
+
+async function leerOfertaPlan(): Promise<OfertaPlan> {
+  const [plan, precios] = await Promise.all([getPlan(), getPrecios()]);
+  return { nombre: plan.nombre, precio: precios.ok ? precios.precios.plan : null };
+}
+
+const getOfertaPlanCached = unstable_cache(leerOfertaPlan, ["config-oferta-plan"], {
+  tags: [TAG_CONFIG_PLAN],
+  revalidate: 3600,
+});
+
+export async function getOfertaPlan(): Promise<OfertaPlan> {
+  return leerConFallback(getOfertaPlanCached, leerOfertaPlan, "getOfertaPlan");
+}
+
 // Punto de entrada principal: resuelve las tres secciones de configuración en paralelo,
 // aplicando la regla fail-closed/fail-open documentada arriba a cada una.
 export async function getConfig(): Promise<ResolvedConfig> {

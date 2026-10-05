@@ -106,6 +106,14 @@ const PATHS = {
       <path d="M5.5 15v2.5A1.5 1.5 0 0 0 7 19h10a1.5 1.5 0 0 0 1.5-1.5V15" />
     </>
   ),
+  // VGRP-77 — calculadora marítima en la tarjeta de desbloqueo.
+  barco: (
+    <>
+      <path d="M4 14.5h16l-2.2 4a1.5 1.5 0 0 1-1.3.8H7.5a1.5 1.5 0 0 1-1.3-.8z" />
+      <path d="M7 14.5V10h10v4.5" />
+      <path d="M12 10V5.5" />
+    </>
+  ),
   ojo: (
     <>
       <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" />

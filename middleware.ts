@@ -171,24 +171,26 @@ function isAdminArea(pathname: string): boolean {
 }
 
 // -----------------------------------------------------------------------------
-// VGRP-57 — capa de NIVEL por ruta de página.
+// VGRP-27 / VGRP-77 — páginas con una variante estática por nivel.
 //
-// Páginas que exigen el plan pago (VGRP-59/60 — un solo plan: `completo`).
-// Sin plan: redirect a `/comprar`. Match exacto o por subruta (`/calculadora`, `/calculadora/…`,
-// nunca `/calculadoras`), mismo criterio que `esActual()` de
-// components/nav/NavDrawer.tsx.
+// `/dashboard` y `/calculadora` se reescriben a `/<ruta>/<nivel>`
+// (`generateStaticParams` + `dynamicParams=false` en cada `[variante]`): sin
+// plan se sirve la variante `ninguno` (la plataforma borrosa con la tarjeta de
+// desbloqueo, VGRP-77) y con plan la `completo`.
 //
-// Sólo PÁGINAS: las rutas `/api/` de la calculadora las gatea
-// `requierePlan()` (lib/cotizador/server/guard.ts) con 401/403 JSON, porque un
-// redirect a HTML no le sirve a un `fetch`. Por eso esta lista no lleva
-// prefijos `/api/…`.
+// La variante `completo` lleva datos que sin plan no se mandan (los
+// `embedUrl` de los videos), así que pedirla a mano sin plan redirige a la
+// ruta base — el rewrite la vuelve a mandar a `ninguno`. Antes de VGRP-77 eso
+// era un hueco: el rewrite era el único camino previsto, pero nada impedía
+// escribir la URL interna.
 //
-// VGRP-58 suma "/maritimo" acá.
+// Las rutas `/api/` de la calculadora no pasan por acá: las gatea
+// `requierePlan()` (lib/cotizador/server/guard.ts) con 401/403 JSON.
 // -----------------------------------------------------------------------------
-const RUTAS_CON_PLAN = ["/calculadora"] as const;
+const RUTAS_POR_NIVEL = ["/dashboard", "/calculadora"] as const;
 
-function esRutaConPlan(pathname: string): boolean {
-  return RUTAS_CON_PLAN.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+function rutaPorNivel(pathname: string): (typeof RUTAS_POR_NIVEL)[number] | undefined {
+  return RUTAS_POR_NIVEL.find((r) => pathname === r || pathname.startsWith(`${r}/`));
 }
 
 /**
@@ -355,36 +357,25 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // VGRP-57 — capa de nivel por página. Cero query nueva: usa el mismo
-  // `claims` que `getClaims()` ya resolvió arriba en este request. La página
-  // en sí queda estática (no lee claims): el gating vive acá.
-  if (esRutaConPlan(pathname) && !tieneAcceso(claims)) {
-    return withRefreshedCookies(NextResponse.redirect(new URL("/comprar", request.url)), response);
-  }
-
-  // -----------------------------------------------------------------------
-  // VGRP-27 — shell de Inicio prerenderizado según nivel.
-  //
-  // `/dashboard` se reescribe hacia la variante estática correspondiente
-  // (app/(app)/dashboard/[variante]/, generateStaticParams +
-  // dynamicParams=false) para los tres niveles — VGRP-54 punto 5 sumó
-  // 'ninguno' a 'principiante'/'avanzado', que ya reescribían. Cero query
-  // nueva: usa el mismo `data.claims` que `getClaims()` ya resolvió arriba en
-  // este mismo request. La URL que ve el usuario sigue siendo `/dashboard`
-  // (rewrite, no redirect). Ver design.md: esto es una optimización de
-  // rendering, NO el mecanismo de seguridad — ese lo aporta VGRP-30 sección
-  // por sección.
-  // -----------------------------------------------------------------------
-  if (pathname === "/dashboard") {
-    const nivel = getNivel(claims);
-    const url = request.nextUrl.clone();
-    url.pathname = `/dashboard/${nivel}`;
-    return withRefreshedCookies(
-      NextResponse.rewrite(url, {
-        request: { headers: requestHeadersConClaims(request, claims) },
-      }),
-      response,
-    );
+  // VGRP-27 / VGRP-77 — variante estática por nivel. Cero query nueva: usa el
+  // mismo `claims` que `getClaims()` ya resolvió arriba en este request. La
+  // URL que ve el usuario sigue siendo la base (rewrite, no redirect); las
+  // páginas en sí quedan estáticas (no leen claims).
+  const base = rutaPorNivel(pathname);
+  if (base) {
+    if (pathname === `${base}/completo` && !tieneAcceso(claims)) {
+      return withRefreshedCookies(NextResponse.redirect(new URL(base, request.url)), response);
+    }
+    if (pathname === base) {
+      const url = request.nextUrl.clone();
+      url.pathname = `${base}/${getNivel(claims)}`;
+      return withRefreshedCookies(
+        NextResponse.rewrite(url, {
+          request: { headers: requestHeadersConClaims(request, claims) },
+        }),
+        response,
+      );
+    }
   }
 
   // VGRP-54 punto 2 — propaga los claims YA verificados arriba a la request

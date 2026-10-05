@@ -1,9 +1,11 @@
 // VGRP-32 — lectura de la tabla `profesionales`. Mismo criterio arquitectónico que
 // lib/data/agentes.ts (server-only, resuelto desde un Route Handler dinámico, nunca en
-// el HTML estático del dashboard), pero SIN gating por nivel: la tabla no tiene
-// `nivel_requerido` (decisión confirmada 2026-09-09, VGRP-38) — mismo acceso para
-// Principiante y Avanzado. `contacto` sólo se resuelve si hay sesión real (claims no
-// nulo); no hay ninguna condición de nivel que evaluar.
+// el HTML estático del dashboard).
+//
+// VGRP-77 — `contacto` pasa por `resolverSecreto()`: sólo con el plan completo. Antes
+// bastaba con tener sesión (la tabla no tiene `nivel_requerido`, VGRP-38), lo que con
+// el plan único dejaba los contactos al alcance de cualquier cuenta registrada — y
+// desde VGRP-77 el Inicio sin plan monta esta grilla (borrosa) y pide este endpoint.
 //
 // VGRP-55 punto 1 — la LECTURA de filas se cachea (unstable_cache, mismo patrón que
 // lib/data/videos.ts); el chequeo "¿hay sesión?" para decidir si se muestra `contacto`
@@ -18,6 +20,7 @@ import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { TAG_POR_ENTIDAD } from "./admin/contenido";
 import { leerConFallback } from "./cache-fallback";
+import { resolverSecreto } from "./secretos";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -67,7 +70,7 @@ function resolverProfesionales(
       rubro: fila.rubro,
       descripcion: fila.descripcion,
     },
-    contacto: claims ? fila.contacto : null,
+    contacto: resolverSecreto(claims, fila.contacto),
   }));
 }
 
