@@ -242,6 +242,16 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
   una Server Action (`continuarConGoogle`): `/login` y `/registro` vuelven a
   su peso anterior (con el cliente de browser habían subido a 263 kB).
 
+## VGRP-78 — comprar desde la tarjeta de desbloqueo
+
+- La tarjeta de `/dashboard` y `/calculadora` sin plan usa `ComprarButton`
+  (el mismo de `/comprar`) y cobra desde ahí. Las páginas siguen SSG: el
+  teléfono no se lee al renderizar, lo pide `crearCheckout` si falta.
+- `ComprarButton` importa `Button`, `FormError` y `TextField` de sus archivos,
+  no del barril `@/components/ui`: con el barril, `/calculadora/[variante]`
+  subía a 206 kB (se pasaba de su presupuesto de 205); con imports directos
+  queda en 202 kB, por debajo de los 203 de antes del cambio.
+
 ## Migraciones de este bloque, estado contra el proyecto real
 
 - `20260918210000_pagos_aprobados_indice_parcial.sql` — aplicada por Ramiro

@@ -112,10 +112,7 @@ test.describe("calculadora embebida (VGRP-57)", () => {
     await page.goto("/calculadora");
     expect(new URL(page.url()).pathname).toBe("/calculadora");
     await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Comprar acceso" })).toHaveAttribute(
-      "href",
-      "/comprar",
-    );
+    await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeVisible();
   });
 
   test("un usuario 'ninguno' recibe 403 de POST /api/cotizador/dolar", async ({ page }) => {

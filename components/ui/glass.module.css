@@ -19,6 +19,10 @@
  * primitiva define — el orden entre CSS Modules no está garantizado. Se
  * ajusta con variables (registradas `inherits: false` en tokens.css):
  *   --g-position  --g-radius  --g-bg  --rim
+ *
+ * REGLA: un elemento de vidrio no scrollea él mismo. El reflejo (::before,
+ * `inset: 0`) se mueve con el contenido y queda cruzándolo; el scroll va en
+ * un hijo (ver `.cuerpo` en TarjetaDesbloqueo.module.css, VGRP-78).
  */
 
 .thin,

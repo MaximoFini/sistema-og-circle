@@ -53,14 +53,13 @@ async function contactosReales(): Promise<string[]> {
 }
 
 test.describe("plataforma bloqueada sin plan (VGRP-77)", () => {
-  test("Inicio: tarjeta de desbloqueo con CTA a /comprar y el fondo inerte", async ({ page }) => {
+  test("Inicio: tarjeta de desbloqueo con el botón de compra y el fondo inerte", async ({
+    page,
+  }) => {
     await login(page, NINGUNO.email, NINGUNO.password);
 
     await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Comprar acceso" })).toHaveAttribute(
-      "href",
-      "/comprar",
-    );
+    await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeVisible();
 
     // Qué incluye el plan, con el logo de quien opera cada beneficio.
     const incluye = page.getByRole("list", { name: "Qué incluye" });
@@ -122,6 +121,24 @@ test.describe("plataforma bloqueada sin plan (VGRP-77)", () => {
       expect(res.status()).toBe(307);
       expect(new URL(res.headers().location, "http://x").pathname).toBe(ruta);
     }
+  });
+
+  // VGRP-78 — la tarjeta cobra desde ahí, sin pasar por /comprar. El usuario
+  // del seed no tiene teléfono: el servidor lo pide antes de crear la
+  // preferencia, así que el campo aparece en la tarjeta y no se sale de la
+  // página. No se carga ningún teléfono: el test no escribe en la base.
+  test("Comprar acceso en la tarjeta pide el teléfono ahí mismo, sin ir a /comprar", async ({
+    page,
+  }) => {
+    await login(page, NINGUNO.email, NINGUNO.password);
+
+    await expect(page.getByLabel("Teléfono de contacto")).toHaveCount(0);
+    await page.getByRole("button", { name: "Comprar acceso" }).click();
+
+    await expect(page.getByLabel("Teléfono de contacto")).toBeVisible();
+    await expect(page.getByText("Ingresá un teléfono de contacto.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeDisabled();
+    expect(new URL(page.url()).pathname).toBe("/dashboard");
   });
 
   test("las APIs de la calculadora siguen en 403", async ({ page }) => {
