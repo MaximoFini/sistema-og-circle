@@ -108,6 +108,11 @@ test.describe("drawer de navegación (VGRP-27)", () => {
       await expect(dialog.getByText(created.email)).toBeVisible();
 
       await dialog.getByRole("button", { name: "Cerrar sesión" }).click();
+      // CerrarSesionBoton pide confirmación en un diálogo propio.
+      await page
+        .getByRole("dialog", { name: "¿Cerrar sesión?" })
+        .getByRole("button", { name: "Cerrar sesión" })
+        .click();
       await page.waitForURL("**/login");
 
       // La sesión quedó realmente cerrada, no sólo la UI: /dashboard sin
