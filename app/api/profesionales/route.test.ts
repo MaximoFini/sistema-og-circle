@@ -91,13 +91,29 @@ describe("GET /api/profesionales", () => {
     expect(body.profesionales.every((p) => p.contacto === null)).toBe(true);
   });
 
-  it("sesión real nivel 'ninguno': SÍ trae contacto (profesionales no gatea por nivel, VGRP-38)", async () => {
+  // VGRP-77 — el Inicio sin plan monta esta grilla detrás del blur: el contacto no
+  // puede viajar en la respuesta (antes alcanzaba con tener sesión, VGRP-38).
+  it("sesión real nivel 'ninguno': trae la fila pero NO el contacto", async () => {
     const prof = await crearProfesionalTest({ nombre: "Con sesión ninguno VGRP-52" });
     mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "ninguno" } });
 
     const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
+
+    const body = (await res.json()) as { profesionales: ProfesionalRespuesta[] };
+    const item = body.profesionales.find((p) => p.id === prof.id);
+    expect(item).toBeDefined();
+    expect(item?.contacto).toBeNull();
+    expect(body.profesionales.every((p) => p.contacto === null)).toBe(true);
+  });
+
+  it("sesión real nivel 'completo': SÍ trae contacto", async () => {
+    const prof = await crearProfesionalTest({ nombre: "Con sesión completo VGRP-77" });
+    mockGetVerifiedClaims.mockResolvedValue({ app_metadata: { nivel: "completo" } });
+
+    const { GET } = await import("./route");
+    const res = await GET();
 
     const body = (await res.json()) as { profesionales: ProfesionalRespuesta[] };
     const item = body.profesionales.find((p) => p.id === prof.id);

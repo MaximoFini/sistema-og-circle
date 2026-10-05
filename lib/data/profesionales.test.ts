@@ -39,13 +39,24 @@ async function crearProfesionalTest(valores: {
 }
 
 describe("obtenerProfesionales", () => {
-  it("expone el contacto a cualquier usuario con sesión, sin gating por nivel", async () => {
-    const prof = await crearProfesionalTest({ nombre: "Test con sesión" });
+  // VGRP-77 — antes alcanzaba con tener sesión; ahora el contacto es del plan completo.
+  it("expone el contacto con el plan completo", async () => {
+    const prof = await crearProfesionalTest({ nombre: "Test con plan" });
+
+    const items = await obtenerProfesionales(admin, { app_metadata: { nivel: "completo" } });
+    const item = items.find((i) => i.id === prof.id);
+
+    expect(item?.contacto).toBe("contacto-de-test");
+  });
+
+  it("con sesión pero sin plan ('ninguno'): nombre y rubro sí, contacto no", async () => {
+    const prof = await crearProfesionalTest({ nombre: "Test sin plan" });
 
     const items = await obtenerProfesionales(admin, { app_metadata: { nivel: "ninguno" } });
     const item = items.find((i) => i.id === prof.id);
 
-    expect(item?.contacto).toBe("contacto-de-test");
+    expect(item?.publicMeta.nombre).toBe("Test sin plan");
+    expect(item?.contacto).toBeNull();
   });
 
   it("nunca expone el contacto sin sesión (claims null)", async () => {

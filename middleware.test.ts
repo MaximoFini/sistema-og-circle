@@ -50,6 +50,12 @@ const CON_SESION_ADMIN = {
   error: null,
 };
 
+// Sesión válida con un claim de nivel puntual (VGRP-57/77).
+const conNivel = (nivel: string) => ({
+  data: { claims: { sub: "u1", app_metadata: { nivel } } },
+  error: null,
+});
+
 function req(path: string, headers?: Record<string, string>): NextRequest {
   return new NextRequest(new URL(path, "http://localhost:3000"), { headers });
 }
@@ -345,40 +351,29 @@ describe("middleware", () => {
     });
   });
 
-  // VGRP-57 — capa de nivel por ruta de página (`RUTAS_CON_PLAN`). Sin plan,
-  // `/calculadora` redirige a `/comprar`; las APIs las cubre requierePlan().
-  describe("rutas con plan: /calculadora (VGRP-57)", () => {
-    const conNivel = (nivel: string) => ({
-      data: { claims: { sub: "u1", app_metadata: { nivel } } },
-      error: null,
-    });
-
-    it("sesión + nivel='ninguno': 307 a /comprar", async () => {
-      mockGetClaims.mockResolvedValue(conNivel("ninguno"));
+  // VGRP-77 — `/calculadora` deja de redirigir a `/comprar` sin plan (antes:
+  // `RUTAS_CON_PLAN`, VGRP-57): se reescribe a su variante estática por nivel,
+  // igual que `/dashboard`. Las APIs las sigue cubriendo requierePlan().
+  describe("calculadora por nivel (VGRP-57 → VGRP-77)", () => {
+    it.each([
+      ["nivel='ninguno'", conNivel("ninguno")],
+      ["sin claim de nivel", CON_SESION],
+    ])("sesión + %s: rewrite a /calculadora/ninguno (sin redirect)", async (_, sesion) => {
+      mockGetClaims.mockResolvedValue(sesion);
       const { middleware } = await import("./middleware");
 
       const res = await middleware(req("/calculadora"));
 
-      expect(res.status).toBe(307);
-      const location = res.headers.get("location");
-      expect(location).not.toBeNull();
-      expect(new URL(location as string).pathname).toBe("/comprar");
-    });
-
-    it("sesión sin claim de nivel (token viejo): cae a 'ninguno' → 307 a /comprar", async () => {
-      mockGetClaims.mockResolvedValue(CON_SESION);
-      const { middleware } = await import("./middleware");
-
-      const res = await middleware(req("/calculadora"));
-
-      expect(res.status).toBe(307);
-      expect(new URL(res.headers.get("location") as string).pathname).toBe("/comprar");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("location")).toBeNull();
+      const destino = res.headers.get("x-middleware-rewrite");
+      expect(new URL(destino as string).pathname).toBe("/calculadora/ninguno");
     });
 
     // VGRP-60 — 'avanzado' es un token viejo (transición): tieneAcceso()
     // también debe darle paso, vía el mapeo de getNivel().
     it.each(["completo", "avanzado"])(
-      "sesión + nivel='%s': pasa (200, sin redirect)",
+      "sesión + nivel='%s': rewrite a /calculadora/completo",
       async (nivel) => {
         mockGetClaims.mockResolvedValue(conNivel(nivel));
         const { middleware } = await import("./middleware");
@@ -387,6 +382,8 @@ describe("middleware", () => {
 
         expect(res.status).toBe(200);
         expect(res.headers.get("location")).toBeNull();
+        const destino = res.headers.get("x-middleware-rewrite");
+        expect(new URL(destino as string).pathname).toBe("/calculadora/completo");
       },
     );
 
@@ -402,17 +399,7 @@ describe("middleware", () => {
       expect(location.searchParams.get("next")).toBe("/calculadora");
     });
 
-    it("una subruta (/calculadora/algo) también queda gateada", async () => {
-      mockGetClaims.mockResolvedValue(conNivel("ninguno"));
-      const { middleware } = await import("./middleware");
-
-      const res = await middleware(req("/calculadora/algo"));
-
-      expect(res.status).toBe(307);
-      expect(new URL(res.headers.get("location") as string).pathname).toBe("/comprar");
-    });
-
-    it("una ruta parecida no cubierta (/calculadoras) NO se gatea por nivel", async () => {
+    it("una ruta parecida no cubierta (/calculadoras) NO se reescribe por nivel", async () => {
       mockGetClaims.mockResolvedValue(conNivel("ninguno"));
       const { middleware } = await import("./middleware");
 
@@ -420,6 +407,7 @@ describe("middleware", () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get("location")).toBeNull();
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     });
 
     it("/api/cotizador/* no redirige por nivel (lo gatea requierePlan() con 403 JSON)", async () => {
@@ -430,6 +418,46 @@ describe("middleware", () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get("location")).toBeNull();
+    });
+  });
+
+  // VGRP-77 — la variante `completo` lleva los `embedUrl` de los videos: sin
+  // plan, escribir la URL interna a mano no puede servirla.
+  describe("variante completo pedida a mano (VGRP-77)", () => {
+    it.each(["/dashboard", "/calculadora"])(
+      "sin plan: %s/completo redirige a la ruta base",
+      async (base) => {
+        mockGetClaims.mockResolvedValue(conNivel("ninguno"));
+        const { middleware } = await import("./middleware");
+
+        const res = await middleware(req(`${base}/completo`));
+
+        expect(res.status).toBe(307);
+        expect(new URL(res.headers.get("location") as string).pathname).toBe(base);
+      },
+    );
+
+    it.each(["/dashboard", "/calculadora"])(
+      "con plan: %s/completo pasa sin redirect",
+      async (base) => {
+        mockGetClaims.mockResolvedValue(conNivel("completo"));
+        const { middleware } = await import("./middleware");
+
+        const res = await middleware(req(`${base}/completo`));
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get("location")).toBeNull();
+      },
+    );
+
+    it("sin sesión: /dashboard/completo va al login, no a la variante", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/dashboard/completo"));
+
+      expect(res.status).toBe(307);
+      expect(new URL(res.headers.get("location") as string).pathname).toBe("/login");
     });
   });
 

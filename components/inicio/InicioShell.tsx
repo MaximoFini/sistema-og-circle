@@ -1,10 +1,9 @@
 // VGRP-27 — armazón de la pantalla Inicio. Slots en el orden fijo de
 // MODULOS.md §2. Ver design.md, "InicioShell — slots en el orden de MODULOS.md §2".
 //
-// VGRP-59/60 (Bloque 13 — plan único): este componente sólo se renderiza para
-// el plan completo (nivel 'ninguno' ni siquiera llega acá, ver
-// `dashboard/[variante]/page.tsx`) — ya no recibe `variante` como prop ni
-// distingue Principiante/Avanzado.
+// VGRP-59/60 (Bloque 13 — plan único): ya no recibe `variante` como prop ni
+// distingue Principiante/Avanzado. VGRP-77 suma `bloqueado` para el nivel
+// 'ninguno' (ver `sinEmbed` más abajo).
 //
 // El ticker de depósitos/CUIT de MODULOS.md §2 queda explícitamente fuera
 // (requirements.md, Open questions — es Fase 3 según el roadmap; a confirmar
@@ -31,6 +30,7 @@ import {
   obtenerVideosStage2,
   obtenerVideosStage3,
   TOTAL_VIDEOS,
+  type VideoGridItem,
 } from "@/lib/data/videos";
 import { AgentesGrid } from "./AgentesGrid";
 import styles from "./inicio.module.css";
@@ -38,17 +38,29 @@ import { ProfesionalesGrid } from "./ProfesionalesGrid";
 import { SeccionSlot } from "./SeccionSlot";
 import { ServiciosFinancierosGrid } from "./ServiciosFinancierosGrid";
 
-export async function InicioShell() {
-  const [stage1, stage2, stage3] = await Promise.all([
+// VGRP-77: `bloqueado` es el Inicio de quien no tiene plan, que se ve borroso
+// detrás de <TarjetaDesbloqueo>. El blur no protege nada, así que lo sensible
+// se saca ACÁ, antes de renderizar: los `embedUrl` de los videos quedan en
+// `null` (títulos y miniaturas sí viajan). Las grillas de agentes,
+// profesionales y servicios no cambian: sus secretos ya los resuelve cada
+// Route Handler según los claims de quien pide.
+function sinEmbed(videos: VideoGridItem[]): VideoGridItem[] {
+  return videos.map((video) => ({ ...video, embedUrl: null }));
+}
+
+export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }) {
+  const grillas = await Promise.all([
     obtenerVideosStage1(),
     obtenerVideosStage2(),
     obtenerVideosStage3(),
   ]);
+  const [stage1, stage2, stage3] = bloqueado ? grillas.map(sinEmbed) : grillas;
 
   // Plan único: el admin siempre puede reordenar los videos arrastrando (ver
   // VideoGrid) — antes esto dependía de la variante ('avanzado' vs
-  // 'principiante'), ya no hay esa distinción.
-  const reordenable = true;
+  // 'principiante'), ya no hay esa distinción. Sin plan no hay nada que
+  // reordenar: el fondo es inerte.
+  const reordenable = !bloqueado;
 
   return (
     <ProgresoVideosProvider totalVideos={TOTAL_VIDEOS}>
@@ -57,7 +69,13 @@ export async function InicioShell() {
           <div className={styles.heroTexto}>
             <p className={styles.eyebrowNivel}>Tu cuenta</p>
             <h1 className={styles.tituloPrincipal}>
-              Nivel <span className={styles.nivelPalabra}>completo</span>
+              {bloqueado ? (
+                "OG Circle"
+              ) : (
+                <>
+                  Nivel <span className={styles.nivelPalabra}>completo</span>
+                </>
+              )}
             </h1>
             <p className={styles.lede}>
               Tu camino para importar: formación paso a paso, herramientas y la red de contactos del

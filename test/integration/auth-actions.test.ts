@@ -93,9 +93,8 @@ beforeEach(() => {
 
 // Import DESPUÉS de los `vi.mock` de arriba (hoisted igual, pero así queda
 // explícito en el archivo que estas son las funciones ya mockeadas por debajo).
-const { iniciarSesion, registrarse, solicitarReset, definirNuevaPassword } = await import(
-  "../../app/(auth)/_actions"
-);
+const { iniciarSesion, registrarse, solicitarReset, definirNuevaPassword, continuarConGoogle } =
+  await import("../../app/(auth)/_actions");
 const { INITIAL_ACTION_STATE } = await import("../../lib/forms/action-state");
 
 const admin = createTestAdminClient();
@@ -583,6 +582,32 @@ describe("definirNuevaPassword — VGRP-19 (flujo completo de recuperación)", (
     expect(resultado.fieldErrors?.password?.[0]).toBe(
       "La contraseña tiene que tener al menos 8 caracteres.",
     );
+  });
+});
+
+describe("continuarConGoogle — VGRP-76", () => {
+  it("redirige al authorize de Supabase con PKCE y el callback con `next` saneado, y deja el code_verifier en cookie", async () => {
+    const destino = new URL(await capturarRedirect(() => continuarConGoogle("/calculadora")));
+
+    expect(destino.pathname).toBe("/auth/v1/authorize");
+    expect(destino.searchParams.get("provider")).toBe("google");
+    expect(destino.searchParams.get("code_challenge")).toBeTruthy();
+
+    const callback = new URL(destino.searchParams.get("redirect_to") ?? "");
+    expect(callback.origin).toBe("http://localhost:3000");
+    expect(callback.pathname).toBe("/auth/callback/google");
+    expect(callback.searchParams.get("next")).toBe("/calculadora");
+
+    // Sin esta cookie el callback no puede canjear el `code`.
+    expect([...cookieJar.keys()].some((k) => k.endsWith("-code-verifier"))).toBe(true);
+  });
+
+  it("un `next` de otro origen cae al default", async () => {
+    const destino = new URL(
+      await capturarRedirect(() => continuarConGoogle("https://sitio-atacante.invalid")),
+    );
+    const callback = new URL(destino.searchParams.get("redirect_to") ?? "");
+    expect(callback.searchParams.get("next")).toBe("/dashboard");
   });
 });
 

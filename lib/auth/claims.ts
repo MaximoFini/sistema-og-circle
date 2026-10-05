@@ -68,7 +68,12 @@ export interface AppMetadataClaims {
   [key: string]: unknown;
 }
 
-function isNivelAcceso(value: unknown): value is NivelAcceso {
+/** Todos los niveles, en orden. Es la lista de variantes estáticas de
+ * `/dashboard/[variante]` y `/calculadora/[variante]` (VGRP-27/77), a las que
+ * `middleware.ts` reescribe según `getNivel()`. */
+export const NIVELES = Object.keys(NIVEL_ORDEN) as NivelAcceso[];
+
+export function isNivelAcceso(value: unknown): value is NivelAcceso {
   return value === "ninguno" || value === "completo";
 }
 

@@ -70,13 +70,14 @@ test.describe("canario de fuga entre niveles — plan único (VGRP-30/50/59)", (
     });
 
     try {
+      // VGRP-77: un usuario 'ninguno' ve el Inicio real borroso, que SÍ monta
+      // <AgentesGrid> (detrás de la tarjeta de desbloqueo) y pide /api/agentes.
+      // Ese fetch es el ancla: el canario es justamente que su respuesta no
+      // traiga el contacto. Se registra antes del login para no perderlo.
+      const respuestaAgentes = page.waitForResponse((res) => res.url().includes("/api/agentes"));
       await loginComo(page, created.email);
-
-      // Un usuario 'ninguno' cae en app/(app)/dashboard/page.tsx (VGRP-18),
-      // que no monta <AgentesGrid> — por eso acá no se espera la respuesta de
-      // /api/agentes como ancla (ese fetch nunca sale). El ancla de que la
-      // navegación terminó es el propio estado "ninguno" del dashboard.
-      await expect(page.getByText("Todavía no tenés acceso a ningún nivel")).toBeVisible();
+      await respuestaAgentes;
+      await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
       await page.waitForLoadState("networkidle");
 
       const html = await page.content();

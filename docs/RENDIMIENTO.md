@@ -227,6 +227,21 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
    `package.json` o un Client Component se mergea sin el reporte del
    analyzer. El presupuesto en CI (arriba) lo hace cumplir solo.
 
+## VGRP-77 — plataforma borrosa sin plan
+
+- `/dashboard/[variante]` y `/calculadora/[variante]` siguen SSG (●) en
+  `next build`, con `revalidate = 3600`. El middleware elige la variante; las
+  páginas no leen sesión.
+- La tarjeta de desbloqueo muestra nombre y precio del plan con
+  `getOfertaPlan()` (`lib/config`), envuelto en `unstable_cache` con el tag
+  `config-plan`. `PATCH /api/admin/config` lo invalida al guardar `precios` o
+  `plan`, así que un precio nuevo no queda congelado en el HTML estático (el
+  bug que `test/structural/edge-config-dynamic.test.ts` vigila para
+  `getPrecios()` directo).
+- "Continuar con Google" (VGRP-76) pasó de `supabase-js` en el navegador a
+  una Server Action (`continuarConGoogle`): `/login` y `/registro` vuelven a
+  su peso anterior (con el cliente de browser habían subido a 263 kB).
+
 ## Migraciones de este bloque, estado contra el proyecto real
 
 - `20260918210000_pagos_aprobados_indice_parcial.sql` — aplicada por Ramiro

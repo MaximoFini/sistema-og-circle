@@ -12,7 +12,7 @@ import { findSeedUser } from "../test/helpers/seed-users";
 //  1. completo -> menú "Calculadora" -> /calculadora -> cotiza en courier
 //     integral (el único régimen que no pasa por la IA) y ve el total en USD.
 //  2. completo en Inicio -> "Abrir calculadora" es un link interno.
-//  3. ninguno -> /calculadora termina en /comprar (middleware, RUTAS_CON_PLAN).
+//  3. ninguno -> /calculadora se ve bloqueada, sin redirect (VGRP-77).
 //  4. ninguno -> POST /api/cotizador/dolar da 403 (requierePlan en el endpoint).
 //
 // No depende de dolarapi: si el TC BNA automático no llegó, se carga a mano.
@@ -101,12 +101,21 @@ test.describe("calculadora embebida (VGRP-57)", () => {
     await expect(link).not.toHaveAttribute("target", /.*/);
   });
 
-  test("un usuario 'ninguno' que navega a /calculadora termina en /comprar", async ({ page }) => {
+  // VGRP-77: antes redirigía a /comprar; ahora ve la calculadora real, borrosa
+  // e inerte, con la tarjeta de desbloqueo (el detalle, en
+  // e2e/plataforma-bloqueada.spec.ts).
+  test("un usuario 'ninguno' que navega a /calculadora la ve bloqueada, sin redirect", async ({
+    page,
+  }) => {
     await login(page, NINGUNO.email, NINGUNO.password);
 
     await page.goto("/calculadora");
-    await page.waitForURL("**/comprar");
-    expect(new URL(page.url()).pathname).toBe("/comprar");
+    expect(new URL(page.url()).pathname).toBe("/calculadora");
+    await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Comprar acceso" })).toHaveAttribute(
+      "href",
+      "/comprar",
+    );
   });
 
   test("un usuario 'ninguno' recibe 403 de POST /api/cotizador/dolar", async ({ page }) => {
@@ -125,8 +134,8 @@ test.describe("calculadora embebida (VGRP-57)", () => {
 //     FOB y TC a mano (sin escribir producto: cero llamadas a la IA, cero
 //     dependencia de que el CDA responda) -> ve las dos opciones
 //     (consolidado + full).
-//  El caso "ninguno -> /comprar" ya lo prueba el describe de arriba: no hay
-//  ruta nueva que probar, marítimo vive en la misma /calculadora.
+//  El caso "ninguno" ya lo prueba el describe de arriba: no hay ruta nueva
+//  que probar, marítimo vive en la misma /calculadora.
 // =============================================================================
 
 test.describe("cotizador marítimo embebido (VGRP-58)", () => {

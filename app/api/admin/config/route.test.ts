@@ -21,6 +21,7 @@ const mockConAuditoria = vi.fn();
 const mockRegistrar = vi.fn();
 const mockCreateServiceRoleClient = vi.fn();
 const mockCaptureException = vi.fn();
+const mockRevalidateTag = vi.fn();
 
 vi.mock("@/lib/auth/admin", () => ({
   requireAdmin: () => mockRequireAdmin(),
@@ -30,6 +31,11 @@ vi.mock("@/lib/config", () => ({
   getPrecios: () => mockGetPrecios(),
   getPlan: () => mockGetPlan(),
   getFlags: () => mockGetFlags(),
+  TAG_CONFIG_PLAN: "config-plan",
+}));
+
+vi.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => mockRevalidateTag(...args),
 }));
 
 vi.mock("@/lib/config/write", () => ({
@@ -147,6 +153,7 @@ describe("PATCH /api/admin/config", () => {
     mockRegistrar.mockReset();
     mockCreateServiceRoleClient.mockReset();
     mockCaptureException.mockReset();
+    mockRevalidateTag.mockReset();
 
     mockRequireAdmin.mockResolvedValue({ ok: true, actorId: "admin-1" });
     mockGetPrecios.mockResolvedValue(CONFIG_OK.precios);
@@ -310,5 +317,23 @@ describe("PATCH /api/admin/config", () => {
     expect(mockCaptureException).toHaveBeenCalledTimes(1);
     expect(mockConAuditoria).not.toHaveBeenCalled();
     expect(mockRegistrar).not.toHaveBeenCalled();
+    expect(mockRevalidateTag).not.toHaveBeenCalled();
+  });
+
+  // VGRP-77 — la tarjeta de desbloqueo de las rutas estáticas lee nombre y
+  // precio con `getOfertaPlan()`, cacheado con el tag `config-plan`.
+  it.each([[{ precios: { plan: 95000 } }], [{ plan: { nombre: "Plan Og Circle" } }]])(
+    "guardar %j invalida el tag config-plan",
+    async (body) => {
+      await callPatch(body);
+      expect(mockRevalidateTag).toHaveBeenCalledWith("config-plan");
+    },
+  );
+
+  it("guardar flags NO invalida config-plan", async () => {
+    await callPatch({
+      flags: { checkout_habilitado: true, registro_habilitado: true, fase: "3" },
+    });
+    expect(mockRevalidateTag).not.toHaveBeenCalled();
   });
 });

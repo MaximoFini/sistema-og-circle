@@ -1,9 +1,10 @@
 // VGRP-57 — guard de los endpoints de la calculadora (`/api/cotizador/*`).
 //
-// Defensa en profundidad: `middleware.ts` ya corta sin sesión (401 en
-// `/api/`), pero el NIVEL de plan sólo se gatea por ruta de PÁGINA ahí
-// (`RUTAS_CON_PLAN`); para las APIs lo decide esto, con la sesión REAL de
-// esta request (`getVerifiedClaims()`), nunca con algo que mande el cliente.
+// `middleware.ts` ya corta sin sesión (401 en `/api/`), pero NO gatea por
+// nivel: desde VGRP-77 la página `/calculadora` se muestra también sin plan
+// (borrosa e inerte, `RUTAS_POR_NIVEL`). Así que esto es LA barrera del plan
+// para la calculadora: lo decide con la sesión REAL de esta request
+// (`getVerifiedClaims()`), nunca con algo que mande el cliente.
 //
 // Cada handler lo llama PRIMERO, antes de leer el body o de pegarle a
 // Anthropic / dolarapi: un usuario sin plan no puede gastar ni un token.

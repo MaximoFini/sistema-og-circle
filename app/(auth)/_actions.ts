@@ -167,6 +167,33 @@ async function getOrigin(): Promise<string> {
   return `${proto}://${host}`;
 }
 
+/**
+ * VGRP-76 — "Continuar con Google". Corre en el servidor y no desde el
+ * navegador para no mandarle `supabase-js` entero a `/login` y `/registro`
+ * (+63 kB de First Load JS, ver docs/RENDIMIENTO.md): el flujo PKCE guarda el
+ * `code_verifier` en una cookie, y el cliente de servidor la escribe igual de
+ * bien desde una Server Action. El callback (`app/auth/callback/google/route.ts`)
+ * la lee al canjear el `code`.
+ *
+ * `redirect()` va afuera del `try`: lanza a propósito (`NEXT_REDIRECT`).
+ */
+export async function continuarConGoogle(next: string): Promise<void> {
+  let destino = "/login?error=google";
+  try {
+    const callback = new URL("/auth/callback/google", await getOrigin());
+    callback.searchParams.set("next", safeRedirectPath(next));
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callback.toString() },
+    });
+    if (!error && data.url) destino = data.url;
+  } catch {
+    // Mismo destino que un fallo de Supabase: el login muestra el error.
+  }
+  redirect(destino);
+}
+
 export async function solicitarReset(
   _prevState: ActionState,
   formData: FormData,

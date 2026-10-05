@@ -19,13 +19,13 @@
 }
 
 .eyebrow {
-  composes: eyebrow from "../../../components/ui/type.module.css";
+  composes: eyebrow from "../../../../components/ui/type.module.css";
 }
 
 .titulo {
-  composes: largeTitle from "../../../components/ui/type.module.css";
+  composes: largeTitle from "../../../../components/ui/type.module.css";
 }
 
 .lede {
-  composes: lede from "../../../components/ui/type.module.css";
+  composes: lede from "../../../../components/ui/type.module.css";
 }

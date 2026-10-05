@@ -27,8 +27,8 @@ import "../test/helpers/load-env";
 // acceso") sigue sin ser alcanzable desde una pantalla real por el mismo
 // motivo documentado antes de este cambio: `middleware.ts` sólo reescribe
 // `/dashboard` -> `/dashboard/completo` cuando el nivel es 'completo'; un
-// usuario `nivel='ninguno'` ve `app/(app)/dashboard/page.tsx` (VGRP-18), que
-// no usa <ContenidoBloqueado> en absoluto.
+// usuario `nivel='ninguno'` ve el Inicio borroso (VGRP-77), detrás de una
+// tarjeta de desbloqueo e inerte: no se puede interactuar con sus candados.
 // =============================================================================
 
 const MARCADOR = "[test] e2e-gating";
