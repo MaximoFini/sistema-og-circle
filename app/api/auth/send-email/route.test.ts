@@ -37,6 +37,9 @@ vi.mock("@/lib/mercadopago/preferencia", () => ({
 vi.mock("@/emails/reset-password", () => ({
   ResetPasswordEmail: (props: { url: string; codigo?: string }) => ({ type: "mock", props }),
 }));
+vi.mock("@/emails/auth-generico", () => ({
+  AuthGenericoEmail: (props: { url: string }) => ({ type: "mock", props }),
+}));
 
 function urlDelUltimoEnvio(): string {
   return (mockEnviarEmail.mock.calls[0][0] as { plantilla: { props: { url: string } } }).plantilla
@@ -255,6 +258,41 @@ describe("POST /api/auth/send-email", () => {
     expect(new URL(urlDelUltimoEnvio()).searchParams.get("next")).toBe("/");
   });
 
+  it("manda magiclink con la plantilla genérica y el link a /auth/confirm con su type", async () => {
+    const { POST } = await import("./route");
+
+    const cuerpo = JSON.stringify({
+      user: { email: "usuario@ejemplo.com" },
+      email_data: {
+        token: "123456",
+        token_hash: "hash",
+        redirect_to: "",
+        email_action_type: "magiclink",
+        site_url: "https://vegroup.vercel.app",
+      },
+    });
+    const id = "msg_magiclink";
+    const timestamp = new Date();
+    const firma = new Webhook(SECRETO_BASE64).sign(id, timestamp, cuerpo);
+
+    const respuesta = await POST(
+      pedido(
+        {
+          "webhook-id": id,
+          "webhook-timestamp": Math.floor(timestamp.getTime() / 1000).toString(),
+          "webhook-signature": firma,
+        },
+        cuerpo,
+      ),
+    );
+
+    expect(respuesta.status).toBe(200);
+    expect(mockEnviarEmail.mock.calls[0][0]).toMatchObject({ motivo: "auth-magiclink" });
+    const url = new URL(urlDelUltimoEnvio());
+    expect(url.pathname).toBe("/auth/confirm");
+    expect(url.searchParams.get("type")).toBe("magiclink");
+  });
+
   it("rechaza los tipos de email que todavía no tienen plantilla, en vez de fallar callado", async () => {
     const { POST } = await import("./route");
 
@@ -264,11 +302,11 @@ describe("POST /api/auth/send-email", () => {
         token: "123456",
         token_hash: "hash",
         redirect_to: "",
-        email_action_type: "signup",
+        email_action_type: "email_change",
         site_url: "https://vegroup.vercel.app",
       },
     });
-    const id = "msg_signup";
+    const id = "msg_email_change";
     const timestamp = new Date();
     const firma = new Webhook(SECRETO_BASE64).sign(id, timestamp, cuerpo);
 

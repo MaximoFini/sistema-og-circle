@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { Webhook } from "standardwebhooks";
 import { z } from "zod";
+import { AuthGenericoEmail } from "@/emails/auth-generico";
 import { ResetPasswordEmail } from "@/emails/reset-password";
 import { enviarEmail } from "@/lib/email/send";
 import { getSiteUrl } from "@/lib/mercadopago/preferencia";
@@ -73,6 +74,35 @@ const payloadSchema = z.object({
 function normalizarSecreto(secreto: string): string {
   return secreto.replace(/^v1,/, "");
 }
+
+/**
+ * Textos de `AuthGenericoEmail` por tipo. Hoy la app no dispara ninguno de
+ * estos (Confirm email está apagado y no hay magic link ni invites), pero el
+ * hook es excluyente: sin esto, un invite o magic link mandado desde el
+ * dashboard de Supabase fallaría con 400.
+ */
+const TEXTOS_GENERICOS: Partial<
+  Record<string, { asunto: string; titulo: string; texto: string; cta: string }>
+> = {
+  signup: {
+    asunto: "Confirmá tu email en OG Circle",
+    titulo: "Confirmá tu email",
+    texto: "Para terminar de crear tu cuenta en OG Circle, confirmá que este email es tuyo.",
+    cta: "Confirmar email",
+  },
+  magiclink: {
+    asunto: "Tu link para entrar a OG Circle",
+    titulo: "Entrá a OG Circle",
+    texto: "Usá este link para iniciar sesión. Vence en poco tiempo y sirve una sola vez.",
+    cta: "Iniciar sesión",
+  },
+  invite: {
+    asunto: "Te invitaron a OG Circle",
+    titulo: "Te invitaron a OG Circle",
+    texto: "Aceptá la invitación para crear tu cuenta en OG Circle.",
+    cta: "Aceptar invitación",
+  },
+};
 
 /** Formato de error que espera Supabase Auth del hook. */
 function respuestaDeError(httpCode: number, message: string): Response {
@@ -150,25 +180,36 @@ export async function POST(request: Request): Promise<Response> {
   // llegaría nada nunca. Se devuelve error explícito para que la operación de
   // Auth falle a la vista, y queda registrado en el log.
   //
-  // TODO: implementar `signup`, `magiclink`, `invite` y `email_change` ANTES de
-  // registrar el hook en el dashboard (ver docs/EMAIL.md).
-  if (tipo !== "recovery") {
+  // `email_change` y `reauthentication` quedan afuera a propósito: la app no
+  // ofrece cambiar el email, y `email_change` con "secure email change" manda dos
+  // emails con dos token_hash distintos — implementarlo a ciegas es peor que el 400.
+  const generico = Object.hasOwn(TEXTOS_GENERICOS, tipo) ? TEXTOS_GENERICOS[tipo] : undefined;
+  if (tipo !== "recovery" && !generico) {
     reportarProblemaDeHook(`email_action_type sin plantilla implementada: ${tipo}`);
     return respuestaDeError(400, `Tipo de email no implementado todavía: ${tipo}`);
   }
 
   const url = construirUrlDeConfirmacion(email_data, tipo);
 
-  const resultado = await enviarEmail({
-    para: user.email,
-    asunto: "Restablecé tu contraseña de OG Circle",
-    // JSX y no `ResetPasswordEmail({...})`: llamar al componente como función
-    // devuelve el elemento que él retorna, así que React Email nunca ve el
-    // componente como tal (y cualquier hook que se agregue después rompería).
-    // Por eso este Route Handler es `.tsx`.
-    plantilla: <ResetPasswordEmail url={url} codigo={email_data.token || undefined} />,
-    motivo: "reset-password",
-  });
+  const resultado = await enviarEmail(
+    generico
+      ? {
+          para: user.email,
+          asunto: generico.asunto,
+          plantilla: <AuthGenericoEmail {...generico} url={url} />,
+          motivo: `auth-${tipo}`,
+        }
+      : {
+          para: user.email,
+          asunto: "Restablecé tu contraseña de OG Circle",
+          // JSX y no `ResetPasswordEmail({...})`: llamar al componente como función
+          // devuelve el elemento que él retorna, así que React Email nunca ve el
+          // componente como tal (y cualquier hook que se agregue después rompería).
+          // Por eso este Route Handler es `.tsx`.
+          plantilla: <ResetPasswordEmail url={url} codigo={email_data.token || undefined} />,
+          motivo: "reset-password",
+        },
+  );
 
   // `enviarEmail()` nunca lanza (ver la regla dura en lib/email/send.ts), así que
   // acá siempre se llega con un resultado y nunca con una excepción. Lo que sí se

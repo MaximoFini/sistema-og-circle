@@ -140,10 +140,10 @@ firmado con nuestro dominio, que es justo la pieza que le falta a un phishing
 creíble. Regla: solo se acepta un `redirect_to` del **mismo origen** que
 `site_url`; cualquier otro se descarta y se cae a `site_url`.
 
-**Falta implementar `signup`, `magiclink`, `invite` y `email_change`.** Hoy solo
-existe `recovery`. Como el hook es excluyente, registrarlo con los otros tipos sin
-implementar haría fallar el registro de usuarios. Esos tipos devuelven `400`
-explícito en vez de `200` mudo, justamente para que el problema se vea.
+**Tipos implementados:** `recovery` (plantilla propia) y `signup`, `magiclink`,
+`invite` (plantilla `AuthGenericoEmail`). `email_change` y `reauthentication`
+devuelven `400` explícito en vez de `200` mudo: la app no ofrece cambiar el email,
+y si algún día lo hace, hay que implementarlo antes de exponerlo.
 
 ### Diseño de las plantillas
 
