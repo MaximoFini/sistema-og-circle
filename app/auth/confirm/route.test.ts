@@ -32,10 +32,16 @@ describe("GET /auth/confirm", () => {
     expect(res.headers.get("location")).toBe("https://ogcircle.example/dashboard");
   });
 
-  it("respeta un next relativo válido", async () => {
+  it("respeta un next relativo válido (no recovery)", async () => {
     mockVerifyOtp.mockResolvedValue({ error: null });
-    const res = await GET(req("token_hash=abc&type=recovery&next=%2Fcomprar"));
+    const res = await GET(req("token_hash=abc&type=signup&next=%2Fcomprar"));
     expect(res.headers.get("location")).toBe("https://ogcircle.example/comprar");
+  });
+
+  it("recovery ignora next: el hook lo manda como '/' y igual va a la contraseña nueva", async () => {
+    mockVerifyOtp.mockResolvedValue({ error: null });
+    const res = await GET(req("token_hash=abc&type=recovery&next=%2F"));
+    expect(res.headers.get("location")).toBe("https://ogcircle.example/recuperar/nueva");
   });
 
   it.each([

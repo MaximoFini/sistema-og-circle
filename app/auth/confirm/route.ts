@@ -56,6 +56,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(destino);
   }
 
-  const next = safeRedirectPath(searchParams.get("next"), destinoPorDefecto(tipoCrudo));
+  // `recovery` va SIEMPRE a elegir la contraseña nueva, sin mirar `next`: el hook
+  // de email lo arma desde el `redirect_to` de `resetPasswordForEmail` (que apunta
+  // a /auth/callback) y termina como "/", con lo que el usuario quedaría logueado
+  // sin pantalla para cambiar la contraseña.
+  const next =
+    tipoCrudo === "recovery"
+      ? destinoPorDefecto(tipoCrudo)
+      : safeRedirectPath(searchParams.get("next"), destinoPorDefecto(tipoCrudo));
   return NextResponse.redirect(new URL(next, origin));
 }
