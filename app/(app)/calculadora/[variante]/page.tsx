@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ComprarButton } from "@/app/(app)/comprar/ComprarButton";
 import { CotizadorSelector } from "@/components/cotizador/CotizadorSelector";
 import { TarjetaDesbloqueo } from "@/components/ui/TarjetaDesbloqueo";
 import { isNivelAcceso, NIVELES } from "@/lib/auth/claims";
@@ -72,7 +73,11 @@ export default async function CalculadoraPage({
 
   const { nombre, precio } = await getOfertaPlan();
   return (
-    <TarjetaDesbloqueo nombrePlan={nombre} precio={precio}>
+    <TarjetaDesbloqueo
+      nombrePlan={nombre}
+      precio={precio}
+      accion={<ComprarButton nivel="completo" />}
+    >
       <Calculadora bloqueado />
     </TarjetaDesbloqueo>
   );

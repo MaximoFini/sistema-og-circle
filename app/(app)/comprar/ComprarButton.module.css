@@ -1,0 +1,11 @@
+/* `ComprarButton`: el campo de teléfono (si falta), el botón y el error,
+   apilados. Propio y no en `comprar.module.css`: el botón también va en la
+   tarjeta de desbloqueo de `/dashboard` y `/calculadora` (VGRP-78), que así
+   no cargan los estilos de la página `/comprar`. */
+.compra {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}

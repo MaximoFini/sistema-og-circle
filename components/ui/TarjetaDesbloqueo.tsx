@@ -1,10 +1,8 @@
 // Sin "use client": puramente presentacional, se renderiza dentro de rutas
 // ESTÁTICAS (`/dashboard/ninguno`, `/calculadora/ninguno`) — no lee sesión.
 
-import NextLink from "next/link";
 import type { ReactNode } from "react";
 import { formatearPrecio } from "@/lib/format";
-import buttonStyles from "./Button.module.css";
 import { Icon, type IconName } from "./Icon";
 import styles from "./TarjetaDesbloqueo.module.css";
 
@@ -12,6 +10,11 @@ export interface TarjetaDesbloqueoProps {
   nombrePlan: string;
   /** `null` si el precio no se pudo leer (fail-closed): no se muestra ningún número. */
   precio: number | null;
+  /**
+   * El CTA de compra. Lo pone quien usa la tarjeta (VGRP-78: el botón que
+   * cobra directo, `ComprarButton`), así `components/ui` no depende de `app/`.
+   */
+  accion: ReactNode;
   /** La pantalla real, que queda de fondo: borrosa e inerte. */
   children: ReactNode;
 }
@@ -75,8 +78,8 @@ function LogoPartner({ partner }: { partner: keyof typeof PARTNERS }) {
 
 /**
  * VGRP-77 — la plataforma real de fondo, borrosa y sin poder usarse, con una
- * tarjeta fija encima que cuenta todo lo que incluye el plan y lleva a
- * `/comprar`.
+ * tarjeta fija encima que cuenta todo lo que incluye el plan y cobra desde
+ * ahí mismo (`accion`).
  *
  * El blur es SÓLO presentación: lo que está en `children` llega igual al
  * navegador. Quien use este componente no le pasa nada que un usuario sin
@@ -86,7 +89,12 @@ function LogoPartner({ partner }: { partner: keyof typeof PARTNERS }) {
  * árbol de accesibilidad, así que el título de la tarjeta es el `h1` de la
  * página. El fondo sigue en el flujo normal, así que la página scrollea.
  */
-export function TarjetaDesbloqueo({ nombrePlan, precio, children }: TarjetaDesbloqueoProps) {
+export function TarjetaDesbloqueo({
+  nombrePlan,
+  precio,
+  accion,
+  children,
+}: TarjetaDesbloqueoProps) {
   return (
     <div className={styles.contenedor}>
       <div className={styles.fondo} inert aria-hidden="true">
@@ -94,43 +102,38 @@ export function TarjetaDesbloqueo({ nombrePlan, precio, children }: TarjetaDesbl
       </div>
 
       <section className={styles.tarjeta} aria-labelledby="tarjeta-desbloqueo-titulo">
-        <span className={styles.icono}>
-          <Icon name="candado" size={22} />
-        </span>
-        <p className={styles.eyebrow}>{nombrePlan}</p>
-        <h1 id="tarjeta-desbloqueo-titulo" className={styles.titulo}>
-          Desbloqueá OG Circle
-        </h1>
-        <p className={styles.bajada}>Todo lo que necesitás para importar, en un solo lugar.</p>
+        <div className={styles.cuerpo}>
+          <span className={styles.icono}>
+            <Icon name="candado" size={22} />
+          </span>
+          <p className={styles.eyebrow}>{nombrePlan}</p>
+          <h1 id="tarjeta-desbloqueo-titulo" className={styles.titulo}>
+            Desbloqueá OG Circle
+          </h1>
+          <p className={styles.bajada}>Todo lo que necesitás para importar, en un solo lugar.</p>
 
-        <ul className={styles.beneficios} aria-label="Qué incluye">
-          {BENEFICIOS.map((b) => (
-            // El ícono es único por beneficio y no cambia aunque se edite el copy.
-            <li key={b.icono} className={styles.beneficio}>
-              <span className={styles.beneficioIcono} aria-hidden="true">
-                <Icon name={b.icono} size={15} />
-              </span>
-              <span className={styles.beneficioTexto}>{b.texto}</span>
-              {b.partner ? <LogoPartner partner={b.partner} /> : null}
-              {b.pronto ? <span className={styles.pronto}>Pronto</span> : null}
-            </li>
-          ))}
-        </ul>
+          <ul className={styles.beneficios} aria-label="Qué incluye">
+            {BENEFICIOS.map((b) => (
+              // El ícono es único por beneficio y no cambia aunque se edite el copy.
+              <li key={b.icono} className={styles.beneficio}>
+                <span className={styles.beneficioIcono} aria-hidden="true">
+                  <Icon name={b.icono} size={15} />
+                </span>
+                <span className={styles.beneficioTexto}>{b.texto}</span>
+                {b.partner ? <LogoPartner partner={b.partner} /> : null}
+                {b.pronto ? <span className={styles.pronto}>Pronto</span> : null}
+              </li>
+            ))}
+          </ul>
 
-        {precio !== null ? (
-          <p className={styles.precio}>
-            {formatearPrecio.format(precio)}
-            <span>pago único</span>
-          </p>
-        ) : null}
-        {/* Mismo criterio que ContenidoBloqueado: NextLink con las clases de
-            Button, nunca un <button> anidado dentro de un <a>. */}
-        <NextLink
-          href="/comprar"
-          className={`${buttonStyles.button} ${buttonStyles.primary} ${buttonStyles.fullWidth}`}
-        >
-          Comprar acceso
-        </NextLink>
+          {precio !== null ? (
+            <p className={styles.precio}>
+              {formatearPrecio.format(precio)}
+              <span>pago único</span>
+            </p>
+          ) : null}
+          {accion}
+        </div>
       </section>
     </div>
   );

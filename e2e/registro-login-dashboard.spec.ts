@@ -63,7 +63,7 @@ test.describe("registro → login → dashboard", () => {
       // `getByRole("heading", ...)`, no `getByText`, por el route announcer
       // oculto de Next.js.
       await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Comprar acceso" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeVisible();
 
       // `registrarse()` corre server-side y no expone el `userId` creado a
       // este proceso de Playwright (server hijo separado, ver el comentario
@@ -125,13 +125,7 @@ test.describe("registro → login → dashboard", () => {
       await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
       // VGRP-77: sin plan, Inicio es la plataforma borrosa con la tarjeta de desbloqueo.
       await expect(page.getByRole("list", { name: "Qué incluye" })).toBeVisible();
-      // El CTA es un `<NextLink>` (un `<a>`), no un `<button>` — su rol
-      // accesible real es "link" (components/ui/TarjetaDesbloqueo.tsx, VGRP-77:
-      // reusa las clases de Button.module.css para el estilo, nunca el
-      // elemento, para no anidar un <button> dentro del <a>). Hallazgo de
-      // VGRP-48 corriendo esta suite contra un build real: este selector
-      // nunca podía matchear.
-      await expect(page.getByRole("link", { name: "Comprar acceso" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeVisible();
       // Ningún error 500 ni contenido de otro nivel: el texto de otros
       // niveles ("Tenés acceso …") no debería estar en pantalla.
       await expect(page.getByText(/Tenés acceso/)).toHaveCount(0);
@@ -151,13 +145,7 @@ test.describe("registro → login → dashboard", () => {
 
       await page.waitForURL("**/dashboard");
       await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
-      // El CTA es un `<NextLink>` (un `<a>`), no un `<button>` — su rol
-      // accesible real es "link" (components/ui/TarjetaDesbloqueo.tsx, VGRP-77:
-      // reusa las clases de Button.module.css para el estilo, nunca el
-      // elemento, para no anidar un <button> dentro del <a>). Hallazgo de
-      // VGRP-48 corriendo esta suite contra un build real: este selector
-      // nunca podía matchear.
-      await expect(page.getByRole("link", { name: "Comprar acceso" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Comprar acceso" })).toBeVisible();
     });
   });
 });
