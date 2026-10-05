@@ -48,10 +48,11 @@ const STOPWORDS = new Set([
 // Las claves se comparan en versión "stemmed" (sin plural), así que
 // "zapatilla" y "zapatillas" matchean la misma entrada.
 //
-// Ojo (heredado del original, no se corrige acá): es un objeto literal común,
-// así que `SYNONYMS["constructor"]` devuelve la función de Object.prototype y
-// `tokens()` explota con "syn.split is not a function" si alguien busca esa
-// palabra (o una que stemmee a eso, como "constructores").
+// Es un objeto literal común: `SYNONYMS["constructor"]` devolvería la función
+// de Object.prototype. Por eso `sinonimo()` mira sólo las claves propias.
+// Único desvío del original (B12-03, VGRP-69): ahí buscar "constructor" o
+// "constructores" rompía con "syn.split is not a function". No cambia el
+// ranking de ninguna otra búsqueda.
 const SYNONYMS: Record<string, string> = {
   auricular: "auriculares audifonos",
   audifono: "auriculares audifonos",
@@ -163,12 +164,16 @@ function stem(t: string): string {
   return t;
 }
 
+function sinonimo(t: string): string | undefined {
+  return Object.hasOwn(SYNONYMS, t) ? SYNONYMS[t] : undefined;
+}
+
 function tokens(str: unknown): string[] {
   return normalize(str)
     .split(" ")
     .flatMap((t) => {
       const s = stem(t);
-      const syn = SYNONYMS[t] || SYNONYMS[s];
+      const syn = sinonimo(t) || sinonimo(s);
       return syn ? syn.split(" ").concat(t) : [t];
     })
     .filter((t) => t && t.length > 1 && !STOPWORDS.has(t))

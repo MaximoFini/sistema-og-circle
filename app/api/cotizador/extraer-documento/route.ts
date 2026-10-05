@@ -49,7 +49,11 @@ const bodySchema = z.object({
   mediaType: z
     .string({ error: FALTAN_DATOS })
     .min(1, FALTAN_DATOS)
-    .pipe(z.enum(TIPOS, { error: "Formato no soportado. Usá una imagen (JPG/PNG) o un PDF." })),
+    .pipe(
+      z.enum(TIPOS, {
+        error: "Formato no soportado. Usá una imagen (JPG, PNG, WebP o GIF) o un PDF.",
+      }),
+    ),
   // El front lo manda (lo usa para el mensaje de éxito); el original lo ignora.
   filename: z.string().nullish(),
 });

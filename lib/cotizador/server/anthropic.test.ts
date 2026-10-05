@@ -59,6 +59,8 @@ describe("lib/cotizador/server/anthropic", () => {
       expect(mockCreate).toHaveBeenCalledWith({
         model: "m",
         max_tokens: 10,
+        // B12-09: sin thinking, para que no se coma el max_tokens.
+        thinking: { type: "disabled" },
         system: "sys",
         messages: [{ role: "user", content: [{ type: "text", text: "hola" }] }],
         tools: [

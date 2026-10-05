@@ -85,13 +85,27 @@ function traducirError(e: unknown): unknown {
   return e;
 }
 
+/**
+ * B12-09 (VGRP-69): thinking apagado en todas las llamadas. `claude-sonnet-5`
+ * corre con thinking adaptativo si no se manda el parámetro, y ese thinking
+ * sale del mismo `max_tokens` (800–1600 acá, los del original): la respuesta
+ * podía cortarse antes del `tool_use` o del JSON y dar un 502 intermitente.
+ * Son tareas cortas y de formato fijo, y `tool_choice` forzado tampoco convive
+ * con el thinking.
+ *
+ * Ojo si se cambia el modelo por env: Sonnet 5.5 y Opus 5.5 rechazan con 400
+ * tanto `{ type: "disabled" }` como el `tool_choice` forzado de `llamarJSON()`.
+ * Los defaults (`claude-sonnet-5`, `claude-opus-4-8`) aceptan los dos.
+ */
+const SIN_THINKING = { type: "disabled" } as const;
+
 /** `rawCall()` del original: una request. */
 async function llamadaCruda(
   params: Anthropic.Messages.MessageCreateParamsNonStreaming,
 ): Promise<Anthropic.Messages.Message> {
   const client = crearCliente();
   try {
-    return await client.messages.create(params);
+    return await client.messages.create({ ...params, thinking: SIN_THINKING });
   } catch (e) {
     throw traducirError(e);
   }
@@ -138,6 +152,7 @@ export async function* transmitirTexto(
     {
       model,
       max_tokens,
+      thinking: SIN_THINKING,
       ...(system ? { system } : {}),
       messages: [{ role: "user", content }],
     },

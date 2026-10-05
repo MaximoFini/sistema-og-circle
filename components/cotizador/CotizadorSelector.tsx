@@ -41,8 +41,18 @@ const OPCIONES_MODO: readonly { id: Modo; titulo: string; desc: string }[] = [
   { id: "maritimo", titulo: "Marítimo", desc: "Consolidado y contenedor completo · por TN/m³" },
 ];
 
-/** `bloqueado` (VGRP-77): fondo inerte de la calculadora sin plan; ver CotizadorCourier. */
-export function CotizadorSelector({ bloqueado = false }: { bloqueado?: boolean }) {
+/**
+ * `bloqueado` (VGRP-77): fondo inerte de la calculadora sin plan; ver CotizadorCourier.
+ * `whatsappContacto` (VGRP-69): `links.whatsapp` de la config, para el pie del
+ * PDF y de los mensajes de WhatsApp.
+ */
+export function CotizadorSelector({
+  bloqueado = false,
+  whatsappContacto,
+}: {
+  bloqueado?: boolean;
+  whatsappContacto: string;
+}) {
   const [modo, setModo] = useState<Modo>("courier");
   const id = useId();
 
@@ -73,7 +83,11 @@ export function CotizadorSelector({ bloqueado = false }: { bloqueado?: boolean }
         ))}
       </fieldset>
 
-      {modo === "courier" ? <CotizadorCourier bloqueado={bloqueado} /> : <CotizadorMaritimo />}
+      {modo === "courier" ? (
+        <CotizadorCourier bloqueado={bloqueado} whatsappContacto={whatsappContacto} />
+      ) : (
+        <CotizadorMaritimo whatsappContacto={whatsappContacto} />
+      )}
     </div>
   );
 }

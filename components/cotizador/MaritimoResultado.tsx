@@ -31,6 +31,8 @@ import type {
   ResultadoAmbas,
   ResultadoMaritimo,
 } from "@/lib/cotizador/types";
+import { textoResumenMaritimo } from "@/lib/cotizador/whatsappMaritimo";
+import { Conceptos } from "./Conceptos";
 import cotizadorStyles from "./cotizador.module.css";
 import styles from "./maritimo.module.css";
 import { notaFlete } from "./notaFlete";
@@ -42,6 +44,10 @@ export interface MaritimoResultadoProps {
   fleteFull: string;
   setFleteFull: (v: string) => void;
   refNumber: string;
+  /** VGRP-69: para el texto de "Enviar por WhatsApp". */
+  producto: string;
+  /** `links.whatsapp` de la config. */
+  whatsappContacto: string;
 }
 
 export function MaritimoResultado({
@@ -51,6 +57,8 @@ export function MaritimoResultado({
   fleteFull,
   setFleteFull,
   refNumber,
+  producto,
+  whatsappContacto,
 }: MaritimoResultadoProps) {
   const [ver, setVer] = useState<"consolidado" | "full">("consolidado");
   const { consolidado, full, contenedor, fullEsEstimado } = res;
@@ -129,6 +137,7 @@ export function MaritimoResultado({
             value={fleteFull}
             onChange={(e) => setFleteFull(e.target.value)}
             placeholder={`sin cargar · se estima en ${fmtUSD(full.fleteTarifa)}`}
+            hint="El número que te pasó el despachante por el contenedor entero, puerto a puerto. Con eso el full deja de ser estimado."
           />
           <TextField
             label="Diferencia entre las dos"
@@ -156,10 +165,23 @@ export function MaritimoResultado({
             <Icon name="documento" size={18} />
             Descargar PDF
           </Button>
+          <a
+            className={cotizadorStyles.linkWhatsapp}
+            href={`https://wa.me/?text=${encodeURIComponent(
+              textoResumenMaritimo({ refNumber, producto, fiscal, puerto, res, whatsappContacto }),
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="mensaje" size={18} />
+            Enviar por WhatsApp
+          </a>
           <span className={cotizadorStyles.numeroCotizacion}>
             Cotización N° {refNumber} — el PDF sale con las dos opciones.
           </span>
         </div>
+
+        <Conceptos terminos={["tnm3", "consolidado", "cif", "die", "te", "recuperable"]} />
       </section>
     </>
   );

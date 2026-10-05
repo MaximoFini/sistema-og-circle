@@ -43,7 +43,7 @@ export interface FormularioQuoteDoc {
 }
 
 export interface QuoteDocProps {
-  /** N° de cotización (VG-AAAAMMDD-HHMM). */
+  /** N° de cotización (OG-AAAAMMDD-HHMM). */
   refNumber: string;
   /** Fecha ya formateada (es-AR). */
   fecha: string;
@@ -54,6 +54,8 @@ export interface QuoteDocProps {
   result: ResultadoRuta | null;
   form: FormularioQuoteDoc;
   regimen: Regimen;
+  /** `links.whatsapp` de la config (VGRP-69): el contacto no se escribe a mano. */
+  whatsappContacto: string;
 }
 
 export function QuoteDoc({
@@ -64,6 +66,7 @@ export function QuoteDoc({
   result,
   form,
   regimen,
+  whatsappContacto,
 }: QuoteDocProps) {
   if (!result || !selected || typeof document === "undefined") return null;
 
@@ -71,7 +74,7 @@ export function QuoteDoc({
     <div className={styles.hoja} data-quote-doc="">
       <div className={styles.encabezado}>
         <div className={styles.logo}>
-          VE<span>GROUP</span>
+          OG <span>CIRCLE</span>
         </div>
         <div className={styles.tituloBloque}>
           <div className={styles.titulo}>COTIZACIÓN DE IMPORTACIÓN</div>
@@ -92,9 +95,8 @@ export function QuoteDoc({
             <td>
               <strong>{selected.sim}</strong> — DIE {selected.die}% · TE {selected.te}% · IVA{" "}
               {selected.iva}%
-              {selected.impInternos &&
-                Number(selected.impInternos) > 0 &&
-                ` · II ${selected.impInternos}%`}
+              {/* Sin `impInternos &&` adelante: con 0, React imprimía un "0" suelto (B12-01). */}
+              {Number(selected.impInternos) > 0 && ` · II ${selected.impInternos}%`}
               {regimen === "pequeños" && (
                 <span className={styles.franquicia}>(Pequeños envíos · franquicia)</span>
               )}
@@ -150,7 +152,7 @@ export function QuoteDoc({
           </tr>
           <tr>
             <th scope="rowgroup" colSpan={2} className={styles.grupo}>
-              Lo que pagás en destino (gastos de importación VEGROUP)
+              Lo que pagás en destino (gastos de importación)
             </th>
           </tr>
           {DESTINO_ORDER.map((k) => (
@@ -205,10 +207,10 @@ export function QuoteDoc({
 
       <div className={styles.pie}>
         <div>
-          <strong>VEGROUP</strong> — Logística e importación internacional · Miami · Barcelona ·
+          <strong>OG Circle</strong> — Logística e importación internacional · Miami · Barcelona ·
           Guangzhou · Buenos Aires
         </div>
-        <div>WhatsApp +54 9 11 7639-2303 · Vegroupex@gmail.com · Instagram @Vegroup_courier</div>
+        <div>WhatsApp {whatsappContacto}</div>
         <div className={styles.disclaimer}>
           Cotización estimativa válida por 7 días, sujeta a confirmación operativa. El IVA es
           crédito fiscal recuperable para responsables inscriptos.

@@ -119,6 +119,19 @@ export async function getLinks(): Promise<Config["links"]> {
   return leerConFallback(getLinksCached, leerLinks, "getLinks");
 }
 
+// VGRP-69 — contacto de WhatsApp de la calculadora (pie del PDF y de los
+// mensajes de WhatsApp), en vez del teléfono de VEGROUP escrito a mano.
+// `/calculadora/[variante]` es ESTÁTICA (SSG + revalidate 3600): lee por acá
+// y no con `getLinks()` directo, mismo criterio que `getOfertaPlan()`. El
+// valor viaja por `getLinks()`, que ya está cacheado con su tag y un
+// `revalidate` de 1 h, así que no queda congelado en el HTML del build (el bug
+// que vigila test/structural/edge-config-dynamic.test.ts). Fail-open, como
+// todo `links`.
+export async function getWhatsappContacto(): Promise<string> {
+  const { whatsapp } = await getLinks();
+  return whatsapp;
+}
+
 // VGRP-77 — nombre y precio del plan para la tarjeta de desbloqueo, que se
 // renderiza en rutas ESTÁTICAS (`/dashboard/ninguno`, `/calculadora/ninguno`).
 // `@vercel/edge-config` lee con `fetch(..., { cache: "no-store" })`: llamado

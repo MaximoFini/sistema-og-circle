@@ -4,7 +4,8 @@
 // el front junta todas las posiciones SIM de esas partidas como candidatos.
 //
 // Prompt, schema, modelo (el mismo `ANTHROPIC_MODEL_IDENTIFY` que identificar,
-// como en el original) y los 2 intentos completos copiados TEXTUALES.
+// como en el original) y los 2 intentos completos copiados TEXTUALES, salvo la
+// marca (VGRP-69: el system ya no nombra a VEGROUP).
 //
 //   sin sesión ... 401    sin plan ... 403    falta query ... 400
 //   IA falla / no sugiere nada ....... 502
@@ -35,7 +36,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const system =
     "Sos un clasificador experto en el Nomenclador Común del Mercosur (NCM) para " +
-    "VEGROUP, una empresa argentina de courier e importación de mercadería " +
+    "una empresa argentina de courier e importación de mercadería " +
     "comercial (electrónica, indumentaria, calzado, accesorios, hogar, etc.). " +
     "Los usuarios escriben en jerga argentina, abreviado o mal escrito: primero " +
     "interpretás QUÉ PRODUCTO COMERCIAL es realmente, priorizando la lectura más " +

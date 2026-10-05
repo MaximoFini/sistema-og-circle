@@ -129,3 +129,32 @@ describe("getConfig", () => {
     });
   });
 });
+
+// VGRP-69 — contacto de WhatsApp de la calculadora.
+describe("getWhatsappContacto", () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+  });
+
+  it("devuelve links.whatsapp de Edge Config", async () => {
+    mockGet.mockImplementation(async (key: string) =>
+      key === "links"
+        ? { ...VALID_CONFIG.links, whatsapp: "https://wa.me/5491112345678" }
+        : undefined,
+    );
+
+    const { getWhatsappContacto } = await import("./index");
+
+    expect(await getWhatsappContacto()).toBe("https://wa.me/5491112345678");
+  });
+
+  it("si Edge Config falla, cae al default de links (fail-open)", async () => {
+    mockGet.mockImplementation(async () => {
+      throw new Error("No connection string provided");
+    });
+
+    const { getWhatsappContacto } = await import("./index");
+
+    expect(await getWhatsappContacto()).toBe("https://wa.me/5491100000000");
+  });
+});

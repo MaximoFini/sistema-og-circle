@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import "../test/helpers/load-env";
 import { findSeedUser } from "../test/helpers/seed-users";
 
@@ -27,6 +27,20 @@ async function login(page: Page, email: string, password: string): Promise<void>
   await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await page.waitForURL("**/dashboard");
+}
+
+/** Texto del mensaje de un link `wa.me/?text=…`, ya decodificado. */
+async function textoWhatsapp(link: Locator): Promise<string> {
+  const href = await link.getAttribute("href");
+  expect(href).toMatch(/^https:\/\/wa\.me\/\?text=/);
+  return new URL(href ?? "").searchParams.get("text") ?? "";
+}
+
+/** TC BNA: el automático puede no llegar (dolarapi caído); si quedó vacío, se carga a mano. */
+async function completarDolar(page: Page): Promise<void> {
+  const dolar = page.getByLabel(/^TC BNA \(destino\)/);
+  await expect(dolar).not.toHaveAttribute("placeholder", "Cargando…", { timeout: 15_000 });
+  if ((await dolar.inputValue()) === "") await dolar.fill("1000");
 }
 
 // Endpoints de la calculadora que llaman a un proveedor de IA, y hosts de IA
@@ -87,7 +101,80 @@ test.describe("calculadora embebida (VGRP-57)", () => {
     const totalUsd = resultado.getByRole("definition").first();
     await expect(totalUsd).toHaveText(/US\$\s?[\d.,]+/);
 
+    // VGRP-69: el WhatsApp habla como OG Circle y el contacto sale de la config.
+    const texto = await textoWhatsapp(resultado.getByRole("link", { name: "Enviar por WhatsApp" }));
+    expect(texto).toMatch(/^\*OG Circle — Cotización OG-\d{8}-\d{4}\*/);
+    expect(texto).toContain("Courier Integral Todo Incluido");
+    expect(texto).not.toMatch(/vegroup|7639/i);
+
     expect(requestsIa, "courier integral no debería llamar a la IA").toEqual([]);
+  });
+
+  // VGRP-69 — régimen comercial, el que pasa por la IA. La IA está mockeada
+  // con page.route: sin ANTHROPIC_API_KEY y sin costo. `identificar-ncm`
+  // devuelve el primer candidato que le manda el front, así la posición
+  // siempre existe en la base local.
+  test("completo cotiza en courier comercial con la IA mockeada: NCM, desglose, PDF y WhatsApp", async ({
+    page,
+  }) => {
+    await page.route("**/api/cotizador/sugerir-partidas", (route) =>
+      route.fulfill({ json: { partidas: ["8518"], interpretacion: "auriculares" } }),
+    );
+    await page.route("**/api/cotizador/identificar-ncm", async (route) => {
+      const { candidates } = route.request().postDataJSON() as {
+        candidates: { ncm: string }[];
+      };
+      await route.fulfill({
+        json: {
+          ncm: candidates[0]?.ncm,
+          confianza: 87,
+          razonamiento: "Mock de E2E.",
+          alternativas: [],
+        },
+      });
+    });
+
+    await login(page, COMPLETO.email, COMPLETO.password);
+    await page.goto("/calculadora");
+
+    // "Courier comercial" es el régimen por defecto.
+    await page.getByLabel("Descripción del producto").fill("auriculares bluetooth");
+    await expect(page.getByText(/Probabilidad: 87%/)).toBeVisible({ timeout: 15_000 });
+    const sim = (await page.locator("[class*='ncmCodigo']").first().textContent())?.trim() ?? "";
+    expect(sim).not.toBe("");
+
+    await page.getByLabel("Precio FOB (USD)").fill("200");
+    await page.getByLabel("Peso del paquete (kg)").fill("3");
+    await page.getByLabel("Unidades totales").fill("10");
+    await page.getByLabel("Largo", { exact: true }).fill("40");
+    await page.getByLabel("Ancho", { exact: true }).fill("30");
+    await page.getByLabel("Alto", { exact: true }).fill("20");
+    await completarDolar(page);
+    await page.getByRole("radio", { name: /^Miami/ }).check();
+    await page.getByRole("button", { name: "Cotizar" }).click();
+
+    const resultado = page.getByRole("region", { name: "Resultado de la cotización" });
+    await expect(
+      resultado.getByRole("heading", { name: /Resumen — depósito Miami/ }),
+    ).toBeVisible();
+    await expect(resultado.getByRole("button", { name: "Descargar PDF" })).toBeVisible();
+
+    // Glosario de conceptos: cerrado por defecto, se abre con teclado.
+    const conceptos = resultado.getByText("¿Qué significa cada concepto?");
+    await conceptos.focus();
+    await page.keyboard.press("Enter");
+    await expect(resultado.getByText("Peso volumétrico", { exact: true })).toBeVisible();
+
+    const texto = await textoWhatsapp(resultado.getByRole("link", { name: "Enviar por WhatsApp" }));
+    expect(texto).toContain("*OG Circle — Cotización OG-");
+    expect(texto).toContain(`Posición NCM: ${sim}`);
+    expect(texto).toContain("Producto: auriculares bluetooth");
+    expect(texto).not.toMatch(/vegroup|7639/i);
+
+    // La hoja imprimible (oculta en pantalla) ya no dice VEGROUP.
+    const hoja = page.locator("[data-quote-doc]");
+    await expect(hoja).toContainText("OG Circle");
+    await expect(hoja).not.toContainText(/vegroup/i);
   });
 
   test("el CTA 'Abrir calculadora' de Inicio es un link interno a /calculadora, sin target", async ({
@@ -178,6 +265,15 @@ test.describe("cotizador marítimo embebido (VGRP-58)", () => {
     await expect(page.getByRole("button", { name: /^Marítimo consolidado/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Marítimo full/ })).toBeVisible();
     await expect(page.getByText(/US\$\s?[\d.,]+/).first()).toBeVisible();
+
+    // VGRP-69: "Enviar por WhatsApp" del resultado, con las dos opciones. El
+    // link al despachante (wa.me/<número>) es otro y sigue aparte.
+    const texto = await textoWhatsapp(page.getByRole("link", { name: "Enviar por WhatsApp" }));
+    expect(texto).toMatch(/^\*OG Circle — Cotización marítima MAR-\d{6}\*/);
+    expect(texto).toContain("Carga: 8,501 m³");
+    expect(texto).toContain("*Consolidado (LCL):*");
+    expect(texto).toMatch(/\*Full \(FCL, .+\):\*.*\(estimado\)/);
+    expect(texto).not.toMatch(/vegroup/i);
 
     expect(requestsIa, "cotizar marítimo sin producto no debería llamar a la IA").toEqual([]);
   });

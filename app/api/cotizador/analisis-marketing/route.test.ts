@@ -144,7 +144,9 @@ describe("POST /api/cotizador/analisis-marketing", () => {
     const params = mockStream.mock.calls[0]?.[0];
     expect(params.model).toBe("claude-opus-4-8");
     expect(params.max_tokens).toBe(1600);
-    expect(params.system).toContain("Sos un estratega de marketing y comercio para VEGROUP");
+    expect(params.system).toContain(
+      "Sos un estratega de marketing y comercio para una empresa argentina",
+    );
     expect(params).not.toHaveProperty("tools");
     expect(params).not.toHaveProperty("tool_choice");
     const prompt = params.messages[0].content[0].text as string;

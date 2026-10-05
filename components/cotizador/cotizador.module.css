@@ -764,3 +764,41 @@
 .inputArchivo {
   display: none;
 }
+
+/* ------------------------------------------------------------------ */
+/* VGRP-69 — "¿Qué significa cada concepto?" (Conceptos.tsx)            */
+/* ------------------------------------------------------------------ */
+
+.conceptos {
+  padding: 0 4px;
+}
+
+.conceptosResumen {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.conceptosResumen:focus-visible {
+  outline: 2px solid var(--champagne);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.conceptosLista {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.conceptosTermino {
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.conceptosDefinicion {
+  composes: footnote from "../ui/type.module.css";
+  --t-color: var(--text-secondary);
+}
