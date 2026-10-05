@@ -64,6 +64,8 @@ export interface ParametrosEnvio {
  */
 export function reportarFalloDeEmail(motivo: string, error: unknown): void {
   const normalizado = error instanceof Error ? error : new Error(String(error));
+  // Log de respaldo: sin SENTRY_DSN, Sentry es no-op y el fallo no deja rastro en ningún lado.
+  console.error(`[email] fallo de envío (motivo=${motivo}): ${normalizado.message}`);
   try {
     Sentry.captureException(normalizado, { tags: { motivo } });
   } catch {
