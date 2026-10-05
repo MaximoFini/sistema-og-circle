@@ -11,29 +11,6 @@
   --t-margin: 10px 0 0;
 }
 
-/* Aviso de placeholder: franja teñida de ámbar, sin borde duro. */
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px 18px;
-  background: rgba(245, 184, 19, 0.08);
-  border-radius: var(--radius-row);
-  box-shadow: inset 0 0 0 1px rgba(245, 184, 19, 0.18);
-}
-
-.placeholder p {
-  margin: 0;
-  font-size: var(--fs-callout);
-  line-height: 1.55;
-  color: var(--text-secondary);
-}
-
-.placeholder strong {
-  color: var(--accent-soft);
-  font-weight: 600;
-}
-
 /* Prosa: medida de lectura cómoda (~66ch), interlineado generoso. */
 .prose {
   display: flex;
