@@ -9,4 +9,9 @@
 //
 // Bump manual cuando Jota entregue el texto definitivo, o cuando se edite
 // una de las tres páginas de forma sustantiva (no un typo).
-export const TERMINOS_VERSION = "2026-09-02-placeholder";
+//
+// 2026-10-05 (VGRP-78): se publicó el texto de Privacidad (requisito de la
+// verificación de marca de Google OAuth). Términos y Reembolsos siguen en
+// placeholder. El identificador es del conjunto aceptado, no de un documento
+// (las tres páginas lo muestran).
+export const TERMINOS_VERSION = "2026-10-05";

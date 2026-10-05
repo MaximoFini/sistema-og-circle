@@ -14,24 +14,30 @@
 // botón esté dentro de un form).
 
 import { useState, useTransition } from "react";
-import { Button, FormError } from "@/components/ui";
+import { Button, FormError, TextField } from "@/components/ui";
+import { telefonoValido } from "@/lib/forms/telefono";
 import type { NivelComprable } from "@/lib/mercadopago/preferencia";
-import { crearCheckout } from "./_actions";
+import { type CrearCheckoutResult, crearCheckout } from "./_actions";
 
 export interface ComprarButtonProps {
   nivel: NivelComprable;
+  /** VGRP-78 — el perfil no tiene teléfono: se pide antes de pagar. */
+  pedirTelefono?: boolean;
 }
 
-export function ComprarButton({ nivel }: ComprarButtonProps) {
+export function ComprarButton({ nivel, pedirTelefono = false }: ComprarButtonProps) {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [telefono, setTelefono] = useState("");
+  // `campo: "telefono"` va debajo del campo; el resto, debajo del botón.
+  const [error, setError] = useState<Extract<CrearCheckoutResult, { ok: false }> | null>(null);
+  const errorTelefono = error?.campo === "telefono" ? error.error : null;
 
   function handleClick() {
     setError(null);
     startTransition(async () => {
-      const result = await crearCheckout(nivel);
+      const result = await crearCheckout(nivel, pedirTelefono ? telefono : undefined);
       if (!result.ok) {
-        setError(result.error);
+        setError(result);
         return;
       }
       // Navegación de salida del sitio (checkout de Mercado Pago): no es una
@@ -44,10 +50,30 @@ export function ComprarButton({ nivel }: ComprarButtonProps) {
 
   return (
     <>
-      <Button variant="primary" fullWidth loading={isPending} onClick={handleClick}>
+      {pedirTelefono ? (
+        <TextField
+          name="telefono"
+          type="tel"
+          label="Teléfono de contacto"
+          hint="Lo usamos solo para contactarte por tu compra."
+          autoComplete="tel"
+          inputMode="tel"
+          required
+          value={telefono}
+          onChange={(e) => setTelefono(e.target.value)}
+          error={errorTelefono}
+        />
+      ) : null}
+      <Button
+        variant="primary"
+        fullWidth
+        loading={isPending}
+        disabled={pedirTelefono && !telefonoValido(telefono)}
+        onClick={handleClick}
+      >
         Comprar acceso
       </Button>
-      <FormError>{error}</FormError>
+      <FormError>{errorTelefono ? null : error?.error}</FormError>
     </>
   );
 }

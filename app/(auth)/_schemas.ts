@@ -11,6 +11,7 @@
 // bundle. Ver el comentario de ese archivo.
 
 import { z } from "zod";
+import { TELEFONO_MAX, TELEFONO_MIN } from "@/lib/forms/telefono";
 
 // Sin límite de longitud de password "fuerte" (mayúsculas/símbolos/etc.):
 // NIST 800-63B recomienda longitud mínima sobre reglas de composición, que
@@ -41,8 +42,8 @@ export const registroSchema = z.object({
   telefono: z
     .string()
     .trim()
-    .min(6, "Ingresá un teléfono de contacto.")
-    .max(30, "Ese teléfono es demasiado largo."),
+    .min(TELEFONO_MIN, "Ingresá un teléfono de contacto.")
+    .max(TELEFONO_MAX, "Ese teléfono es demasiado largo."),
   password,
   // VGRP-34 — checkbox de aceptación de Términos y Privacidad. Un checkbox
   // HTML sin tildar ni siquiera aparece en el FormData (`.get()` da `null`);

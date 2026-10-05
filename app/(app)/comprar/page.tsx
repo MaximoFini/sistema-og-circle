@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui";
 import { Icon } from "@/components/ui/Icon";
 import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
-import { getVerifiedClaims } from "@/lib/auth/server";
+import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
 import { getPlan, getPrecios } from "@/lib/config";
 import { formatearPrecio } from "@/lib/format";
 import { ComprarButton } from "./ComprarButton";
@@ -38,6 +38,13 @@ import styles from "./comprar.module.css";
 // =============================================================================
 export const dynamic = "force-dynamic";
 
+/** `profiles.telefono` del usuario (RLS: sólo su fila). Ante un error, `null`: se pide igual. */
+async function leerTelefono(): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from("profiles").select("telefono").maybeSingle();
+  return data?.telefono?.trim() || null;
+}
+
 export default async function ComprarPage() {
   // Auditoría de Mercado Pago (decisión del equipo): un usuario que ya tiene
   // el plan no debe ver habilitado el botón de comprarlo de nuevo —
@@ -47,7 +54,12 @@ export default async function ComprarPage() {
   // Las tres lecturas (JWT, y precios y nombre del plan en Edge Config) son
   // independientes — en paralelo en vez de en serie, ya que esta página es
   // `force-dynamic` y ninguna depende del resultado de otra.
-  const [claims, precios, plan] = await Promise.all([getVerifiedClaims(), getPrecios(), getPlan()]);
+  const [claims, precios, plan, telefono] = await Promise.all([
+    getVerifiedClaims(),
+    getPrecios(),
+    getPlan(),
+    leerTelefono(),
+  ]);
   const yaTienePlan = nivelAlcanzaOSupera(getNivel(claims), "completo");
   const copy = yaTienePlan
     ? "Ya tenés acceso completo a la plataforma."
@@ -89,7 +101,7 @@ export default async function ComprarPage() {
             Ya tenés este plan
           </Button>
         ) : (
-          <ComprarButton nivel="completo" />
+          <ComprarButton nivel="completo" pedirTelefono={!telefono} />
         )}
       </div>
     </div>

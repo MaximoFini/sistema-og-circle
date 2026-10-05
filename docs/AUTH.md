@@ -300,3 +300,49 @@ Para cualquier otro nivel, muestra "Tenés acceso {nivel}" — el contenido
 real del dashboard por nivel es de bloques posteriores. `app/(app)/layout.tsx`
 sigue sin tocarse: sigue sin leer cookies/claims, tal como pide su propio
 comentario (VGRP-17).
+
+## 7. Google OAuth (VGRP-76 / VGRP-78)
+
+### Dónde vive cada cosa
+
+| Qué | Dónde |
+|---|---|
+| Proyecto de Google Cloud | `og-circle`, en la cuenta personal de Máximo (maximofinicba@gmail.com). Google Auth Platform → público "En producción", usuarios externos. |
+| Cliente OAuth | "OG Circle - Supabase" (tipo Web). Es el único: el de desarrollo de VGRP-76 se renombró y quedó como el de producción. |
+| Client ID y secret | **Sólo** en Supabase de producción (Auth → Providers → Google). No van al repo, ni a `.env`, ni se mandan por WhatsApp o mail. Si hay que rotarlos, se genera un secret nuevo en Google Cloud y se pega directo en Supabase. |
+| Redirect URI del cliente (Google) | `https://<proyecto>.supabase.co/auth/v1/callback` (el ref está en el dashboard de Supabase) |
+| Redirect URLs permitidas (Supabase → Auth → URL Configuration) | Tienen que incluir `https://plataforma.ogcircle.com.ar/auth/callback/google` (y la de localhost para desarrollo). |
+| Marca de la pantalla de consentimiento | Nombre "OG Circle", home `https://ogcircle.com.ar`, `/privacidad` y `/terminos` de la plataforma. Dominios autorizados: `ogcircle.com.ar` y el de Supabase. Sin logo (subirlo obliga a una revisión más larga). |
+| Verificación del dominio | `ogcircle.com.ar` en Google Search Console, con un registro TXT `google-site-verification=…` en la zona DNS de DonWeb. Es requisito para que Google muestre la marca. |
+
+Scopes: sólo `openid`, `email` y `profile`. Con eso Google no exige la
+revisión de permisos sensibles; si algún día se agrega otro scope, hay que
+revisar el Centro de verificación antes de publicarlo.
+
+### El flujo
+
+1. `/login` o `/registro` → botón "Continuar con Google" → Server Action
+   `continuarConGoogle(next)` (`app/(auth)/_actions.ts`): arma el callback con
+   `getOrigin()` + `safeRedirectPath(next)` y llama a `signInWithOAuth`.
+2. Google → Supabase (`/auth/v1/callback`) → `/auth/callback/google?code=…&next=…`.
+3. `app/auth/callback/google/route.ts` hace `exchangeCodeForSession`, completa
+   `profiles.nombre` (si estaba vacío), la aceptación de Términos y
+   `origen_registro`, y redirige a `next` o a `/dashboard`. Ante error o
+   cancelación vuelve a `/login?error=google`.
+
+Es un callback **separado** de `/auth/callback` (ese es el de recuperar
+contraseña y siempre termina en `/recuperar/nueva`).
+
+### Linking de cuentas por email
+
+Si alguien registrado con email y contraseña entra con Google usando el mismo
+email, Supabase vincula las identidades automáticamente (Google entrega el
+email verificado): termina en **la misma cuenta**, con su nivel y sus pagos.
+No hay un usuario nuevo.
+
+### Teléfono
+
+El registro con Google no pide teléfono. Se pide al comprar (VGRP-78):
+`/comprar` muestra el campo si `profiles.telefono` está vacío, y
+`crearCheckout()` no crea la preferencia de Mercado Pago sin uno válido
+(misma regla que el registro y el Perfil, `lib/forms/telefono.ts`).
