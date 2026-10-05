@@ -496,6 +496,105 @@ describe("middleware", () => {
     });
   });
 
+  // VGRP-76 — /login y /registro con sesión, cookie de origen y callback de Google.
+  describe("pantallas de acceso (VGRP-76)", () => {
+    function cookieOrigen(res: Response): string | null {
+      const header = res.headers.get("set-cookie") ?? "";
+      return header.match(/og_origen=([^;]*)/)?.[1] ?? null;
+    }
+
+    it.each(["/login", "/registro", "/registro?origen=landing-hero", "/login?next=/perfil"])(
+      "con sesión: GET %s redirige a /dashboard (307)",
+      async (path) => {
+        mockGetClaims.mockResolvedValue(CON_SESION);
+        const { middleware } = await import("./middleware");
+
+        const res = await middleware(req(path));
+
+        expect(res.status).toBe(307);
+        const location = new URL(res.headers.get("location") as string);
+        expect(location.pathname).toBe("/dashboard");
+        expect(location.search).toBe("");
+      },
+    );
+
+    it("con sesión: el POST de la Server Action a /login no se redirige", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(
+        new NextRequest(new URL("/login", "http://localhost:3000"), { method: "POST" }),
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("location")).toBeNull();
+    });
+
+    it("con sesión: /recuperar y /recuperar/nueva no cambian (pasan, sin redirect)", async () => {
+      mockGetClaims.mockResolvedValue(CON_SESION);
+      const { middleware } = await import("./middleware");
+
+      for (const path of ["/recuperar", "/recuperar/nueva"]) {
+        const res = await middleware(req(path));
+        expect(res.status).toBe(200);
+        expect(res.headers.get("location")).toBeNull();
+      }
+    });
+
+    it("sin sesión: /registro?origen=landing-hero guarda la cookie og_origen", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/registro?origen=landing-hero"));
+
+      expect(res.status).toBe(200);
+      expect(cookieOrigen(res)).toBe("landing-hero");
+      const header = (res.headers.get("set-cookie") ?? "").toLowerCase();
+      expect(header).toContain("httponly");
+      expect(header).toContain("samesite=lax");
+      expect(header).toContain("max-age=2592000");
+    });
+
+    it("sin sesión: un origen desconocido se guarda normalizado como 'otro'", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/login?origen=cualquiercosa"));
+
+      expect(cookieOrigen(res)).toBe("otro");
+    });
+
+    it("first-touch: si la cookie ya existe, no se pisa", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(
+        req("/registro?origen=landing-nav", { cookie: "og_origen=landing-hero" }),
+      );
+
+      expect(cookieOrigen(res)).toBeNull();
+    });
+
+    it("sin ?origen no se setea cookie (el 'directo' lo resuelve quien escribe el perfil)", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/registro"));
+
+      expect(cookieOrigen(res)).toBeNull();
+    });
+
+    it("/auth/callback/google es público por el prefijo /auth/callback", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/auth/callback/google?code=abc"));
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("location")).toBeNull();
+    });
+  });
+
   // VGRP-55 punto 8 — el middleware corre en el Edge, en cualquier PoP del
   // mundo (ver STACK.md): medir su latencia real necesita logs de producción
   // que esta sesión no tiene. Lo que SÍ se puede validar sin eso es la palanca

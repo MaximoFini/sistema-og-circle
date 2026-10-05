@@ -48,6 +48,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import type { AppMetadataClaims } from "./lib/auth/claims";
 import { getNivel, getRol, tieneAcceso } from "./lib/auth/claims";
 import { CLAIMS_HEADER, encodeClaims } from "./lib/auth/claims-header";
+import { normalizarOrigen, ORIGEN_COOKIE, ORIGEN_COOKIE_MAX_AGE } from "./lib/auth/origen";
 import type { Database } from "./lib/database.types";
 
 /**
@@ -114,6 +115,38 @@ const PUBLIC_PREFIXES = [
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;
   return PUBLIC_PREFIXES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+// -----------------------------------------------------------------------------
+// VGRP-76 — pantallas de acceso (login y registro).
+//
+// Son el destino de los CTA de la landing (`/registro?origen=landing-hero`).
+// Dos cosas pasan acá y no en la página:
+//
+// 1. Con sesión válida, redirigen a `/dashboard`: quien ya tiene cuenta y
+//    vuelve a clickear "Quiero Aprender" no tiene por qué ver el registro.
+//    `/recuperar` NO está en la lista: con sesión, el flujo de reset sigue
+//    funcionando igual.
+// 2. Sin sesión, `?origen=` se guarda en una cookie first-party para que el
+//    origen sobreviva al ida y vuelta con Google. First-touch: si la cookie ya
+//    existe, no se pisa.
+// -----------------------------------------------------------------------------
+const PANTALLAS_DE_ACCESO = ["/login", "/registro"];
+
+function esPantallaDeAcceso(pathname: string): boolean {
+  return PANTALLAS_DE_ACCESO.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function guardarOrigenEnCookie(request: NextRequest, response: NextResponse): void {
+  const origen = request.nextUrl.searchParams.get("origen");
+  if (origen === null || request.cookies.has(ORIGEN_COOKIE)) return;
+  response.cookies.set(ORIGEN_COOKIE, normalizarOrigen(origen), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: request.nextUrl.protocol === "https:",
+    maxAge: ORIGEN_COOKIE_MAX_AGE,
+    path: "/",
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -260,6 +293,18 @@ export async function middleware(request: NextRequest) {
   const haySesion = !error && !!data;
 
   const { pathname } = request.nextUrl;
+
+  if (esPantallaDeAcceso(pathname)) {
+    // Sólo GET: el submit del form de login/registro es un POST de Server
+    // Action a esta misma URL, y un redirect ahí rompería la action.
+    if (haySesion && request.method === "GET") {
+      return withRefreshedCookies(
+        NextResponse.redirect(new URL("/dashboard", request.url)),
+        response,
+      );
+    }
+    guardarOrigenEnCookie(request, response);
+  }
 
   // Público: pasa con o sin sesión, ya con las cookies refrescadas.
   if (isPublicRoute(pathname)) {

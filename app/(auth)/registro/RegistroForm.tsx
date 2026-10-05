@@ -2,16 +2,25 @@
 
 import { useActionState } from "react";
 import { Button, Checkbox, FormError, PasswordField, TextField } from "@/components/ui";
+import { DEFAULT_REDIRECT } from "@/lib/auth/redirect";
 import { INITIAL_ACTION_STATE } from "@/lib/forms/action-state";
 import { registrarse } from "../_actions";
 import styles from "../auth.module.css";
-import { GoogleLogo } from "../GoogleLogo";
+import { BotonGoogle } from "../BotonGoogle";
 
 export function RegistroForm() {
   const [state, formAction, pending] = useActionState(registrarse, INITIAL_ACTION_STATE);
 
   return (
     <form action={formAction} className={styles.form} noValidate>
+      {/* Google primero (VGRP-76): es el registro en un clic, el camino que
+          queremos que tome quien llega desde la landing. */}
+      <BotonGoogle next={DEFAULT_REDIRECT} />
+
+      <div className={styles.divisor} aria-hidden="true">
+        o con tu email
+      </div>
+
       <TextField
         name="nombre"
         type="text"
@@ -75,26 +84,6 @@ export function RegistroForm() {
       <Button type="submit" fullWidth loading={pending}>
         Crear cuenta
       </Button>
-
-      <div className={styles.social}>
-        <div className={styles.divisor} aria-hidden="true">
-          o
-        </div>
-
-        {/* Botón de UI únicamente: la integración con Google todavía no está
-            hecha (queda deshabilitado hasta que exista la Server Action). */}
-        <Button
-          type="button"
-          variant="ghost"
-          fullWidth
-          disabled
-          title="Muy pronto vas a poder registrarte con tu cuenta de Google."
-        >
-          <GoogleLogo />
-          Continuar con Google
-        </Button>
-        <p className={styles.proximamente}>Próximamente</p>
-      </div>
     </form>
   );
 }

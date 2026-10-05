@@ -1,7 +1,7 @@
 import { Button, TextFieldBase } from "@/components/ui";
 import { ORDENES_USUARIOS, type OrdenUsuarios } from "@/lib/data/admin/usuarios";
 import styles from "../admin.module.css";
-import { NIVEL_LABELS, NIVELES, ROL_LABELS, ROLES } from "../etiquetas";
+import { NIVEL_LABELS, NIVELES, ORIGEN_LABELS, ORIGENES, ROL_LABELS, ROLES } from "../etiquetas";
 
 // VGRP-36 — filtros del listado de usuarios. Form nativo `method="get"`: al
 // enviar navega a `/admin/usuarios?q=...&nivel=...&rol=...&orden=...` y el
@@ -20,6 +20,7 @@ export function UsuariosFiltros({
   nivel,
   rol,
   terminos,
+  origen,
   desde,
   hasta,
   orden,
@@ -28,6 +29,7 @@ export function UsuariosFiltros({
   nivel?: string;
   rol?: string;
   terminos?: string;
+  origen?: string;
   desde?: string;
   hasta?: string;
   orden?: string;
@@ -70,6 +72,17 @@ export function UsuariosFiltros({
           <option value="">Todos</option>
           <option value="si">Aceptados</option>
           <option value="no">Sin aceptar</option>
+        </select>
+      </label>
+      <label className={styles.filtroCampo}>
+        <span className={styles.filtroLabel}>Origen</span>
+        <select name="origen" defaultValue={origen ?? ""} className={styles.selectNativo}>
+          <option value="">Todos</option>
+          {ORIGENES.map((o) => (
+            <option key={o} value={o}>
+              {ORIGEN_LABELS[o]}
+            </option>
+          ))}
         </select>
       </label>
       <label className={styles.filtroCampo}>

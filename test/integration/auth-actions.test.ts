@@ -67,6 +67,10 @@ let requestHeaders: Headers;
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     getAll: () => Array.from(cookieJar.entries()).map(([name, value]) => ({ name, value })),
+    get: (name: string) => {
+      const value = cookieJar.get(name);
+      return value === undefined ? undefined : { name, value };
+    },
     set: (name: string, value: string) => {
       cookieJar.set(name, value);
     },
@@ -204,13 +208,15 @@ describe("registrarse — VGRP-18", () => {
 
     const { data: profile, error } = await admin
       .from("profiles")
-      .select("nivel, nombre, telefono, email")
+      .select("nivel, nombre, telefono, email, origen_registro")
       .eq("id", userIdACleanup)
       .single();
     expect(error).toBeNull();
     expect(profile?.nivel).toBe("ninguno");
     expect(profile?.nombre).toBe("Ada Lovelace");
     expect(profile?.telefono).toBe("+54 9 11 5555-1234");
+    // VGRP-76 — sin cookie `og_origen` (no vino de un CTA de la landing).
+    expect(profile?.origen_registro).toBe("directo");
 
     // "Deja logueado": las cookies que la propia Server Action escribió
     // durante el signUp (vía `createSupabaseServerClient()`) tienen que
@@ -220,6 +226,28 @@ describe("registrarse — VGRP-18", () => {
     const { data: userData, error: userError } = await clienteDeJar().auth.getUser();
     expect(userError).toBeNull();
     expect(userData.user?.email).toBe(email);
+  });
+
+  it("VGRP-76 — con la cookie og_origen que deja el middleware, el registro guarda ese origen", async () => {
+    const email = nuevoEmail("registro-origen");
+    cookieJar.set("og_origen", "landing-hero");
+    const fd = formData({
+      nombre: "Grace Hopper",
+      email,
+      telefono: "+54 9 11 5555-0000",
+      password: "una-password-valida-1",
+      aceptaTerminos: "true",
+    });
+
+    await capturarRedirect(() => registrarse(INITIAL_ACTION_STATE, fd));
+    userIdACleanup = await obtenerUserIdPorEmail(email);
+
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("origen_registro")
+      .eq("id", userIdACleanup)
+      .single();
+    expect(profile?.origen_registro).toBe("landing-hero");
   });
 
   it("una contraseña débil (menos de 8 caracteres) se rechaza con el mensaje del requisito, sin crear cuenta", async () => {

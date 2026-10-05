@@ -17,6 +17,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { ORIGENES } from "../../auth/origen";
 import {
   Constants,
   type Database,
@@ -68,6 +69,7 @@ export const filtrosUsuariosSchema = z.object({
   nivel: z.enum(NIVELES).optional(),
   rol: z.enum(Constants.public.Enums.rol_usuario).optional(),
   terminos: z.enum(["si", "no"]).optional(),
+  origen: z.enum(ORIGENES).optional(),
   desde: z.iso.datetime().optional(),
   hasta: z.iso.datetime().optional(),
   orden: z.enum(ORDENES_USUARIOS).default("recientes"),
@@ -81,6 +83,7 @@ export interface UsuarioListado {
   id: string;
   email: string;
   nivel: NivelAcceso;
+  origen_registro: string | null;
   created_at: string;
 }
 
@@ -95,13 +98,13 @@ export interface ListarUsuariosResultado {
  * `alfabetico` (`email asc, id asc`). Búsqueda parcial (`ilike '%q%'`) por
  * email, nombre o teléfono resuelta EN LA BASE (US-3: la búsqueda no filtra en
  * cliente, no expone filas que no matchean). Filtros opcionales por `nivel`,
- * `rol`, términos aceptados y rango de alta.
+ * `rol`, términos aceptados, origen del registro (VGRP-76) y rango de alta.
  */
 export async function listarUsuarios(
   admin: AdminClient,
   filtros: FiltrosUsuarios,
 ): Promise<ListarUsuariosResultado> {
-  const { q, nivel, rol, terminos, desde, hasta, orden, limit, cursor } =
+  const { q, nivel, rol, terminos, origen, desde, hasta, orden, limit, cursor } =
     filtrosUsuariosSchema.parse(filtros);
 
   const alfabetico = orden === "alfabetico";
@@ -109,7 +112,7 @@ export async function listarUsuarios(
 
   let query = admin
     .from("profiles")
-    .select("id, email, nivel, created_at")
+    .select("id, email, nivel, origen_registro, created_at")
     .order(alfabetico ? "email" : "created_at", { ascending })
     .order("id", { ascending })
     .limit(limit + 1);
@@ -122,6 +125,7 @@ export async function listarUsuarios(
   if (rol) query = query.eq("rol", rol);
   if (terminos === "si") query = query.not("terminos_aceptados_at", "is", null);
   if (terminos === "no") query = query.is("terminos_aceptados_at", null);
+  if (origen) query = query.eq("origen_registro", origen);
   if (desde) query = query.gte("created_at", desde);
   if (hasta) query = query.lte("created_at", hasta);
 

@@ -370,6 +370,7 @@ export type Database = {
           id: string;
           nivel: Database["public"]["Enums"]["nivel_acceso"];
           nombre: string | null;
+          origen_registro: string | null;
           progreso: Json;
           rol: Database["public"]["Enums"]["rol_usuario"];
           telefono: string | null;
@@ -383,6 +384,7 @@ export type Database = {
           id: string;
           nivel?: Database["public"]["Enums"]["nivel_acceso"];
           nombre?: string | null;
+          origen_registro?: string | null;
           progreso?: Json;
           rol?: Database["public"]["Enums"]["rol_usuario"];
           telefono?: string | null;
@@ -396,6 +398,7 @@ export type Database = {
           id?: string;
           nivel?: Database["public"]["Enums"]["nivel_acceso"];
           nombre?: string | null;
+          origen_registro?: string | null;
           progreso?: Json;
           rol?: Database["public"]["Enums"]["rol_usuario"];
           telefono?: string | null;

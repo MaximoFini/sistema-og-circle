@@ -5,14 +5,14 @@ import { listarUsuarios, ORDENES_USUARIOS } from "@/lib/data/admin/usuarios";
 import { Constants } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
-import { nivelLabel } from "../etiquetas";
+import { nivelLabel, ORIGENES, origenLabel } from "../etiquetas";
 import { normalizarParams, rangoDia } from "../searchParams";
 import { UsuariosFiltros } from "./UsuariosFiltros";
 
 // VGRP-36 — Listado de usuarios. Server Component: consulta `listarUsuarios`
 // por service role (bypassa RLS; la barrera de autorización es el rol de la
 // capa de ruta — middleware + layout). Búsqueda parcial por email, nombre o
-// teléfono + filtros por nivel, rol, términos y fecha de alta + orden +
+// teléfono + filtros por nivel, rol, términos, origen y fecha de alta + orden +
 // paginación keyset ("Cargar más"). Mobile-first: filas apiladas, no
 // tabla.
 //
@@ -27,6 +27,7 @@ const searchSchema = z.object({
   nivel: z.enum(Constants.public.Enums.nivel_acceso).optional(),
   rol: z.enum(Constants.public.Enums.rol_usuario).optional(),
   terminos: z.enum(["si", "no"]).optional(),
+  origen: z.enum(ORIGENES).optional(),
   desde: z.iso.date().optional(),
   hasta: z.iso.date().optional(),
   orden: z.enum(ORDENES_USUARIOS).optional(),
@@ -71,6 +72,7 @@ async function ResultadosUsuarios({ filtros, cursor }: { filtros: Filtros; curso
             <TextLink key={u.id} href={`/admin/usuarios/${u.id}`} className={styles.userRow}>
               <span className={styles.userEmail}>{u.email}</span>
               <span className={styles.nivelPill}>{nivelLabel(u.nivel)}</span>
+              <span className={styles.userAlta}>{origenLabel(u.origen_registro)}</span>
               <span className={styles.userAlta}>{formatearFecha(u.created_at)}</span>
             </TextLink>
           ))}
