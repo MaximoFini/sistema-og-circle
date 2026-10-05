@@ -19,10 +19,11 @@ export default function TerminosPage() {
         calculadora de costos).
       </p>
 
-      <h2>2. Niveles de acceso y pago</h2>
+      <h2>2. Plan y pago</h2>
       <p>
-        [Placeholder] Principiante y Avanzado, pago único, sin suscripción. Qué desbloquea cada
-        nivel, y que los precios pueden cambiar hacia adelante sin afectar compras ya hechas.
+        [Placeholder] Un único plan de acceso: pago único y de por vida, sin suscripción, con acceso
+        a todo el contenido. Los precios pueden cambiar hacia adelante, sin afectar las compras ya
+        hechas.
       </p>
 
       <h2>3. Uso de la infraestructura de terceros</h2>
@@ -36,7 +37,7 @@ export default function TerminosPage() {
       <p>
         [Placeholder] Veracidad de los datos de registro, uso personal e intransferible de la
         cuenta, prohibición de compartir contenido restringido (contactos de agentes, datos SWIFT)
-        con quien no pagó ese nivel.
+        con quien no haya pagado el acceso.
       </p>
 
       <h2>5. Modificaciones</h2>

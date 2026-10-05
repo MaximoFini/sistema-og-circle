@@ -3,8 +3,7 @@
 // Mismo estilo que `app/api/webhooks/mercadopago/route.test.ts`: `vi.mock()`
 // de los cuatro módulos de los que depende `_actions.ts`
 // (`@/lib/auth/server`, `@/lib/auth/claims`, `@/lib/mercadopago/preferencia`,
-// `@/lib/mercadopago/client`, `@/lib/config` (VGRP-61, flag de MP), más
-// `@vercel/analytics/server`) + funciones
+// `@/lib/mercadopago/client`, más `@vercel/analytics/server`) + funciones
 // espía, `vi.resetModules()` en `beforeEach` e import dinámico del módulo
 // bajo test dentro de cada test. Sin red real, sin Supabase real: todo lo que
 // hablaría con Mercado Pago o con Supabase Auth está mockeado.
@@ -18,7 +17,6 @@ const mockArmarPreferencia = vi.fn();
 const mockGetPreferenceClient = vi.fn();
 const mockCreate = vi.fn();
 const mockTrack = vi.fn();
-const mockGetFlags = vi.fn();
 
 vi.mock("@/lib/auth/server", () => ({
   getVerifiedClaims: () => mockGetVerifiedClaims(),
@@ -45,22 +43,11 @@ vi.mock("@/lib/mercadopago/client", () => ({
   getPreferenceClient: () => mockGetPreferenceClient(),
 }));
 
-vi.mock("@/lib/config", () => ({
-  getFlags: () => mockGetFlags(),
-}));
-
 vi.mock("@vercel/analytics/server", () => ({
   track: (...args: unknown[]) => mockTrack(...args),
 }));
 
 const CLAIMS_OK = { sub: "user-123", app_metadata: { nivel: "ninguno" } };
-
-const FLAGS_MP_ON = {
-  checkout_habilitado: false,
-  registro_habilitado: true,
-  fase: "2" as const,
-  mercadopago_habilitado: true,
-};
 
 const PREFERENCIA_OK = {
   ok: true as const,
@@ -80,12 +67,7 @@ describe("crearCheckout", () => {
     mockGetPreferenceClient.mockReset();
     mockCreate.mockReset();
     mockTrack.mockReset();
-    mockGetFlags.mockReset();
 
-    // VGRP-61: MP prendido por default, así el resto del archivo sigue
-    // probando el flujo de Mercado Pago tal cual (sin skip). El caso apagado
-    // tiene su propio describe más abajo.
-    mockGetFlags.mockResolvedValue(FLAGS_MP_ON);
     mockGetVerifiedClaims.mockResolvedValue(CLAIMS_OK);
     // Auditoría de Mercado Pago: crearCheckout ahora también llama a
     // getNivel(claims) para bloquear la recompra de un nivel ya alcanzado.
@@ -192,21 +174,6 @@ describe("crearCheckout", () => {
     const result = await crearCheckout("completo");
 
     expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
-  });
-
-  // VGRP-61 — con MP apagado, ni siquiera una invocación directa (sin pasar
-  // por /comprar) puede iniciar un cobro de Mercado Pago.
-  it("con mercadopago_habilitado=false devuelve ok:false sin armar la preferencia, sin hablar con MP y sin trackear", async () => {
-    mockGetFlags.mockResolvedValue({ ...FLAGS_MP_ON, mercadopago_habilitado: false });
-
-    const { crearCheckout } = await import("./_actions");
-    const result = await crearCheckout("completo");
-
-    expect(result).toEqual({ ok: false, error: "El pago con Mercado Pago no está disponible." });
-    expect(mockArmarPreferencia).not.toHaveBeenCalled();
-    expect(mockGetPreferenceClient).not.toHaveBeenCalled();
-    expect(mockCreate).not.toHaveBeenCalled();
-    expect(mockTrack).not.toHaveBeenCalled();
   });
 
   // Auditoría de Mercado Pago (decisión del equipo): bloquear la recompra

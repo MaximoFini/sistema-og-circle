@@ -126,7 +126,6 @@ describe("getConfig", () => {
       checkout_habilitado: false,
       registro_habilitado: false,
       fase: "2",
-      mercadopago_habilitado: false,
     });
   });
 });

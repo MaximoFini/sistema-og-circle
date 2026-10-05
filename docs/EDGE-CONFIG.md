@@ -48,7 +48,6 @@ panel no está disponible por algún motivo.
 | `precios.plan` | `number` (entero positivo, ARS) | Precio del único plan (VGRP-59/60, Bloque 13 — antes dos claves, `precios.principiante`/`precios.avanzado`) | **Sin fallback.** `getPrecios()` devuelve `{ ok: false, error }`. El caller debe deshabilitar el checkout — nunca se muestra ni se cobra un número adivinado. |
 | `plan.nombre` | `string` (no vacío) | Nombre comercial del único plan (hoy "Plan X") | Fail-open: default hardcodeado en `lib/config/index.ts` (`DEFAULT_PLAN`) — es copy, no dinero. |
 | `flags.checkout_habilitado` | `boolean` | **Hoy no controla nada** (ningún código lo lee) | Default conservador: `false`. |
-| `flags.mercadopago_habilitado` | `boolean`, opcional (VGRP-61) | Si se puede iniciar un pago con Mercado Pago (`crearCheckout` y el botón de `/comprar`). No afecta al webhook. | Default conservador: `false` (MP apagado). Si la clave falta, también vale `false`, sin invalidar el resto de `flags`. |
 | `flags.registro_habilitado` | `boolean` | Si el registro de usuarios está activo | Default conservador: `false` (registro apagado). |
 | `flags.fase` | `"1" \| "2" \| "3" \| "4"` | Fase actual del proyecto | Default conservador: `"2"`. |
 | `links.calculadora` | `string` (URL) | Link externo a la calculadora | Default hardcodeado en `lib/config/index.ts` (un link viejo no cuesta plata). |
@@ -88,31 +87,9 @@ Notas sobre los valores:
 
 - `flags.checkout_habilitado` está en `false`, pero hoy ningún código lo lee: no controla
   nada (aclarado en VGRP-61; darle una función queda para otro ticket).
-- `flags.mercadopago_habilitado` todavía no está cargado, así que vale `false` (MP apagado,
-  VGRP-61). Se escribe la primera vez que un admin guarda los flags desde `/admin/config`.
 - `links.whatsapp` sigue siendo el placeholder `5491100000000` (mismo valor que el
   fallback de `lib/config/index.ts`). Reemplazar por el número real de soporte cuando
   esté definido.
-
-## Reactivar Mercado Pago (VGRP-61)
-
-Desde el 02/10/2026 el cobro es por transferencia y Mercado Pago está apagado con
-`flags.mercadopago_habilitado = false`. El código de la integración (checkout, webhook,
-firma, mapeo de estados y sus tests) sigue en el repo y en verde.
-
-- **Qué apaga el flag:** sólo el inicio de pagos. `crearCheckout()` devuelve error sin
-  hablar con MP, y `/comprar` no muestra el botón ni nombra a MP.
-- **Qué NO apaga:** el webhook `/api/webhooks/mercadopago` sigue activo, para no perder
-  pagos tardíos ni refunds de checkouts iniciados antes del apagado.
-
-Para reactivarlo:
-
-1. Verificar que `MERCADOPAGO_ACCESS_TOKEN` y `MERCADOPAGO_WEBHOOK_SECRET` estén cargadas
-   en Vercel para el entorno que corresponda (ver `docs/MERCADOPAGO-PRODUCCION.md`).
-2. En `/admin/config`, prender "Mercado Pago habilitado" y guardar. No hace falta deploy.
-3. Probar un checkout en `/comprar`.
-
-Para apagarlo de nuevo, destildar el mismo checkbox.
 
 ## Diseño: fail closed en dinero, fail open en cosmético
 

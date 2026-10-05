@@ -55,7 +55,6 @@ const CONFIG_OK = {
     checkout_habilitado: false,
     registro_habilitado: true,
     fase: "2" as const,
-    mercadopago_habilitado: false,
   },
   links: {
     calculadora: "https://vegroup.vercel.app/calculadora",
@@ -267,14 +266,11 @@ describe("PATCH /api/admin/config", () => {
     );
   });
 
-  // VGRP-61: incluye prender `mercadopago_habilitado` — el toggle de
-  // FlagsForm viaja por este mismo PATCH, con la misma validación y auditoría.
   it("éxito con flags -> 200, escribirEdgeConfig(key=flags) y audit con entidadId=flags", async () => {
     const nuevoFlags = {
       checkout_habilitado: true,
       registro_habilitado: true,
       fase: "3" as const,
-      mercadopago_habilitado: true,
     };
     const res = await callPatch({ flags: nuevoFlags });
 
