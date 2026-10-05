@@ -101,7 +101,9 @@
 .modalPanel {
   composes: raised from "../../../components/ui/glass.module.css";
   --g-radius: 26px;
-  position: fixed;
+  /* Por variable y no `position: fixed`: quien compone una primitiva no
+     redeclara sus propiedades (CLAUDE.md). */
+  --g-position: fixed;
   z-index: 101;
   top: 50%;
   left: 50%;
@@ -109,17 +111,25 @@
   width: calc(100vw - 32px);
   max-width: 440px;
   max-height: calc(100dvh - 48px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 28px 24px;
   animation: modalEntrar var(--duration-slow) var(--ease-out-expo);
 }
 
+/* El scroll va en este hijo y no en `.modalPanel`: un elemento de vidrio no
+   scrollea él mismo (regla en glass.module.css). */
+.modalCuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px 24px;
+}
+
 @media (min-width: 640px) {
-  .modalPanel {
+  .modalCuerpo {
     padding: 32px;
   }
 }

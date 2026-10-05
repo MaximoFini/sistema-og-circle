@@ -109,68 +109,70 @@ export function NavDrawer({
         className={styles.panel}
         onKeyDown={onKeyDown}
       >
-        {/* Cuenta arriba (no focuseable: el foco inicial va al primer
+        <div className={styles.panelCuerpo}>
+          {/* Cuenta arriba (no focuseable: el foco inicial va al primer
             destino, "Inicio" — e2e/dashboard-shell.spec.ts). */}
-        <UserFooter perfil={perfil} cargando={cargandoPerfil} />
+          <UserFooter perfil={perfil} cargando={cargandoPerfil} />
 
-        <nav aria-label="Navegación principal" className={styles.nav}>
-          <ul className={styles.lista}>
-            {DESTINOS_NAV.map((destino) =>
-              destino.proximamente ? (
-                <li key={destino.href} className={styles.item}>
-                  <span className={styles.destinoProximamente}>
-                    <span className={styles.iconTile}>
-                      <Icon name={destino.icono} size={18} />
+          <nav aria-label="Navegación principal" className={styles.nav}>
+            <ul className={styles.lista}>
+              {DESTINOS_NAV.map((destino) =>
+                destino.proximamente ? (
+                  <li key={destino.href} className={styles.item}>
+                    <span className={styles.destinoProximamente}>
+                      <span className={styles.iconTile}>
+                        <Icon name={destino.icono} size={18} />
+                      </span>
+                      <span className={styles.destinoLabel}>{destino.label}</span>
+                      <span className={styles.badge}>Próximamente</span>
                     </span>
-                    <span className={styles.destinoLabel}>{destino.label}</span>
-                    <span className={styles.badge}>Próximamente</span>
-                  </span>
-                </li>
-              ) : (
-                <li key={destino.href} className={styles.item}>
-                  <NextLink
-                    href={destino.href}
-                    className={styles.destino}
-                    onClick={onCerrar}
-                    aria-current={esActual(pathname, destino.href) ? "page" : undefined}
-                  >
-                    <span className={styles.iconTile}>
-                      <Icon name={destino.icono} size={18} />
-                    </span>
-                    <span className={styles.destinoLabel}>{destino.label}</span>
-                    <Icon
-                      name={destino.href.startsWith("/") ? "chevron" : "externo"}
-                      size={16}
-                      className={styles.chevron}
-                    />
-                  </NextLink>
-                </li>
-              ),
-            )}
-          </ul>
+                  </li>
+                ) : (
+                  <li key={destino.href} className={styles.item}>
+                    <NextLink
+                      href={destino.href}
+                      className={styles.destino}
+                      onClick={onCerrar}
+                      aria-current={esActual(pathname, destino.href) ? "page" : undefined}
+                    >
+                      <span className={styles.iconTile}>
+                        <Icon name={destino.icono} size={18} />
+                      </span>
+                      <span className={styles.destinoLabel}>{destino.label}</span>
+                      <Icon
+                        name={destino.href.startsWith("/") ? "chevron" : "externo"}
+                        size={16}
+                        className={styles.chevron}
+                      />
+                    </NextLink>
+                  </li>
+                ),
+              )}
+            </ul>
 
-          {/* Sólo visible para admins (`esAdmin` viene de /api/perfil). Grupo
+            {/* Sólo visible para admins (`esAdmin` viene de /api/perfil). Grupo
               propio, separado de los destinos: no es un destino del usuario
               sino un cambio de modo. */}
-          {perfil?.esAdmin ? (
-            <ul className={styles.lista}>
-              <li className={styles.item}>
-                <NextLink href="/admin" className={styles.destino} onClick={onCerrar}>
-                  <span className={`${styles.iconTile} ${styles.iconTileAdmin}`}>
-                    <Icon name="escudo" size={18} />
-                  </span>
-                  <span className={styles.destinoLabel}>Panel de administrador</span>
-                  <Icon name="chevron" size={16} className={styles.chevron} />
-                </NextLink>
-              </li>
-            </ul>
-          ) : null}
-        </nav>
+            {perfil?.esAdmin ? (
+              <ul className={styles.lista}>
+                <li className={styles.item}>
+                  <NextLink href="/admin" className={styles.destino} onClick={onCerrar}>
+                    <span className={`${styles.iconTile} ${styles.iconTileAdmin}`}>
+                      <Icon name="escudo" size={18} />
+                    </span>
+                    <span className={styles.destinoLabel}>Panel de administrador</span>
+                    <Icon name="chevron" size={16} className={styles.chevron} />
+                  </NextLink>
+                </li>
+              </ul>
+            ) : null}
+          </nav>
 
-        <CerrarSesionBoton className={styles.salir}>
-          <Icon name="salir" size={18} />
-          Cerrar sesión
-        </CerrarSesionBoton>
+          <CerrarSesionBoton className={styles.salir}>
+            <Icon name="salir" size={18} />
+            Cerrar sesión
+          </CerrarSesionBoton>
+        </div>
       </div>
     </>,
     document.body,

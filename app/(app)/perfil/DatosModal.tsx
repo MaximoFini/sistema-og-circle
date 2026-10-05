@@ -106,28 +106,30 @@ export function DatosModal({
                 className={styles.modalPanel}
                 onKeyDown={onKeyDown}
               >
-                <div className={styles.modalCabecera}>
-                  <div className={styles.cardCabecera}>
-                    <h2 className={styles.h2} id="datos-modal-titulo">
-                      Tus datos
-                    </h2>
-                    <p className={styles.email}>{email}</p>
+                <div className={styles.modalCuerpo}>
+                  <div className={styles.modalCabecera}>
+                    <div className={styles.cardCabecera}>
+                      <h2 className={styles.h2} id="datos-modal-titulo">
+                        Tus datos
+                      </h2>
+                      <p className={styles.email}>{email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.modalCerrar}
+                      onClick={cerrar}
+                      aria-label="Cerrar"
+                    >
+                      <Icon name="cerrar" size={18} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className={styles.modalCerrar}
-                    onClick={cerrar}
-                    aria-label="Cerrar"
-                  >
-                    <Icon name="cerrar" size={18} />
-                  </button>
-                </div>
 
-                <PerfilForm
-                  nombreInicial={nombreInicial}
-                  telefonoInicial={telefonoInicial}
-                  onGuardado={cerrar}
-                />
+                  <PerfilForm
+                    nombreInicial={nombreInicial}
+                    telefonoInicial={telefonoInicial}
+                    onGuardado={cerrar}
+                  />
+                </div>
               </div>
             </>,
             document.body,

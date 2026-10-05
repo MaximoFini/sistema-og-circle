@@ -280,10 +280,20 @@
   gap: 20px;
   max-height: calc(100dvh - var(--header-height) - 16px);
   padding: 10px 12px 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   transform-origin: bottom center;
   animation: hoja-in var(--duration-slow) var(--ease-out-expo);
+}
+
+/* El scroll va en este hijo y no en `.panel`: un elemento de vidrio no
+   scrollea él mismo (regla en glass.module.css), el reflejo del borde se
+   movería con el contenido. La agarradera (`.panel::after`) queda fija. */
+.panelCuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Agarradera de la hoja (sólo mobile, decorativa). */

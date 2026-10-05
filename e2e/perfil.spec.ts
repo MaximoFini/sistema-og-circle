@@ -110,6 +110,8 @@ test.describe("/perfil — VGRP-52", () => {
     try {
       await loginComo(page, usuario.email);
       await page.goto("/perfil");
+      // El formulario vive en el modal "Tus datos" (DatosModal.tsx).
+      await page.getByRole("button", { name: "Ver datos" }).click();
 
       // createAuthenticatedUser no setea nombre/telefono (sólo email, ver test/helpers/
       // auth.ts) — precargado con los valores reales de profiles (strings vacíos), no
@@ -123,9 +125,14 @@ test.describe("/perfil — VGRP-52", () => {
       await page.getByLabel("Teléfono").fill(nuevoTelefono);
       await page.getByRole("button", { name: "Guardar cambios" }).click();
 
-      await expect(page.getByText("Guardado.")).toBeVisible();
+      // Tras guardar, el modal se cierra solo (PerfilForm → onGuardado); el
+      // "Guardado." dura 700 ms, así que se espera el cierre y no el texto.
+      await expect(page.getByRole("dialog", { name: "Tus datos" })).toHaveCount(0, {
+        timeout: 15_000,
+      });
 
       await page.reload();
+      await page.getByRole("button", { name: "Ver datos" }).click();
       await expect(page.getByLabel("Nombre")).toHaveValue(nuevoNombre);
       await expect(page.getByLabel("Teléfono")).toHaveValue(nuevoTelefono);
     } finally {
@@ -141,7 +148,12 @@ test.describe("/perfil — VGRP-52", () => {
       await loginComo(page, usuario.email);
       await page.goto("/perfil");
 
+      // CerrarSesionBoton pide confirmación en un diálogo propio.
       await page.getByRole("button", { name: "Cerrar sesión" }).click();
+      await page
+        .getByRole("dialog", { name: "¿Cerrar sesión?" })
+        .getByRole("button", { name: "Cerrar sesión" })
+        .click();
       await page.waitForURL("**/login");
 
       // La sesión quedó realmente cerrada, no sólo la UI: /dashboard sin sesión rebota
