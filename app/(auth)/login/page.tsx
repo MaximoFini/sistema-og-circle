@@ -11,9 +11,9 @@ import { LoginForm } from "./LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next: rawNext } = await searchParams;
+  const { next: rawNext, error } = await searchParams;
   const next = safeRedirectPath(rawNext);
 
   return (
@@ -23,7 +23,7 @@ export default async function LoginPage({
         <p className={styles.subtitle}>Accedé a tu cuenta de OG Circle.</p>
       </div>
 
-      <LoginForm next={next} />
+      <LoginForm next={next} errorGoogle={error === "google"} />
 
       <div className={styles.footer}>
         <p className={styles.subtitle}>

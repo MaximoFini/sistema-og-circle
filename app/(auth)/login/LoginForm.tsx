@@ -6,7 +6,7 @@ import { Button, FormError, PasswordField, TextField } from "@/components/ui";
 import { INITIAL_ACTION_STATE } from "@/lib/forms/action-state";
 import { iniciarSesion } from "../_actions";
 import styles from "../auth.module.css";
-import { GoogleLogo } from "../GoogleLogo";
+import { BotonGoogle } from "../BotonGoogle";
 
 /**
  * `next` ya pasó por `safeRedirectPath()` en `page.tsx` (Server Component) —
@@ -14,8 +14,15 @@ import { GoogleLogo } from "../GoogleLogo";
  * reciba en el mismo submit, sin depender de leer `searchParams` de nuevo
  * del lado del cliente.
  */
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, errorGoogle }: { next: string; errorGoogle: boolean }) {
   const [state, formAction, pending] = useActionState(iniciarSesion, INITIAL_ACTION_STATE);
+  // VGRP-76 — el callback de Google vuelve acá con `?error=google` si el
+  // usuario canceló o el canje falló. Se muestra hasta el primer submit.
+  const error =
+    state.error ??
+    (errorGoogle && state === INITIAL_ACTION_STATE
+      ? "No pudimos entrar con Google. Probá de nuevo o usá tu email."
+      : undefined);
 
   return (
     <form action={formAction} className={styles.form} noValidate>
@@ -41,7 +48,7 @@ export function LoginForm({ next }: { next: string }) {
         className={styles.expansivo}
       />
 
-      <FormError>{state.error}</FormError>
+      <FormError>{error}</FormError>
 
       <Button type="submit" fullWidth loading={pending} className={styles.expansivo}>
         Iniciar sesión
@@ -51,26 +58,11 @@ export function LoginForm({ next }: { next: string }) {
         ¿Olvidaste tu contraseña?
       </Link>
 
-      <div className={styles.social}>
-        <div className={styles.divisor} aria-hidden="true">
-          o
-        </div>
-
-        {/* Botón de UI únicamente: la integración con Google todavía no está
-            hecha (queda deshabilitado hasta que exista la Server Action). */}
-        <Button
-          type="button"
-          variant="ghost"
-          fullWidth
-          disabled
-          className={styles.expansivo}
-          title="Muy pronto vas a poder entrar con tu cuenta de Google."
-        >
-          <GoogleLogo />
-          Continuar con Google
-        </Button>
-        <p className={styles.proximamente}>Próximamente</p>
+      <div className={styles.divisor} aria-hidden="true">
+        o
       </div>
+
+      <BotonGoogle next={next} className={styles.expansivo} />
     </form>
   );
 }

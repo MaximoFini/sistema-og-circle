@@ -1,3 +1,4 @@
+import { ORIGENES, type Origen } from "@/lib/auth/origen";
 import type { NivelAcceso } from "@/lib/database.types";
 import { Constants } from "@/lib/database.types";
 
@@ -51,6 +52,24 @@ export const ROL_LABELS: Record<(typeof ROLES)[number], string> = {
 
 export function rolLabel(rol: string): string {
   return ROL_LABELS[rol as (typeof ROLES)[number]] ?? rol;
+}
+
+export { ORIGENES };
+
+export const ORIGEN_LABELS: Record<Origen, string> = {
+  "landing-nav": "Landing · menú",
+  "landing-hero": "Landing · portada",
+  "landing-menu-mobile": "Landing · menú mobile",
+  "landing-precios-principiante": "Landing · Principiante",
+  "landing-precios-avanzado": "Landing · Avanzado",
+  directo: "Directo",
+  otro: "Otro",
+};
+
+/** `null` = cuenta creada antes de que se guardara el origen (VGRP-76). */
+export function origenLabel(origen: string | null): string {
+  if (!origen) return "Sin dato";
+  return ORIGEN_LABELS[origen as Origen] ?? origen;
 }
 
 // `mostrarRef: false` cuando la referencia no le dice nada al admin (las filas

@@ -10,6 +10,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { flattenError } from "zod";
+import { guardarOrigenSiFalta } from "@/lib/auth/origen-server";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { createSupabaseServerClient } from "@/lib/auth/server";
 import { getFlags } from "@/lib/config";
@@ -135,6 +136,10 @@ export async function registrarse(
     .from("profiles")
     .update({ nombre, telefono, ...terminosAceptadosFields() })
     .eq("id", data.user.id);
+
+  // VGRP-76 — también best-effort; va por service role (el usuario no puede
+  // escribir su propio origen).
+  await guardarOrigenSiFalta(data.user.id);
 
   redirect("/dashboard");
 }

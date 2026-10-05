@@ -67,9 +67,9 @@
   }
 }
 
-/* Bloque de Google (divisor + botón + "Próximamente"): un solo hijo del
-   form, con su propio ritmo más apretado — así no arrastra el `gap` del
-   form (18px) tres veces y no desproporciona la tarjeta. */
+/* Bloque de Google (botón + error + texto legal): un solo hijo del form, con
+   su propio ritmo más apretado — así no arrastra el `gap` del form (18px) en
+   cada pieza y no desproporciona la tarjeta. */
 .social {
   display: flex;
   flex-direction: column;
@@ -92,13 +92,26 @@
   background: var(--separator);
 }
 
-/* Bajo el botón de Google mientras no exista la integración real (mismo
-   tono que el badge "Próximamente" del menú de navegación). */
-.proximamente {
-  margin: -4px 0 0;
+/* Texto legal bajo el botón de Google (VGRP-76): entrar con Google registra la
+   aceptación de los Términos, así que el aviso va pegado al botón. */
+.legalGoogle {
+  margin: -2px 0 0;
   text-align: center;
   font-size: var(--fs-footnote);
-  color: var(--text-faint);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.legalGoogle a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: 2px;
+}
+
+.legalGoogle a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .disabledCard {
