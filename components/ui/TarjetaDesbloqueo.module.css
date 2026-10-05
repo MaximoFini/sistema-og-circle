@@ -22,23 +22,23 @@
   left: 50%;
   z-index: 50;
   transform: translate(-50%, -50%);
-  width: min(420px, calc(100vw - 32px));
+  width: min(440px, calc(100vw - 32px));
   max-height: calc(100dvh - var(--header-height) - 32px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 36px 28px 28px;
+  gap: 10px;
+  padding: 28px 24px 24px;
   text-align: center;
 }
 
 .icono {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
-  margin-bottom: 4px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 2px;
   border-radius: 50%;
   background: var(--fill);
   color: var(--accent-soft);
@@ -54,6 +54,75 @@
 
 .bajada {
   composes: body from "./type.module.css";
+}
+
+/* Qué incluye: lista agrupada compacta, alineada a la izquierda dentro de la
+   tarjeta centrada (mismo lenguaje que las listas de Perfil y el menú). */
+.beneficios {
+  composes: inset from "./glass.module.css";
+  --g-radius: var(--radius-card);
+  width: 100%;
+  margin: 6px 0 4px;
+  padding: 6px 14px;
+  list-style: none;
+  text-align: left;
+}
+
+.beneficio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+}
+
+.beneficio + .beneficio {
+  border-top: 1px solid var(--separator);
+}
+
+.beneficioIcono {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--accent-12);
+  color: var(--accent-soft);
+}
+
+.beneficioTexto {
+  composes: body from "./type.module.css";
+  --t-size: var(--fs-subhead);
+  --t-color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.partner {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.partnerCon {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* El logo de Belo viene sobre blanco: va en una pastilla clara, como en la
+   sección de partners de la landing. */
+.partnerLogo {
+  display: block;
+  box-sizing: content-box;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.pronto {
+  composes: chip from "./glass.module.css";
+  flex-shrink: 0;
 }
 
 .precio {
@@ -76,6 +145,23 @@
   font-weight: 500;
   letter-spacing: -0.005em;
   color: var(--text-muted);
+}
+
+/* Pantallas bajas (iPhone SE y similares): la tarjeta se compacta para que la
+   lista y el CTA entren sin scroll interno. */
+@media (max-height: 740px) {
+  .tarjeta {
+    gap: 8px;
+    padding-top: 20px;
+  }
+
+  .icono {
+    display: none;
+  }
+
+  .beneficio {
+    min-height: 32px;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {

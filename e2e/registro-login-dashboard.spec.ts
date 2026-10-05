@@ -124,7 +124,7 @@ test.describe("registro → login → dashboard", () => {
       // corriendo la suite completa varias veces seguidas.
       await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
       // VGRP-77: sin plan, Inicio es la plataforma borrosa con la tarjeta de desbloqueo.
-      await expect(page.getByText("La formación completa, la calculadora de costos")).toBeVisible();
+      await expect(page.getByRole("list", { name: "Qué incluye" })).toBeVisible();
       // El CTA es un `<NextLink>` (un `<a>`), no un `<button>` — su rol
       // accesible real es "link" (components/ui/TarjetaDesbloqueo.tsx, VGRP-77:
       // reusa las clases de Button.module.css para el estilo, nunca el

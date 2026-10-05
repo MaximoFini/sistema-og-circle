@@ -62,6 +62,11 @@ test.describe("plataforma bloqueada sin plan (VGRP-77)", () => {
       "/comprar",
     );
 
+    // Qué incluye el plan, con Belo como partner de los pagos al exterior.
+    const incluye = page.getByRole("list", { name: "Qué incluye" });
+    await expect(incluye.getByRole("listitem")).toHaveCount(8);
+    await expect(incluye.getByRole("img", { name: "Belo" })).toBeVisible();
+
     const fondo = page.locator("[inert]");
     await expect(fondo).toHaveCount(1);
     await expect(fondo).toHaveAttribute("aria-hidden", "true");
