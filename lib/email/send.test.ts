@@ -11,11 +11,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const mockSend = vi.fn();
+const mockCaptureException = vi.fn();
 
 vi.mock("resend", () => ({
   Resend: class {
     emails = { send: mockSend };
   },
+}));
+
+vi.mock("@sentry/nextjs", () => ({
+  captureException: (...args: unknown[]) => mockCaptureException(...args),
 }));
 
 // Elemento de React de mentira: `enviarEmail` solo se lo pasa a Resend, no lo
@@ -29,8 +34,8 @@ describe("enviarEmail", () => {
     // anterior. Ver el mismo comentario en route.test.ts.
     vi.resetModules();
     mockSend.mockReset();
+    mockCaptureException.mockReset();
     vi.stubEnv("RESEND_API_KEY", "re_clave_de_prueba");
-    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -131,11 +136,17 @@ describe("enviarEmail", () => {
 
     expect(construidoCon).toEqual(["re_clave_vieja", "re_clave_nueva"]);
 
-    vi.doUnmock("resend");
+    // Restaura el mock de arriba: `doUnmock` dejaría a los tests siguientes con el
+    // SDK real de Resend.
+    vi.doMock("resend", () => ({
+      Resend: class {
+        emails = { send: mockSend };
+      },
+    }));
     vi.resetModules();
   });
 
-  it("reporta todo fallo por el punto de instrumentación de VGRP-41", async () => {
+  it("reporta a Sentry con tag motivo cuando Resend responde con error en el body", async () => {
     mockSend.mockResolvedValue({
       data: null,
       error: { name: "rate_limit_exceeded", message: "too many requests" },
@@ -149,6 +160,64 @@ describe("enviarEmail", () => {
       motivo: "reset-password",
     });
 
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("reset-password"));
+    expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    const [error, contexto] = mockCaptureException.mock.calls[0];
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("too many requests");
+    expect(contexto).toEqual({ tags: { motivo: "reset-password" } });
+  });
+
+  it("reporta a Sentry una excepción de red como Error normalizado", async () => {
+    mockSend.mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
+
+    const { enviarEmail } = await import("./send");
+    await enviarEmail({
+      para: "alguien@ejemplo.com",
+      asunto: "hola",
+      plantilla: PLANTILLA,
+      motivo: "reset-password",
+    });
+
+    expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    expect(mockCaptureException.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(mockCaptureException.mock.calls[0][1]).toEqual({
+      tags: { motivo: "reset-password" },
+    });
+  });
+
+  it("reporta a Sentry cuando falta RESEND_API_KEY", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    const { enviarEmail } = await import("./send");
+    await enviarEmail({
+      para: "alguien@ejemplo.com",
+      asunto: "hola",
+      plantilla: PLANTILLA,
+      motivo: "reset-password",
+    });
+
+    expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    expect((mockCaptureException.mock.calls[0][0] as Error).message).toContain("RESEND_API_KEY");
+    expect(mockCaptureException.mock.calls[0][1]).toEqual({
+      tags: { motivo: "reset-password" },
+    });
+  });
+
+  it("si Sentry lanza, enviarEmail igual resuelve con ok:false y no propaga", async () => {
+    mockSend.mockRejectedValue(new Error("fetch failed"));
+    mockCaptureException.mockImplementation(() => {
+      throw new Error("sentry roto");
+    });
+
+    const { enviarEmail } = await import("./send");
+
+    await expect(
+      enviarEmail({
+        para: "alguien@ejemplo.com",
+        asunto: "hola",
+        plantilla: PLANTILLA,
+        motivo: "test",
+      }),
+    ).resolves.toEqual({ ok: false, error: "fetch failed" });
   });
 });

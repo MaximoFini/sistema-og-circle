@@ -3,7 +3,7 @@ import "server-only";
 import type { PreferenceRequest } from "mercadopago/dist/clients/preference/commonTypes";
 import { getPrecios } from "../config";
 import type { NivelAcceso } from "../database.types";
-import { getEnv } from "../env";
+import { getSiteUrl } from "../site-url";
 
 /**
  * Armado PURO del body de la preferencia de Checkout Pro (VGRP-22).
@@ -118,23 +118,6 @@ export async function armarPreferencia(
   return { ok: true, preferenceData };
 }
 
-/**
- * `NEXT_PUBLIC_SITE_URL` vía `getEnv()` (CLAUDE.md pide usar ese helper, no
- * leer `process.env` a mano) con un default de desarrollo: en este entorno
- * puede faltar en `.env.local` aunque esté documentada en `.env.example`, y
- * a diferencia de otras env vars de este módulo (el access token de MP,
- * donde faltar es un error real de configuración) no tiene sentido tirar
- * abajo el armado de la preferencia sólo porque no se seteó una URL de sitio
- * en desarrollo local — `getEnv()` no soporta un default nativo, así que se
- * atrapa acá el único caso en que "falta la env var" es esperable.
- *
- * Exportada (no sólo usada acá adentro) para que `_actions.ts` arme la URL
- * de éxito final con la misma resolución, sin duplicar el default.
- */
-export function getSiteUrl(): string {
-  try {
-    return getEnv("NEXT_PUBLIC_SITE_URL");
-  } catch {
-    return "http://localhost:3000";
-  }
-}
+// `getSiteUrl()` vive en `lib/site-url.ts` (compartido con emails y auth).
+// Se re-exporta acá para no romper imports existentes.
+export { getSiteUrl } from "../site-url";

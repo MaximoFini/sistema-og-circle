@@ -47,9 +47,9 @@ export function getResendClient(): Resend | null {
  * usar hasta que el dominio propio (`ogcircle.com.ar`, DNS en DonWeb) tenga SPF y
  * DKIM verificados en Resend.
  *
- * El `from` y el `reply-to` definitivos son una DECISIÓN ABIERTA del equipo y
- * dependen del dominio que se compre — no están inventados acá a propósito. Ver
- * `docs/EMAIL.md` §"Pendiente de decidir".
+ * El `from` y el `reply-to` definitivos son una DECISIÓN ABIERTA del equipo (hay
+ * una propuesta en `docs/EMAIL.md` §"Pendiente de decidir"); no se fijan acá a
+ * propósito hasta que el equipo los confirme.
  */
 export const FROM_DE_PRUEBA = "OG Circle <onboarding@resend.dev>";
 

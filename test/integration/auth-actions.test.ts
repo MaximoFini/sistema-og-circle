@@ -64,6 +64,16 @@ import { withAuthRetry } from "../helpers/with-auth-retry";
 let cookieJar: Map<string, string>;
 let requestHeaders: Headers;
 
+// `after()` de Next sólo corre dentro de un request; acá se llama la action directo.
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: (fn: () => unknown) => {
+    void Promise.resolve()
+      .then(fn)
+      .catch(() => {});
+  },
+}));
+
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     getAll: () => Array.from(cookieJar.entries()).map(([name, value]) => ({ name, value })),

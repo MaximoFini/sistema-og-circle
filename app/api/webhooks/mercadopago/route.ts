@@ -315,8 +315,17 @@ export async function POST(request: Request): Promise<Response> {
 
         // Fire-and-forget: nunca bloquea la respuesta del webhook ni puede
         // tirar abajo el 200 (ver el comentario de `notificarPagoAprobado`).
+        // `Promise.resolve` envuelve también un retorno no-promesa; el `.catch`
+        // sólo es defensa extra: la función no debería rechazar nunca.
         try {
-          notificarPagoAprobado({ userId, nivel: nivelComprado, montoArs });
+          void Promise.resolve(
+            notificarPagoAprobado({
+              userId,
+              nivel: nivelComprado,
+              montoArs,
+              referencia: String(paymentId),
+            }),
+          ).catch((error) => reportarFalloDeProcesamiento("notificarPagoAprobado falló", error));
         } catch (error) {
           reportarFalloDeProcesamiento("notificarPagoAprobado falló", error);
         }

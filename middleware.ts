@@ -96,6 +96,9 @@ const PUBLIC_PREFIXES = [
   // el árbol — la crea VGRP-19; se lista desde ya para que ese ticket no
   // tenga que volver a tocar este archivo.
   "/auth/callback",
+  // VGRP-26 — link de confirmación de los emails de Supabase (token_hash). Igual
+  // que el callback: quien lo clickea todavía no tiene sesión.
+  "/auth/confirm",
 
   // CONVENCIÓN: todo webhook entrante nuevo (Mercado Pago, etc.) va bajo
   // `/api/webhooks/`. Si se respeta, este archivo no se toca nunca más. Se
