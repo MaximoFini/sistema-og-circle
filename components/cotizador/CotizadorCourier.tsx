@@ -156,7 +156,11 @@ const OPCIONES_REGIMEN: readonly { id: Regimen; titulo: string; desc: string }[]
 //      (Miami / Barcelona / China, cada uno con su dirección).
 //   5. Presiona COTIZAR y sale el resumen completo.
 // ─────────────────────────────────────────────────────────────────────────
-export function CotizadorCourier() {
+// VGRP-77 — `bloqueado`: la calculadora de fondo, borrosa e inerte, de quien no
+// tiene plan. No pide el dólar al montar: el endpoint contesta 403 y
+// `lib/cotizador/api.ts` reacciona a eso mandando a `/comprar`, o sea que se
+// lo llevaba de la página a los pocos segundos.
+export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean }) {
   const [regimen, setRegimen] = useState<Regimen>("general");
   const [producto, setProducto] = useState("");
   const [form, setForm] = useState<CamposForm>({
@@ -218,6 +222,7 @@ export function CotizadorCourier() {
 
   // TC BNA automático al entrar (editable por si la fuente falla).
   useEffect(() => {
+    if (bloqueado) return;
     let alive = true;
     getDolarBNA()
       .then((d) => {
@@ -236,7 +241,7 @@ export function CotizadorCourier() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [bloqueado]);
 
   // 2) La IA arranca sola cuando el usuario termina de escribir el producto.
   useEffect(() => {

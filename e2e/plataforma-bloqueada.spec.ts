@@ -62,10 +62,12 @@ test.describe("plataforma bloqueada sin plan (VGRP-77)", () => {
       "/comprar",
     );
 
-    // Qué incluye el plan, con Belo como partner de los pagos al exterior.
+    // Qué incluye el plan, con el logo de quien opera cada beneficio.
     const incluye = page.getByRole("list", { name: "Qué incluye" });
-    await expect(incluye.getByRole("listitem")).toHaveCount(8);
-    await expect(incluye.getByRole("img", { name: "Belo" })).toBeVisible();
+    await expect(incluye.getByRole("listitem")).toHaveCount(9);
+    for (const partner of ["VeGroup", "Belo", "Traxcargo"]) {
+      await expect(incluye.getByRole("img", { name: partner })).toBeVisible();
+    }
 
     const fondo = page.locator("[inert]");
     await expect(fondo).toHaveCount(1);
@@ -81,11 +83,21 @@ test.describe("plataforma bloqueada sin plan (VGRP-77)", () => {
 
   test("Calculadora: se ve bloqueada en /calculadora, sin redirect", async ({ page }) => {
     await login(page, NINGUNO.email, NINGUNO.password);
-    await page.goto("/calculadora");
+    // Ninguna llamada a /api/cotizador/* desde el fondo: un 403 ahí hace que
+    // lib/cotizador/api.ts mande a /comprar (bug real, detectado a mano).
+    const llamadasCotizador: string[] = [];
+    page.on("request", (req) => {
+      if (req.url().includes("/api/cotizador/")) llamadasCotizador.push(req.url());
+    });
 
-    expect(new URL(page.url()).pathname).toBe("/calculadora");
+    await page.goto("/calculadora");
     await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
     await expect(page.locator("[inert]")).toHaveCount(1);
+
+    // Se queda en la página (antes, a los segundos, terminaba en /comprar).
+    await page.waitForLoadState("networkidle");
+    expect(new URL(page.url()).pathname).toBe("/calculadora");
+    expect(llamadasCotizador).toEqual([]);
   });
 
   test("ni el HTML ni el payload RSC traen URLs de embed ni contactos", async ({ page }) => {

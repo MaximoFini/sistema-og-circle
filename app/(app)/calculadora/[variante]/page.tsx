@@ -39,7 +39,7 @@ export const dynamicParams = false;
 // invalida por tag al guardarlo desde admin). Mismo criterio que el Inicio.
 export const revalidate = 3600;
 
-function Calculadora() {
+function Calculadora({ bloqueado = false }: { bloqueado?: boolean }) {
   return (
     <div className={styles.page}>
       <header className={styles.encabezado}>
@@ -51,7 +51,7 @@ function Calculadora() {
         </p>
       </header>
 
-      <CotizadorSelector />
+      <CotizadorSelector bloqueado={bloqueado} />
     </div>
   );
 }
@@ -73,7 +73,7 @@ export default async function CalculadoraPage({
   const { nombre, precio } = await getOfertaPlan();
   return (
     <TarjetaDesbloqueo nombrePlan={nombre} precio={precio}>
-      <Calculadora />
+      <Calculadora bloqueado />
     </TarjetaDesbloqueo>
   );
 }

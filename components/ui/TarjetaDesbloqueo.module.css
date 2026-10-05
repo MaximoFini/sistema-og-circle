@@ -110,12 +110,24 @@
   color: var(--text-muted);
 }
 
-/* El logo de Belo viene sobre blanco: va en una pastilla clara, como en la
-   sección de partners de la landing. */
-.partnerLogo {
+/* Mismo alto para todos los logos, centrados adentro: la columna de la
+   derecha queda alineada aunque cada logo tenga otra proporción. */
+.pastilla {
+  display: grid;
+  place-items: center;
+  height: 24px;
+}
+
+.pastilla img {
   display: block;
-  box-sizing: content-box;
-  padding: 2px 6px;
+}
+
+/* Belo y Traxcargo son logos oscuros (o sobre blanco): van en una pastilla
+   clara, como en la sección de partners de la landing. VeGroup es claro y va
+   directo sobre la tarjeta. */
+.pastillaClara {
+  composes: pastilla;
+  padding-inline: 6px;
   border-radius: 6px;
   background: #fff;
 }
@@ -147,6 +159,18 @@
   color: var(--text-muted);
 }
 
+/* Mobile: el logo solo ya dice quién lo opera; sin el "con", cada fila
+   tiene lugar para el texto. */
+@media (max-width: 420px) {
+  .partnerCon {
+    display: none;
+  }
+
+  .beneficios {
+    padding-inline: 12px;
+  }
+}
+
 /* Pantallas bajas (iPhone SE y similares): la tarjeta se compacta para que la
    lista y el CTA entren sin scroll interno. */
 @media (max-height: 740px) {
@@ -155,7 +179,8 @@
     padding-top: 20px;
   }
 
-  .icono {
+  .icono,
+  .bajada {
     display: none;
   }
 
