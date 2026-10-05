@@ -9,14 +9,15 @@
 // (VGRP-56 punto 1) — así PerfilForm.tsx no arrastra Zod al bundle sólo para leer un `{}`.
 
 import { z } from "zod";
+import { TELEFONO_MAX, TELEFONO_MIN } from "@/lib/forms/telefono";
 
 export const perfilSchema = z.object({
   nombre: z.string().trim().min(1, "Ingresá tu nombre.").max(120, "El nombre es demasiado largo."),
   telefono: z
     .string()
     .trim()
-    .min(6, "Ingresá un teléfono de contacto.")
-    .max(30, "Ese teléfono es demasiado largo."),
+    .min(TELEFONO_MIN, "Ingresá un teléfono de contacto.")
+    .max(TELEFONO_MAX, "Ese teléfono es demasiado largo."),
 });
 
 export type PerfilInput = z.infer<typeof perfilSchema>;

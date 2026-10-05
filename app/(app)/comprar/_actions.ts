@@ -5,15 +5,21 @@
 // Las dos acciones de acá abajo son las únicas que este ticket agrega. No
 // tocan `lib/data/` ni ninguna tabla directamente (eso es VGRP-24a, en
 // paralelo) — sólo leen precios/claims y hablan con la API de Mercado Pago.
+// Excepción (VGRP-78): `crearCheckout` lee y guarda `profiles.telefono` del
+// propio usuario antes de crear la preferencia (ver `asegurarTelefono`).
 
 import { track } from "@vercel/analytics/server";
 import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
-import { getVerifiedClaims } from "@/lib/auth/server";
+import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
 import type { NivelAcceso } from "@/lib/database.types";
 import { getPreferenceClient } from "@/lib/mercadopago/client";
 import { armarPreferencia, type NivelComprable } from "@/lib/mercadopago/preferencia";
+import { perfilSchema } from "../perfil/_schemas";
 
-export type CrearCheckoutResult = { ok: true; url: string } | { ok: false; error: string };
+export type CrearCheckoutResult =
+  | { ok: true; url: string }
+  // `campo: "telefono"`: el error es del teléfono y se muestra debajo del campo.
+  | { ok: false; error: string; campo?: "telefono" };
 
 function esNivelComprable(nivel: NivelAcceso): nivel is NivelComprable {
   return nivel !== "ninguno";
@@ -34,7 +40,10 @@ function esNivelComprable(nivel: NivelAcceso): nivel is NivelComprable {
  * navegar con `router.push(url)` al ver `ok: true` — ver
  * `app/(app)/comprar/ComprarButton.tsx`.
  */
-export async function crearCheckout(nivel: NivelAcceso): Promise<CrearCheckoutResult> {
+export async function crearCheckout(
+  nivel: NivelAcceso,
+  telefono?: string,
+): Promise<CrearCheckoutResult> {
   // Server Actions son endpoints HTTP propios: el middleware los cubre (no
   // están en `PUBLIC_EXACT`), pero CLAUDE.md es explícito en que eso no
   // alcanza — se puede invocar un Server Action directo, sin pasar por el
@@ -68,7 +77,17 @@ export async function crearCheckout(nivel: NivelAcceso): Promise<CrearCheckoutRe
     return { ok: false, error: "No pudimos identificar tu usuario. Volvé a iniciar sesión." };
   }
 
-  const preferencia = await armarPreferencia(nivel, userId);
+  // Independientes: el teléfono habla con Supabase y la preferencia sólo lee
+  // precios de Edge Config. Lo único que tiene que esperar al teléfono es
+  // `create()` (la preferencia real en MP).
+  const [errorTelefono, preferencia] = await Promise.all([
+    asegurarTelefono(userId, telefono),
+    armarPreferencia(nivel, userId),
+  ]);
+  if (errorTelefono) {
+    return errorTelefono;
+  }
+
   if (!preferencia.ok) {
     // Mismo error que ya viene de `getPrecios()` (fail-closed): no se
     // inventa un mensaje distinto, se lo pasa tal cual para que quien
@@ -123,6 +142,57 @@ export async function crearCheckout(nivel: NivelAcceso): Promise<CrearCheckoutRe
   }
 
   return { ok: true, url };
+}
+
+/**
+ * VGRP-78 — no se crea una preferencia de MP sin un teléfono de contacto en el
+ * perfil (quien se registra con Google no lo carga al registrarse). Se valida
+ * acá y no sólo en la UI: el Server Action se puede invocar directo.
+ *
+ * Si vino `telefono`, se valida con la MISMA regla que el registro y se guarda
+ * en `profiles` (RLS: sólo la propia fila; `telefono` ya es editable por
+ * `authenticated`). Si no vino, el perfil tiene que tenerlo ya cargado.
+ * Devuelve el error a mostrar, o `null` si se puede seguir.
+ */
+async function asegurarTelefono(
+  userId: string,
+  telefono: string | undefined,
+): Promise<Extract<CrearCheckoutResult, { ok: false }> | null> {
+  const supabase = await createSupabaseServerClient();
+
+  if (telefono === undefined) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("telefono")
+      .eq("id", userId)
+      .single();
+    if (error) {
+      console.error("[comprar] no se pudo leer el teléfono del perfil:", error);
+      return { ok: false, error: "No pudimos iniciar el pago. Probá de nuevo en un momento." };
+    }
+    if (data.telefono?.trim()) return null;
+  }
+
+  // Misma regla que el registro y el Perfil. Sin teléfono en el perfil ni en
+  // el input, `""` da "Ingresá un teléfono de contacto.".
+  const parsed = perfilSchema.shape.telefono.safeParse(telefono ?? "");
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message, campo: "telefono" };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ telefono: parsed.data })
+    .eq("id", userId);
+  if (error) {
+    console.error("[comprar] no se pudo guardar el teléfono:", error);
+    return {
+      ok: false,
+      error: "No pudimos guardar tu teléfono. Probá de nuevo en un momento.",
+      campo: "telefono",
+    };
+  }
+  return null;
 }
 
 /**

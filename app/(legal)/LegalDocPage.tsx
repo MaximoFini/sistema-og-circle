@@ -12,6 +12,11 @@ export interface LegalDocPageProps {
    * que el sistema hace de verdad.
    */
   placeholderExtra?: ReactNode;
+  /**
+   * `false` cuando el documento ya tiene su texto publicado y no lleva el
+   * aviso de placeholder (VGRP-78: Privacidad, requisito de Google OAuth).
+   */
+  placeholder?: boolean;
   /** Contenido de `.prose`: los `<h2>`/`<p>` propios de cada documento. */
   children: ReactNode;
 }
@@ -23,7 +28,12 @@ export interface LegalDocPageProps {
  * lo usa `/legales` (el índice), que no es un documento sino la lista de los
  * tres.
  */
-export function LegalDocPage({ title, placeholderExtra, children }: LegalDocPageProps) {
+export function LegalDocPage({
+  title,
+  placeholderExtra,
+  placeholder = true,
+  children,
+}: LegalDocPageProps) {
   return (
     <>
       <TextLink href="/legales">← Volver a legales</TextLink>
@@ -33,14 +43,16 @@ export function LegalDocPage({ title, placeholderExtra, children }: LegalDocPage
         <p className={styles.updated}>Versión: {TERMINOS_VERSION}</p>
       </div>
 
-      <div className={styles.placeholder}>
-        <p>
-          <strong>Placeholder.</strong> Esta página está maquetada con la estructura que va a tener
-          el texto legal, pero el contenido todavía no es el definitivo. El texto real lo entrega
-          Jota — hasta que llegue, no se puede lanzar la plataforma (PRD Fase 2 §8).
-        </p>
-        {placeholderExtra}
-      </div>
+      {placeholder ? (
+        <div className={styles.placeholder}>
+          <p>
+            <strong>Placeholder.</strong> Esta página está maquetada con la estructura que va a
+            tener el texto legal, pero el contenido todavía no es el definitivo. El texto real lo
+            entrega Jota — hasta que llegue, no se puede lanzar la plataforma (PRD Fase 2 §8).
+          </p>
+          {placeholderExtra}
+        </div>
+      ) : null}
 
       <div className={styles.prose}>{children}</div>
     </>

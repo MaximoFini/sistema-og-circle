@@ -17,9 +17,18 @@ const mockArmarPreferencia = vi.fn();
 const mockGetPreferenceClient = vi.fn();
 const mockCreate = vi.fn();
 const mockTrack = vi.fn();
+// VGRP-78 — `profiles.telefono`: lo que devuelve el SELECT y lo que recibe el UPDATE.
+const mockLeerPerfil = vi.fn();
+const mockActualizarPerfil = vi.fn();
 
 vi.mock("@/lib/auth/server", () => ({
   getVerifiedClaims: () => mockGetVerifiedClaims(),
+  createSupabaseServerClient: async () => ({
+    from: () => ({
+      select: () => ({ eq: () => ({ single: () => mockLeerPerfil() }) }),
+      update: (valores: unknown) => ({ eq: () => mockActualizarPerfil(valores) }),
+    }),
+  }),
 }));
 
 vi.mock("@/lib/auth/claims", async (importOriginal) => {
@@ -67,8 +76,13 @@ describe("crearCheckout", () => {
     mockGetPreferenceClient.mockReset();
     mockCreate.mockReset();
     mockTrack.mockReset();
+    mockLeerPerfil.mockReset();
+    mockActualizarPerfil.mockReset();
 
     mockGetVerifiedClaims.mockResolvedValue(CLAIMS_OK);
+    // Default: el perfil ya tiene teléfono (el caso de siempre, registro con email).
+    mockLeerPerfil.mockResolvedValue({ data: { telefono: "+54 9 351 555-0000" }, error: null });
+    mockActualizarPerfil.mockResolvedValue({ error: null });
     // Auditoría de Mercado Pago: crearCheckout ahora también llama a
     // getNivel(claims) para bloquear la recompra de un nivel ya alcanzado.
     // Default 'ninguno' — ningún nivel comprable queda bloqueado de arranque.
@@ -163,6 +177,8 @@ describe("crearCheckout", () => {
     const result = await crearCheckout("completo");
 
     expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
+    // Perfil con teléfono ya cargado (default): no se escribe nada (VGRP-78).
+    expect(mockActualizarPerfil).not.toHaveBeenCalled();
     expect(mockTrack).toHaveBeenCalledTimes(1);
     expect(mockTrack).toHaveBeenCalledWith("checkout_iniciado", { nivel: "completo" });
   });
@@ -198,6 +214,83 @@ describe("crearCheckout", () => {
 
       expect(result.ok).toBe(true);
       expect(mockArmarPreferencia).toHaveBeenCalledWith("completo", "user-123");
+    });
+  });
+
+  // VGRP-78 — quien se registró con Google no tiene teléfono: se pide al pagar.
+  describe("teléfono obligatorio", () => {
+    beforeEach(() => {
+      mockLeerPerfil.mockResolvedValue({ data: { telefono: null }, error: null });
+    });
+
+    it("perfil sin teléfono y sin input: error en el campo y no se crea la preferencia", async () => {
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo");
+
+      expect(result).toEqual({
+        ok: false,
+        error: "Ingresá un teléfono de contacto.",
+        campo: "telefono",
+      });
+      expect(mockActualizarPerfil).not.toHaveBeenCalled();
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it("perfil con teléfono en blanco cuenta como vacío", async () => {
+      mockLeerPerfil.mockResolvedValue({ data: { telefono: "   " }, error: null });
+
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo");
+
+      expect(result.ok).toBe(false);
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["muy corto", "12345"],
+      ["sólo espacios", "        "],
+      ["muy largo", "1".repeat(31)],
+    ])(
+      "teléfono inválido (%s): error en el campo, no se guarda ni se crea la preferencia",
+      async (_caso, telefono) => {
+        const { crearCheckout } = await import("./_actions");
+        const result = await crearCheckout("completo", telefono);
+
+        expect(result).toMatchObject({ ok: false, campo: "telefono" });
+        expect(mockActualizarPerfil).not.toHaveBeenCalled();
+        expect(mockCreate).not.toHaveBeenCalled();
+      },
+    );
+
+    it("teléfono válido: se guarda (recortado) en profiles y después se crea la preferencia", async () => {
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo", "  +54 9 351 555-1234  ");
+
+      expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
+      expect(mockActualizarPerfil).toHaveBeenCalledWith({ telefono: "+54 9 351 555-1234" });
+      expect(mockActualizarPerfil.mock.invocationCallOrder[0]).toBeLessThan(
+        mockCreate.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("si falla el guardado del teléfono, no se crea la preferencia", async () => {
+      mockActualizarPerfil.mockResolvedValue({ error: { message: "rls" } });
+
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo", "+54 9 351 555-1234");
+
+      expect(result.ok).toBe(false);
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it("si no se puede leer el perfil, falla cerrado y no crea la preferencia", async () => {
+      mockLeerPerfil.mockResolvedValue({ data: null, error: { message: "timeout" } });
+
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo");
+
+      expect(result.ok).toBe(false);
+      expect(mockCreate).not.toHaveBeenCalled();
     });
   });
 });
