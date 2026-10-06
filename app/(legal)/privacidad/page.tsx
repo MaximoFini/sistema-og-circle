@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CONTACTO } from "@/lib/legal/contacto";
 import { LegalDocPage } from "../LegalDocPage";
 
 export const metadata: Metadata = { title: "Política de Privacidad — OG Circle" };
@@ -27,11 +28,9 @@ export const metadata: Metadata = { title: "Política de Privacidad — OG Circl
 // - Contacto: el email de asistencia cargado en la pantalla de consentimiento
 //   de Google Cloud (proyecto og-circle).
 
-const CONTACTO = "maximofinicba@gmail.com";
-
 export default function PrivacidadPage() {
   return (
-    <LegalDocPage title="Política de Privacidad" placeholder={false}>
+    <LegalDocPage title="Política de Privacidad">
       <p>
         Esta política explica qué datos personales recolecta OG Circle (la plataforma en
         plataforma.ogcircle.com.ar y el sitio ogcircle.com.ar), para qué los usa, con quién los
