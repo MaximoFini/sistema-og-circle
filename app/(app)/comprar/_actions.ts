@@ -8,9 +8,11 @@
 // Excepción (VGRP-78): `crearCheckout` lee y guarda `profiles.telefono` del
 // propio usuario antes de crear la preferencia (ver `asegurarTelefono`).
 
+import * as Sentry from "@sentry/nextjs";
 import { track } from "@vercel/analytics/server";
 import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
+import { esProduccion } from "@/lib/site-url";
 import type { NivelAcceso } from "@/lib/database.types";
 import { getPreferenceClient } from "@/lib/mercadopago/client";
 import { armarPreferencia, type NivelComprable } from "@/lib/mercadopago/preferencia";
@@ -75,6 +77,17 @@ export async function crearCheckout(
   const userId = claims.sub;
   if (typeof userId !== "string" || !userId) {
     return { ok: false, error: "No pudimos identificar tu usuario. Volvé a iniciar sesión." };
+  }
+
+  // VGRP-74 — en producción no se abre el checkout sin el secreto del webhook.
+  // Sin él, un cobro real se acredita en MP pero el webhook responde 500 y el
+  // acceso nunca se activa. Mejor un error claro ahora que un pago sin acceso.
+  if (esProduccion() && !process.env.MERCADOPAGO_WEBHOOK_SECRET) {
+    Sentry.captureMessage(
+      "[mercadopago-webhook] checkout bloqueado: MERCADOPAGO_WEBHOOK_SECRET no está configurada en producción",
+      "error",
+    );
+    return { ok: false, error: "Los pagos no están disponibles en este momento. Probá más tarde." };
   }
 
   // Independientes: el teléfono habla con Supabase y la preferencia sólo lee

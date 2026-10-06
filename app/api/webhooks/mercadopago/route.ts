@@ -98,7 +98,12 @@ function reportarFalloDeProcesamiento(detalle: string, error: unknown): void {
   // fallido) — ver docs/OBSERVABILIDAD.md. La alerta por email de este
   // capture la configura alguien con acceso al dashboard de Sentry (Alert
   // Rule), no algo que el código pueda hacer por sí solo.
-  Sentry.captureException(error, { extra: { detalle: `[mercadopago-webhook] ${detalle}` } });
+  // Tag (VGRP-74): en un captureException el `message` de Sentry es el de la
+  // excepción, no este texto, así que la Alert Rule filtra por este tag.
+  Sentry.captureException(error, {
+    extra: { detalle: `[mercadopago-webhook] ${detalle}` },
+    tags: { "mercadopago-webhook": "fallo" },
+  });
 }
 
 /**

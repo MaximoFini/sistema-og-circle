@@ -15,7 +15,7 @@ import { getEnv } from "./env";
 
 const LOCALHOST = "http://localhost:3000";
 
-function esProduccion(): boolean {
+export function esProduccion(): boolean {
   return process.env.VERCEL_ENV === "production";
 }
 
