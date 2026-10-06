@@ -85,7 +85,8 @@ interface ManualNcm {
   iva: string;
 }
 
-export function CotizadorMaritimo() {
+/** `whatsappContacto` (VGRP-69): `links.whatsapp` de la config, para "Enviar por WhatsApp". */
+export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: string }) {
   // Paso 1 — posición arancelaria
   const [producto, setProducto] = useState("");
   const [detStatus, setDetStatus] = useState<EstadoDeteccion>("idle");
@@ -350,6 +351,7 @@ export function CotizadorMaritimo() {
           onChange={(e) => setProducto(e.target.value)}
           placeholder="Ej: set de herramientas, mosaicos cerámicos, casas prefabricadas…"
           autoComplete="off"
+          hint="Qué es, de qué material y para qué sirve. Mientras más claro, mejor la posición que encuentra la IA."
         />
 
         <div aria-live="polite">
@@ -446,6 +448,7 @@ export function CotizadorMaritimo() {
                 value={manual.sim}
                 onChange={(e) => setManual((s) => ({ ...s, sim: e.target.value }))}
                 placeholder="8206.00.00.900"
+                hint="El código de aduana del producto, si ya lo sabés (te lo pasa el despachante)."
               />
               <TextField
                 label="DIE %"
@@ -453,6 +456,7 @@ export function CotizadorMaritimo() {
                 value={manual.die}
                 onChange={(e) => setManual((s) => ({ ...s, die: e.target.value }))}
                 placeholder="18"
+                hint="Derechos de importación: el arancel de esa posición."
               />
               <TextField
                 label="TE %"
@@ -460,6 +464,7 @@ export function CotizadorMaritimo() {
                 value={manual.te}
                 onChange={(e) => setManual((s) => ({ ...s, te: e.target.value }))}
                 placeholder="3"
+                hint="Tasa de estadística de esa posición."
               />
             </div>
             <TextField
@@ -468,7 +473,7 @@ export function CotizadorMaritimo() {
               value={manual.iva}
               onChange={(e) => setManual((s) => ({ ...s, iva: e.target.value }))}
               placeholder="21"
-              hint="Lo que cargues acá pisa lo que detecte la IA."
+              hint="IVA de esa posición (casi siempre 21 o 10,5). Lo que cargues acá pisa lo que detecte la IA."
             />
           </div>
         )}
@@ -503,6 +508,7 @@ export function CotizadorMaritimo() {
             value={volumenM3}
             onChange={(e) => setVolumenM3(e.target.value)}
             placeholder="8,501"
+            hint="Total del embarque. En el packing list figura como CBM, M3 o MEAS."
           />
           <TextField
             label="Peso bruto (kg)"
@@ -510,6 +516,7 @@ export function CotizadorMaritimo() {
             value={pesoKg}
             onChange={(e) => setPesoKg(e.target.value)}
             placeholder="5500"
+            hint="Total con embalaje (gross weight en el packing list)."
           />
           <TextField
             label="Unidades"
@@ -517,6 +524,7 @@ export function CotizadorMaritimo() {
             value={unidades}
             onChange={(e) => setUnidades(e.target.value)}
             placeholder="1"
+            hint="Cuántos productos vienen en total. Sirve para el costo por unidad."
           />
           <TextField
             label="Valor FOB (USD)"
@@ -524,6 +532,7 @@ export function CotizadorMaritimo() {
             value={fob}
             onChange={(e) => setFob(e.target.value)}
             placeholder="18000"
+            hint="Lo que le pagás al proveedor, puesto en el puerto de origen. Está en la proforma."
           />
         </div>
 
@@ -556,6 +565,7 @@ export function CotizadorMaritimo() {
           value={direccion}
           onChange={(e) => setDireccionYResetPuerto(e.target.value)}
           placeholder="Ej: No. 128 Jinshui Road, Jinan, Shandong, China"
+          hint="La del exportador (shipper), como figura en la proforma. Con la ciudad y la provincia alcanza."
         />
 
         {puertoAuto && (
@@ -618,6 +628,7 @@ export function CotizadorMaritimo() {
             value={proveedor}
             onChange={(e) => setProveedor(e.target.value)}
             placeholder="Razón social del exportador"
+            hint="Opcional. Sale en el PDF."
           />
         </div>
 
@@ -627,7 +638,7 @@ export function CotizadorMaritimo() {
             inputMode="decimal"
             value={tc}
             onChange={(e) => setTc(e.target.value)}
-            hint={tcInfo}
+            hint={`El dólar que usa la aduana para calcular los impuestos. ${tcInfo}`}
           />
         </div>
       </section>
@@ -646,6 +657,8 @@ export function CotizadorMaritimo() {
               fleteFull={fleteFull}
               setFleteFull={setFleteFull}
               refNumber={refNumber}
+              producto={producto}
+              whatsappContacto={whatsappContacto}
             />
             <MaritimoQuoteDoc
               refNumber={refNumber}

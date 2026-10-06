@@ -4,8 +4,9 @@
 // filtró de la base local.
 //
 // Prompt, schema de tool use, modelo y post-proceso copiados TEXTUALES del
-// original; cambia sólo la mecánica (SDK en vez de fetch, sesión real en vez
-// del token propio de vegroup).
+// original, salvo la marca (VGRP-69: el system ya no nombra a VEGROUP); cambia
+// la mecánica (SDK en vez de fetch, sesión real en vez del token propio de
+// vegroup).
 //
 //   sin sesión ................. 401        sin plan .......... 403
 //   falta query / candidatos ... 400        IA falla .......... 502
@@ -57,7 +58,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const system =
     "Sos un clasificador experto en el Nomenclador Común del Mercosur (NCM) para " +
-    "VEGROUP, empresa argentina de courier e importación de mercadería comercial. " +
+    "una empresa argentina de courier e importación de mercadería comercial. " +
     "Los usuarios escriben en jerga argentina: interpretá el término como el " +
     'producto comercial más habitual en ese contexto ("zapa" = zapatillas, ' +
     '"celu" = celular, "compu" = computadora). Elegís la posición arancelaria ' +

@@ -16,10 +16,11 @@
 import { useId, useState } from "react";
 import { fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
 import type { ClaveEtiqueta, GastosDestino, ResultadoRutas, RutaId } from "@/lib/cotizador/types";
+import { Conceptos } from "./Conceptos";
 import styles from "./RouteBreakdown.module.css";
 
 // Mismo orden de líneas que la planilla madre (B17–B26 y B30). El FOB se
-// muestra aparte (es lo que se paga al proveedor, no a VEGROUP) para que no
+// muestra aparte (es lo que se paga al proveedor, no al courier) para que no
 // se confunda con los gastos de destino al sumarlos.
 const DESTINO_ORDER: (keyof GastosDestino)[] = [
   "flete",
@@ -175,7 +176,7 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
           <tbody>
             <tr>
               <th scope="rowgroup" colSpan={2} className={styles.grupo}>
-                Lo que pagás en destino (gastos de importación VEGROUP)
+                Lo que pagás en destino (gastos de importación)
               </th>
             </tr>
             {DESTINO_ORDER.map((k) => (
@@ -269,11 +270,14 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
               <div className={styles.total}>
                 <dt className={styles.totalClave}>Total en pesos</dt>
                 <dd className={styles.totalValor}>{fmtARS(current.totalPesos)}</dd>
-                {current.dolarCCL && current.dolarBN && current.dolarCCL !== current.dolarBN && (
-                  <dd className={styles.totalNota}>
-                    FOB × CCL ${current.dolarCCL} + destino × BNA ${current.dolarBN}
-                  </dd>
-                )}
+                {/* `> 0` y no `a && b`: con un dólar en 0, React imprimía un "0" suelto (B12-02). */}
+                {Number(current.dolarCCL) > 0 &&
+                  Number(current.dolarBN) > 0 &&
+                  current.dolarCCL !== current.dolarBN && (
+                    <dd className={styles.totalNota}>
+                      FOB × CCL ${current.dolarCCL} + destino × BNA ${current.dolarBN}
+                    </dd>
+                  )}
               </div>
             )}
             <div className={styles.total}>
@@ -304,6 +308,8 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
             ))}
           </p>
         )}
+
+        <Conceptos terminos={["cif", "die", "te", "iva", "recuperable", "volumetrico"]} />
       </div>
     </section>
   );

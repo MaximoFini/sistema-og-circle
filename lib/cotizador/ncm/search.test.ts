@@ -92,3 +92,15 @@ describe("ncm — paridad con vegroup@b550803 (ncmSearch.js / data/ncm.js)", () 
     expect(registro).toEqual(getNcm(primero.sim));
   });
 });
+
+// B12-03 (VGRP-69) — único desvío del original: ahí estas búsquedas tiraban
+// "syn.split is not a function" porque SYNONYMS heredaba las claves de
+// Object.prototype. Por eso no están en el fixture de paridad.
+describe("ncm — palabras que coinciden con claves de Object.prototype", () => {
+  it.each(["constructor", "constructores", "toString", "hasOwnProperty"])(
+    "searchNCM(%j) busca normal, sin error",
+    async (q) => {
+      await expect(searchNCM(q, 40)).resolves.toBeInstanceOf(Array);
+    },
+  );
+});

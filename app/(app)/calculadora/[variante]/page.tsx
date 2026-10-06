@@ -4,7 +4,7 @@ import { ComprarButton } from "@/app/(app)/comprar/ComprarButton";
 import { CotizadorSelector } from "@/components/cotizador/CotizadorSelector";
 import { TarjetaDesbloqueo } from "@/components/ui/TarjetaDesbloqueo";
 import { isNivelAcceso, NIVELES } from "@/lib/auth/claims";
-import { getOfertaPlan } from "@/lib/config";
+import { getOfertaPlan, getWhatsappContacto } from "@/lib/config";
 import styles from "./calculadora.module.css";
 
 // =============================================================================
@@ -40,7 +40,13 @@ export const dynamicParams = false;
 // invalida por tag al guardarlo desde admin). Mismo criterio que el Inicio.
 export const revalidate = 3600;
 
-function Calculadora({ bloqueado = false }: { bloqueado?: boolean }) {
+function Calculadora({
+  bloqueado = false,
+  whatsappContacto,
+}: {
+  bloqueado?: boolean;
+  whatsappContacto: string;
+}) {
   return (
     <div className={styles.page}>
       <header className={styles.encabezado}>
@@ -52,7 +58,7 @@ function Calculadora({ bloqueado = false }: { bloqueado?: boolean }) {
         </p>
       </header>
 
-      <CotizadorSelector bloqueado={bloqueado} />
+      <CotizadorSelector bloqueado={bloqueado} whatsappContacto={whatsappContacto} />
     </div>
   );
 }
@@ -67,10 +73,14 @@ export default async function CalculadoraPage({
     notFound();
   }
 
+  // VGRP-69: contacto de WhatsApp del PDF y de los mensajes, desde la config
+  // (cacheado; ver `getWhatsappContacto()` sobre por qué no `getLinks()`).
   if (variante === "completo") {
-    return <Calculadora />;
+    return <Calculadora whatsappContacto={await getWhatsappContacto()} />;
   }
 
+  // Sin plan la calculadora es inerte (nunca llega a un resultado): no hace
+  // falta leer el contacto.
   const { nombre, precio } = await getOfertaPlan();
   return (
     <TarjetaDesbloqueo
@@ -78,7 +88,7 @@ export default async function CalculadoraPage({
       precio={precio}
       accion={<ComprarButton nivel="completo" />}
     >
-      <Calculadora bloqueado />
+      <Calculadora bloqueado whatsappContacto="" />
     </TarjetaDesbloqueo>
   );
 }

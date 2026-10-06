@@ -129,6 +129,15 @@ type Resultado =
   | { tipo: "integral"; data: ResultadoIntegrales }
   | { tipo: "rutas"; data: ResultadoRutas };
 
+// VGRP-69 — ayuda de los campos que se repiten entre regímenes. Corta a
+// propósito: este componente viaja en el chunk estático de /calculadora, al
+// límite del presupuesto (B12-14).
+const AYUDA = {
+  fob: "Lo que le pagás al proveedor por la mercadería, sin flete. Está en la factura o proforma.",
+  peso: "Peso total con las cajas, en balanza. Ej: 4,5.",
+  unidades: "Cuántos productos vienen en total, sumando todas las cajas.",
+};
+
 const OPCIONES_REGIMEN: readonly { id: Regimen; titulo: string; desc: string }[] = [
   {
     id: "integral",
@@ -160,7 +169,16 @@ const OPCIONES_REGIMEN: readonly { id: Regimen; titulo: string; desc: string }[]
 // tiene plan. No pide el dólar al montar: el endpoint contesta 403 y
 // `lib/cotizador/api.ts` reacciona a eso mandando a `/comprar`, o sea que se
 // lo llevaba de la página a los pocos segundos.
-export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean }) {
+//
+// `whatsappContacto` (VGRP-69): `links.whatsapp` de la config, para el pie del
+// mensaje de WhatsApp y del PDF (antes, el teléfono de VEGROUP a mano).
+export function CotizadorCourier({
+  bloqueado = false,
+  whatsappContacto,
+}: {
+  bloqueado?: boolean;
+  whatsappContacto: string;
+}) {
   const [regimen, setRegimen] = useState<Regimen>("general");
   const [producto, setProducto] = useState("");
   const [form, setForm] = useState<CamposForm>({
@@ -395,7 +413,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
     }
     const d = new Date();
     setRefNumber(
-      `VG-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`,
+      `OG-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`,
     );
     requestAnimationFrame(() => {
       const el = resultadoRef.current;
@@ -417,12 +435,13 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
       : null;
 
   // Resumen de texto para compartir por WhatsApp.
+  const pieWhatsapp = `OG Circle · ${whatsappContacto}`;
   function whatsappText(): string {
     if (regimen === "integral") {
       const r = integralActual;
       if (!r) return "";
       return [
-        `*VEGROUP — Cotización ${refNumber}*`,
+        `*OG Circle — Cotización ${refNumber}*`,
         "*Courier Integral Todo Incluido*",
         producto ? `Producto: ${producto}` : null,
         `Depósito: ${r.label} (${r.pais}) · ${r.tiempoEstimado}`,
@@ -431,7 +450,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
         `*TOTAL: ${fmtUSD(r.totalUSD)}*`,
         r.totalPesos != null ? `Total en pesos: ${fmtARS(r.totalPesos)}` : null,
         "",
-        "WhatsApp: +54 9 11 7639-2303 · vegroup.com.ar",
+        pieWhatsapp,
       ]
         .filter(Boolean)
         .join("\n");
@@ -439,7 +458,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
     const r = rutaActual;
     if (!r || !selected) return "";
     const lines = [
-      `*VEGROUP — Cotización ${refNumber}*`,
+      `*OG Circle — Cotización ${refNumber}*`,
       `Producto: ${producto}`,
       `Posición NCM: ${selected.sim}${regimen === "pequeños" ? " (Pequeños envíos · franquicia)" : ""}`,
       `Depósito: ${r.label} (${r.pais}) · ${r.tiempoEstimado}`,
@@ -452,7 +471,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
         : null,
       `Costo por kg: ${fmtUSD(r.costoPorKg)} · por unidad: ${fmtUSD(r.costoPorUnidad)}`,
       "",
-      "WhatsApp: +54 9 11 7639-2303 · vegroup.com.ar",
+      pieWhatsapp,
     ].filter((l) => l !== null);
     return lines.join("\n");
   }
@@ -579,6 +598,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
             onChange={(e) => setProducto(e.target.value)}
             placeholder="Ej: zapas, gimbal, auriculares bluetooth, celu…"
             autoComplete="off"
+            hint="Qué es y para qué sirve, con tus palabras. Mientras más claro, mejor la posición que encuentra la IA."
           />
 
           {/* ── Pequeños envíos: NCM fija ─────────────────────────────────── */}
@@ -695,7 +715,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
           <p className={styles.cardSubtitulo}>
             {regimen === "integral"
               ? "Tarifa neta por kg. Sin impuestos, sin handling, sin aranceles. Solo peso y volumen."
-              : "Cargá los datos de tu paquete y elegí a qué depósito VEGROUP lo enviás."}
+              : "Cargá los datos de tu paquete y elegí a qué depósito lo enviás."}
           </p>
         </div>
 
@@ -711,6 +731,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
                 value={form.fob}
                 onChange={set("fob")}
                 placeholder="0.00"
+                hint={AYUDA.fob}
               />
               <TextField
                 label="Peso del paquete (kg)"
@@ -721,6 +742,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
                 value={form.pesoKg}
                 onChange={set("pesoKg")}
                 placeholder="0"
+                hint={AYUDA.peso}
               />
               <TextField
                 label="Unidades totales"
@@ -731,6 +753,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
                 value={form.unidades}
                 onChange={set("unidades")}
                 placeholder="1"
+                hint={AYUDA.unidades}
               />
             </div>
           )}
@@ -746,6 +769,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
                 value={form.pesoKg}
                 onChange={set("pesoKg")}
                 placeholder="0"
+                hint={AYUDA.peso}
               />
               <TextField
                 label="Unidades (opcional)"
@@ -756,12 +780,13 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
                 value={form.unidades}
                 onChange={set("unidades")}
                 placeholder="1"
+                hint="Solo para calcular el costo por unidad."
               />
             </div>
           )}
 
           <div className={styles.grilla2}>
-            <fieldset className={styles.grupoCampos}>
+            <fieldset className={styles.grupoCampos} aria-describedby="cotizador-medidas-ayuda">
               <legend className={styles.leyenda}>Dimensiones por caja (cm)</legend>
               <div className={styles.medidas}>
                 <TextField
@@ -795,6 +820,10 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
                   placeholder="Alto"
                 />
               </div>
+              <p className={styles.ayuda} id="cotizador-medidas-ayuda">
+                De una caja, con cinta métrica. Si la caja abulta más de lo que pesa, se cobra el
+                peso volumétrico.
+              </p>
             </fieldset>
             <TextField
               label="Cajas / bultos"
@@ -805,6 +834,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
               value={form.cajas}
               onChange={set("cajas")}
               placeholder="1"
+              hint="Cuántas cajas de esa medida mandás."
             />
           </div>
 
@@ -820,7 +850,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
               placeholder={
                 dolarInfo ? String(dolarInfo.venta) : dolarFallo ? "Cargalo a mano" : "Cargando…"
               }
-              hint="Gastos VEGROUP, impuestos"
+              hint="Dólar oficial del Banco Nación: con este se pagan los impuestos y gastos acá."
             />
             {regimen !== "integral" && (
               <TextField
@@ -832,7 +862,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
                 value={form.dolarCCL}
                 onChange={set("dolarCCL")}
                 placeholder={dolarInfo?.ccl ? String(dolarInfo.ccl.venta) : "Cargá manualmente"}
-                hint="Pago cross-border al proveedor"
+                hint="Dólar con el que le pagás al proveedor afuera (CCL o cripto)."
               />
             )}
           </div>
@@ -1067,6 +1097,7 @@ export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean })
           result={rutaActual}
           form={{ ...form, cajas }}
           regimen={regimen}
+          whatsappContacto={whatsappContacto}
         />
       )}
     </div>

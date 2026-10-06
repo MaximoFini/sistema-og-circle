@@ -10,9 +10,8 @@
 // `:has()`, ver QuoteDoc.module.css para por qué esa forma exacta del
 // selector).
 //
-// La marca VEGROUP en el encabezado se porta igual que está — misma
-// decisión pendiente que B12-07 en bugs.md, hasta que el equipo decida sobre
-// las dos hojas juntas (courier + marítimo).
+// La firma dice OG Circle, no VEGROUP (B12-07, corregido en VGRP-69 para las
+// dos hojas: courier y marítimo).
 
 import { createPortal } from "react-dom";
 import {
@@ -53,7 +52,7 @@ export function MaritimoQuoteDoc({ refNumber, fecha, datos, res }: MaritimoQuote
     <div className={styles.hoja} data-maritimo-quote-doc="">
       <div className={styles.encabezado}>
         <div className={styles.logo}>
-          VE<span>GROUP</span>
+          OG <span>CIRCLE</span>
         </div>
         <div className={styles.tituloBloque}>
           <div className={styles.titulo}>COSTO DE IMPORTACIÓN</div>
@@ -241,7 +240,7 @@ export function MaritimoQuoteDoc({ refNumber, fecha, datos, res }: MaritimoQuote
         </table>
 
         <div className={styles.firma}>
-          <strong>VEGROUP</strong> — Asesoramiento integral en comercio exterior.
+          <strong>OG Circle</strong> — Asesoramiento integral en comercio exterior.
         </div>
         <div className={styles.disclaimer}>
           El presente presupuesto es estimado. El flete y el tipo de cambio son los del día de

@@ -79,11 +79,11 @@ describe("POST /api/cotizador/extraer-documento", () => {
     [{ fileBase64: PNG_CHICO }, 'Enviá "fileBase64" y "mediaType".'],
     [
       { fileBase64: PNG_CHICO, mediaType: "text/plain" },
-      "Formato no soportado. Usá una imagen (JPG/PNG) o un PDF.",
+      "Formato no soportado. Usá una imagen (JPG, PNG, WebP o GIF) o un PDF.",
     ],
     [
       { fileBase64: PNG_CHICO, mediaType: "image/bmp" },
-      "Formato no soportado. Usá una imagen (JPG/PNG) o un PDF.",
+      "Formato no soportado. Usá una imagen (JPG, PNG, WebP o GIF) o un PDF.",
     ],
   ])("entrada inválida %j: 400", async (body, mensaje) => {
     mockGetVerifiedClaims.mockResolvedValue(CON_PLAN);

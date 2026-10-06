@@ -3,9 +3,10 @@
 // cálculo de importación.
 //
 // Prompt, modelo (`claude-opus-4-8` o `ANTHROPIC_MODEL_ANALYZE`) y
-// post-proceso copiados TEXTUALES. Igual que el original, este endpoint NO usa
-// tool use: pide texto y lo parsea con `extraerJSON()` (el `extractJSON()`
-// original), sin reintentos.
+// post-proceso copiados TEXTUALES, salvo la marca (VGRP-69: el prompt ya no
+// nombra a VEGROUP, que se colaba en el análisis visible). Igual que el
+// original, este endpoint NO usa tool use: pide texto y lo parsea con
+// `extraerJSON()` (el `extractJSON()` original), sin reintentos.
 //
 // Diferencia con el original: la respuesta se transmite en streaming (NDJSON,
 // ver `EventoAnalisis`) para que la UI muestre el análisis mientras el modelo
@@ -54,12 +55,12 @@ export async function POST(req: Request): Promise<Response> {
   const { producto, ncm, costos, mercado } = body.data;
 
   const system =
-    "Sos un estratega de marketing y comercio para VEGROUP, empresa argentina de " +
+    "Sos un estratega de marketing y comercio para una empresa argentina de " +
     "logística e importación. Analizás productos importados para el mercado argentino " +
     "con criterio comercial realista (precios en USD y contexto local).";
 
   const prompt = [
-    "Analizá comercialmente este producto importado por VEGROUP.",
+    "Analizá comercialmente este producto importado a la Argentina.",
     "",
     `Producto: ${producto}`,
     ncm ? `Posición NCM: ${ncm}` : "",

@@ -269,7 +269,7 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
   return (
     <section className={styles.card} aria-labelledby={tituloId}>
       <div className={styles.cabecera}>
-        <p className={styles.eyebrow}>VEGROUP · Estrategia de venta</p>
+        <p className={styles.eyebrow}>OG Circle · Estrategia de venta</p>
         <h2 className={styles.titulo} id={tituloId}>
           A cuánto vender y dónde conviene
         </h2>
