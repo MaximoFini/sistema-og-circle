@@ -67,6 +67,12 @@ const ProformaUpload = dynamic(() => import("./ProformaUpload").then((m) => m.Pr
   ssr: false,
   loading: () => <PanelCargando />,
 });
+// VGRP-70: identificar el producto con una foto. Diferido para no sumar al
+// chunk del marítimo lo que sólo usa quien saca la foto.
+const FotoProducto = dynamic(() => import("./FotoProducto").then((m) => m.FotoProducto), {
+  ssr: false,
+  loading: () => null,
+});
 const MaritimoResultado = dynamic(
   () => import("./MaritimoResultado").then((m) => m.MaritimoResultado),
   { ssr: false, loading: () => <PanelCargando /> },
@@ -340,8 +346,8 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
             Producto
           </h2>
           <p className={cotizadorStyles.cardSubtitulo}>
-            Escribí qué se importa. La IA identifica la posición arancelaria en la base oficial
-            AFIP/Malvina y de ahí salen los derechos, la estadística y el IVA.
+            Escribí qué se importa, o identificalo con una foto. La IA busca la posición arancelaria
+            en la base oficial AFIP/Malvina y de ahí salen los derechos, la estadística y el IVA.
           </p>
         </div>
 
@@ -353,6 +359,8 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
           autoComplete="off"
           hint="Qué es, de qué material y para qué sirve. Mientras más claro, mejor la posición que encuentra la IA."
         />
+
+        <FotoProducto descripcionActual={producto} onDescripcion={setProducto} />
 
         <div aria-live="polite">
           {detStatus === "detecting" && (

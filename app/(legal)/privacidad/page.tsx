@@ -152,7 +152,8 @@ export default function PrivacidadPage() {
         </li>
         <li>
           <strong>Anthropic</strong>: procesa con inteligencia artificial las descripciones de
-          productos y los documentos que cargás en las funciones de la calculadora que la usan.
+          productos, los documentos y las fotos de productos que cargás en las funciones de la
+          calculadora que la usan. Las fotos no se guardan: sólo se analizan.
         </li>
         <li>
           <strong>Google</strong>: inicio de sesión con Google, si lo elegís.

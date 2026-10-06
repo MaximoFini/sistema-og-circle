@@ -251,6 +251,25 @@ export function extractDocument({
   return post("/api/cotizador/extraer-documento", { fileBase64, mediaType, filename });
 }
 
+/** Respuesta de `identificar-producto` (VGRP-70). `confianza` ya viene acotada a 0-100. */
+export interface ProductoIdentificado {
+  producto: string;
+  detalle: string;
+  confianza: number;
+  dudas: string;
+}
+
+/** Qué producto es, a partir de una foto (JPEG/PNG/WebP en base64). VGRP-70. */
+export function identificarProducto({
+  fileBase64,
+  mediaType,
+}: {
+  fileBase64: string;
+  mediaType: string;
+}): Promise<ProductoIdentificado> {
+  return post("/api/cotizador/identificar-producto", { fileBase64, mediaType });
+}
+
 /** Respuesta de `dolar-cda` (VGRP-58): la cotización del Centro Despachantes de Aduana. */
 export interface CotizacionCda {
   fecha: string;

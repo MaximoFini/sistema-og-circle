@@ -802,3 +802,37 @@
   composes: footnote from "../ui/type.module.css";
   --t-color: var(--text-secondary);
 }
+
+/* ------------------------------------------------------------------ */
+/* VGRP-70 — "Identificar con una foto" (FotoProducto.tsx)              */
+/* ------------------------------------------------------------------ */
+
+.fotoProducto {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fotoBoton {
+  align-self: flex-start;
+}
+
+/* Arrastrando una foto encima. Selector más específico que el de Button:
+   no se redeclara su clase al mismo nivel (CLAUDE.md, orden de carga). */
+.fotoProducto > .fotoBotonActivo {
+  background: var(--accent-05);
+  border-color: var(--accent-40);
+}
+
+.fotoTitulo {
+  font-size: var(--fs-subhead);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fotoAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
