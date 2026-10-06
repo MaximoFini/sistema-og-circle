@@ -54,7 +54,14 @@ export function FotoProducto({ descripcionActual, onDescripcion }: FotoProductoP
   async function analizar(archivo: File | undefined) {
     if (!archivo) return;
     if (!archivo.type.startsWith("image/")) {
-      setEstado({ tipo: "error", mensaje: "Elegí una imagen: una foto JPG, PNG o WebP." });
+      // Lo común es confundirlo con la carga de proforma (QA de VGRP-70).
+      setEstado({
+        tipo: "error",
+        mensaje:
+          archivo.type === "application/pdf"
+            ? "Este botón es para fotos del producto. Las proformas y packing lists se suben en «Subir proforma / packing list»."
+            : "Elegí una imagen: una foto JPG, PNG o WebP.",
+      });
       return;
     }
     setEstado({ tipo: "analizando" });
