@@ -269,6 +269,20 @@ Lo único que sí se distingue es un error real de red/config (Supabase
 inalcanzable, no se pudo determinar el host del request) — eso no tiene
 relación con si la cuenta existe, así que no hay tensión con lo anterior.
 
+**Canal de timing (cerrado el 06/10/2026).** Con el Send Email Hook activo
+(VGRP-25), `resetPasswordForEmail()` para una cuenta que existe espera el
+envío por Resend (~3 s), y para una que no existe vuelve en ~70 ms: medir el
+tiempo de respuesta dejaba saber qué emails están registrados. Ahora
+`solicitarReset` resuelve la config (cliente y origen), responde, y hace el
+pedido a Supabase en `after()`; las dos ramas tardan lo mismo. El costo: si el
+pedido falla después de responder, el usuario no ve ningún error (queda en el
+log de Vercel como `[reset-password]`). Esto asume que el link del mail va por
+`/auth/confirm` (token_hash, como arma el hook), que no depende de la cookie
+`code_verifier` que `resetPasswordForEmail()` intenta escribir y que desde
+`after()` ya no se puede persistir. Si algún día se desactiva el hook y vuelve
+el mail por defecto de Supabase (flujo `?code=` por PKCE), hay que volver a
+resolver el pedido antes de responder o el canje del código va a fallar.
+
 ### Rate limit
 
 Igual que en VGRP-18: rate limiting nativo de Supabase, nada de

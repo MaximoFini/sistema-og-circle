@@ -202,7 +202,7 @@ describe("actualizarPerfil — VGRP-33/VGRP-52", () => {
       }
     });
 
-    it("actualiza profiles.nombre/telefono de verdad en la base y llama a revalidatePath('/perfil')", async () => {
+    it("actualiza profiles.nombre/telefono de verdad en la base y NO llama a revalidatePath (rompía el pending del form)", async () => {
       const created = await createAuthenticatedUser("completo");
       userId = created.userId;
       await loguear(created.email);
@@ -227,7 +227,9 @@ describe("actualizarPerfil — VGRP-33/VGRP-52", () => {
       expect(data?.nombre).toBe(nuevoNombre);
       expect(data?.telefono).toBe(nuevoTelefono);
 
-      expect(mockRevalidatePath).toHaveBeenCalledWith("/perfil");
+      // Regresión del cuelgue de "Guardar cambios": la acción no devuelve el árbol RSC de la
+      // página (la recarga la hace DatosModal al cerrarse). Ver _actions.ts.
+      expect(mockRevalidatePath).not.toHaveBeenCalled();
     });
 
     it("LA GARANTÍA DURA: un FormData con nivel/rol agregados a mano NO cambia profiles.nivel/rol (probado contra la base real)", async () => {

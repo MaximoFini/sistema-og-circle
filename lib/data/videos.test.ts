@@ -5,9 +5,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createTestAdminClient } from "../../test/helpers/db-client";
 import { videoProvider } from "../video/provider";
-import { CANTIDAD_STAGE, obtenerVideosPorStage, TOTAL_VIDEOS } from "./videos";
+import { armarGrilla, CANTIDAD_STAGE, obtenerVideosPorStage, TOTAL_VIDEOS } from "./videos";
 
 const admin = createTestAdminClient();
+
+// La tabla compartida ya tiene videos reales (el contenido de la plataforma). Las filas de
+// estos tests usan un `orden` muy negativo para quedar siempre primeras en la grilla: así
+// ninguna aserción depende de cuántos videos reales haya cargados.
+const PRIMERO = -1_000_000;
 
 const idsCreados: string[] = [];
 
@@ -33,7 +38,7 @@ async function crearVideoTest(valores: {
       descripcion: null,
       provider_ref: valores.provider_ref ?? null,
       publicado: valores.publicado ?? false,
-      orden: valores.orden ?? 0,
+      orden: valores.orden ?? PRIMERO,
     })
     .select()
     .single();
@@ -62,7 +67,6 @@ describe("obtenerVideosPorStage", () => {
       titulo: "Test disponible",
       provider_ref: "dQw4w9WgXcQ",
       publicado: true,
-      orden: 1,
     });
 
     const items = await obtenerVideosPorStage(admin, 2);
@@ -80,7 +84,6 @@ describe("obtenerVideosPorStage", () => {
       titulo: "Test no publicado",
       provider_ref: "secreto-no-debe-salir",
       publicado: false,
-      orden: 2,
     });
 
     const items = await obtenerVideosPorStage(admin, 2);
@@ -101,7 +104,6 @@ describe("obtenerVideosPorStage", () => {
       titulo: "Test publicado sin ref",
       provider_ref: null,
       publicado: true,
-      orden: 3,
     });
 
     const items = await obtenerVideosPorStage(admin, 2);
@@ -112,9 +114,10 @@ describe("obtenerVideosPorStage", () => {
     expect(item?.thumbnailUrl).toBeNull();
   });
 
-  it("completa con tiles sintéticos hasta el tamaño fijo del stage", async () => {
-    // Stage 2 = 3 tiles siempre, sin crear ninguna fila real.
-    const items = await obtenerVideosPorStage(admin, 2);
+  it("completa con tiles sintéticos hasta el tamaño fijo del stage", () => {
+    // Stage 2 = 3 tiles siempre, sin ninguna fila real. Se prueba la parte pura: contra la
+    // tabla compartida ya hay videos reales, así que no se puede asumir que esté vacía.
+    const items = armarGrilla([], 2);
 
     expect(items).toHaveLength(CANTIDAD_STAGE[2]);
     for (const item of items) {
@@ -124,9 +127,9 @@ describe("obtenerVideosPorStage", () => {
   });
 
   it("no agrega sintéticos si ya hay exactamente el tamaño fijo de filas reales", async () => {
-    await crearVideoTest({ stage: 2, titulo: "V1", orden: 1 });
-    await crearVideoTest({ stage: 2, titulo: "V2", orden: 2 });
-    await crearVideoTest({ stage: 2, titulo: "V3", orden: 3 });
+    await crearVideoTest({ stage: 2, titulo: "V1" });
+    await crearVideoTest({ stage: 2, titulo: "V2" });
+    await crearVideoTest({ stage: 2, titulo: "V3" });
 
     const items = await obtenerVideosPorStage(admin, 2);
 
@@ -135,13 +138,13 @@ describe("obtenerVideosPorStage", () => {
   });
 
   it("respeta el orden ('orden' ascendente)", async () => {
-    const b = await crearVideoTest({ stage: 2, titulo: "Segundo", orden: 2 });
-    const a = await crearVideoTest({ stage: 2, titulo: "Primero", orden: 1 });
+    const b = await crearVideoTest({ stage: 2, titulo: "Segundo", orden: PRIMERO + 2 });
+    const a = await crearVideoTest({ stage: 2, titulo: "Primero", orden: PRIMERO + 1 });
 
     const items = await obtenerVideosPorStage(admin, 2);
-    const idsReales = items.filter((i) => i.id !== null).map((i) => i.id);
+    const propios = items.filter((i) => i.id === a.id || i.id === b.id).map((i) => i.id);
 
-    expect(idsReales).toEqual([a.id, b.id]);
+    expect(propios).toEqual([a.id, b.id]);
   });
 
   it("stage 3 (VGRP-31) usa el mismo mecanismo: 1 tile, disponible si publicado+provider_ref", async () => {
@@ -159,8 +162,8 @@ describe("obtenerVideosPorStage", () => {
     expect(items[0]?.estado).toBe("disponible");
   });
 
-  it("stage 3 sin filas reales se completa con 1 tile sintético 'próximamente'", async () => {
-    const items = await obtenerVideosPorStage(admin, 3);
+  it("stage 3 sin filas reales se completa con 1 tile sintético 'próximamente'", () => {
+    const items = armarGrilla([], 3);
 
     expect(items).toHaveLength(1);
     expect(items[0]?.id).toBeNull();

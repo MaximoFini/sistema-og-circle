@@ -252,6 +252,17 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
   subía a 206 kB (se pasaba de su presupuesto de 205); con imports directos
   queda en 202 kB, por debajo de los 203 de antes del cambio.
 
+## `/admin/contenido/[entidad]` — `@dnd-kit` fuera del First Load (06/10/2026)
+
+- El reordenamiento de videos por arrastre (`VideosReordenables`, 29/09) subió la
+  ruta a 211 kB y el CI se pasaba de su presupuesto de 200. La ruta sirve a las
+  cuatro entidades de contenido y sólo "videos" usa `@dnd-kit`.
+- Un `next/dynamic` directo en la page (Server Component) no movió nada (212 kB):
+  Next deja el chunk del Client Component en la lista de la ruta. Con el
+  `dynamic()` dentro de un Client Component chico (`VideosReordenablesLazy.tsx`)
+  la ruta queda en **193 kB** (page 3,73 kB). El presupuesto no se tocó.
+- Verificado: `e2e/admin-edita-video-revalida.spec.ts` pasa con el wrapper.
+
 ## Migraciones de este bloque, estado contra el proyecto real
 
 - `20260918210000_pagos_aprobados_indice_parcial.sql` — aplicada por Ramiro

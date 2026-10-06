@@ -34,6 +34,14 @@ export function DatosModal({
     triggerRef.current?.focus();
   }, []);
 
+  // Recarga completa para que se actualicen el avatar y "Falta tu teléfono" (ver
+  // `actualizarPerfil` en _actions.ts). `router.refresh()` no sirvió: el GET devolvía los
+  // datos nuevos pero el router del cliente no llegaba a aplicarlos.
+  const alGuardar = useCallback(() => {
+    cerrar();
+    window.location.reload();
+  }, [cerrar]);
+
   useEffect(() => {
     if (!abierto) return;
     const primero = panelRef.current?.querySelector<HTMLElement>(SELECTOR_FOCUSABLE);
@@ -127,7 +135,7 @@ export function DatosModal({
                   <PerfilForm
                     nombreInicial={nombreInicial}
                     telefonoInicial={telefonoInicial}
-                    onGuardado={cerrar}
+                    onGuardado={alGuardar}
                   />
                 </div>
               </div>

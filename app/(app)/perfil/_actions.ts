@@ -12,7 +12,6 @@
 // (`grant update (nombre, telefono, progreso)`, init_plataforma.sql) ni siquiera deja
 // escribir esas columnas desde `authenticated`, sea cual sea el código de acá.
 
-import { revalidatePath } from "next/cache";
 import { flattenError } from "zod";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
 import type { ActionState } from "@/lib/forms/action-state";
@@ -47,6 +46,8 @@ export async function actualizarPerfil(
     return { error: "No pudimos guardar tus datos. Probá de nuevo en un momento." };
   }
 
-  revalidatePath("/perfil");
+  // Sin `revalidatePath("/perfil")` a propósito: devolver el árbol RSC de la página en la
+  // respuesta de la acción dejaba a `useActionState` en `pending` para siempre (reproducido
+  // contra el build de producción). La página se recarga desde DatosModal al cerrarse.
   return { mensaje: "Guardado." };
 }

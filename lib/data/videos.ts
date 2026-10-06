@@ -70,8 +70,22 @@ export async function obtenerVideosPorStage(
     .order("orden", { ascending: true });
   if (error) throw error;
 
+  return armarGrilla(data ?? [], stage);
+}
+
+type FilaVideo = Pick<
+  Database["public"]["Tables"]["videos"]["Row"],
+  "id" | "titulo" | "descripcion" | "provider_ref" | "publicado"
+>;
+
+/**
+ * Parte pura de la lectura: recorta las filas (ya ordenadas) al tamaño fijo del stage,
+ * resuelve las URLs y completa con tiles de relleno. Está separada de la consulta para
+ * poder testear el relleno sin depender de cuántas filas reales tenga la tabla.
+ */
+export function armarGrilla(filasOrdenadas: FilaVideo[], stage: 1 | 2 | 3): VideoGridItem[] {
   const cantidad = CANTIDAD_STAGE[stage];
-  const filas: VideoGridItem[] = (data ?? []).slice(0, cantidad).map((fila) => {
+  const filas: VideoGridItem[] = filasOrdenadas.slice(0, cantidad).map((fila) => {
     // Se normaliza también al leer: una fila vieja con un ref inválido (se llegó a
     // guardar el `si=` de un link de Compartir) queda "Próximamente" en vez de un
     // embed roto.

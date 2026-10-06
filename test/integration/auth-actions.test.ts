@@ -64,13 +64,19 @@ import { withAuthRetry } from "../helpers/with-auth-retry";
 let cookieJar: Map<string, string>;
 let requestHeaders: Headers;
 
+// Tareas que las actions encolaron con `after()` en el test actual (se esperan en el
+// `afterEach` de más abajo para que ninguna siga corriendo cuando termina el test).
+let tareasAfter: Promise<unknown>[];
+
 // `after()` de Next sólo corre dentro de un request; acá se llama la action directo.
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/server")>()),
   after: (fn: () => unknown) => {
-    void Promise.resolve()
-      .then(fn)
-      .catch(() => {});
+    tareasAfter.push(
+      Promise.resolve()
+        .then(fn)
+        .catch(() => {}),
+    );
   },
 }));
 
@@ -98,7 +104,12 @@ vi.mock("@/lib/config", () => ({
 
 beforeEach(() => {
   cookieJar = new Map();
+  tareasAfter = [];
   requestHeaders = new Headers({ host: "localhost:3000", "x-forwarded-proto": "http" });
+});
+
+afterEach(async () => {
+  await Promise.allSettled(tareasAfter);
 });
 
 // Import DESPUÉS de los `vi.mock` de arriba (hoisted igual, pero así queda
@@ -423,12 +434,9 @@ describe("solicitarReset — VGRP-19", () => {
     expect(resultadoInexistente.mensaje).toBe(MENSAJE_ESPERADO);
     expect(resultadoExistente.mensaje).toBe(MENSAJE_ESPERADO);
 
-    // Acá la garantía estructural es más fuerte que en `registrarse()`: el
-    // código de `solicitarReset()` ni siquiera LEE el `error` que devuelve
-    // `resetPasswordForEmail()` (a propósito, ver el comentario grande de
-    // `_actions.ts`) — las dos ramas ejecutan exactamente la misma única
-    // llamada de red, así que la tolerancia de `tiempoComparable()` sólo
-    // necesita cubrir jitter, no una asimetría de trabajo esperada.
+    // `solicitarReset()` no espera a Supabase: encola el pedido con `after()` y responde
+    // (ver "Canal de timing" en docs/AUTH.md). Las dos ramas encolan exactamente uno.
+    expect(tareasAfter).toHaveLength(2);
     expect(
       tiempoComparable(msInexistente, msExistente),
       `Tiempos no comparables: inexistente=${msInexistente.toFixed(0)}ms, existente=${msExistente.toFixed(0)}ms`,
