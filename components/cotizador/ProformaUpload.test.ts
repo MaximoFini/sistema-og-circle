@@ -38,7 +38,7 @@ describe("validarArchivo (ProformaUpload)", () => {
 
   it("un formato no soportado se rechaza antes de mirar el peso", () => {
     expect(validarArchivo({ type: "text/plain", size: 50 * MB })).toBe(
-      "Formato no soportado. Subí una imagen (JPG/PNG/WebP) o un PDF.",
+      "Formato no soportado. Subí una imagen (JPG, PNG, WebP o GIF) o un PDF.",
     );
   });
 });

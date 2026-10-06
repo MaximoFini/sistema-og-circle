@@ -34,7 +34,7 @@ const MAX_BYTES = MAX_MB * 1024 * 1024;
  */
 export function validarArchivo(file: { type: string; size: number }): string | null {
   if (!(ACCEPTED as readonly string[]).includes(file.type)) {
-    return "Formato no soportado. Subí una imagen (JPG/PNG/WebP) o un PDF.";
+    return "Formato no soportado. Subí una imagen (JPG, PNG, WebP o GIF) o un PDF.";
   }
   if (file.size > MAX_BYTES) {
     const mb = (file.size / (1024 * 1024)).toLocaleString("es-AR", { maximumFractionDigits: 1 });

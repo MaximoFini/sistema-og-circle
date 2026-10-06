@@ -29,6 +29,7 @@ aparecen y se corrigen después, por decisión del equipo (2026-09-28).
 | B12-12 | Baja | App (general, preexistente) | `middleware.ts` + Vercel Analytics | En local, los scripts `/_vercel/insights/script.js` y `/_vercel/speed-insights/script.js` no existen. El middleware los redirige a `/login` y la consola muestra `Uncaught SyntaxError: Unexpected token '<'`. Pasa en todas las páginas, también en `/login`. En Vercel no ocurre. | Abrir cualquier página en local y mirar la consola. | Pendiente — no es del Bloque 12 |
 | B12-13 | Baja | Entorno | Sesión en el navegador de desarrollo | `AuthApiError: refresh_token_not_found` en los logs del dev server. Quedó una sesión vieja porque el E2E se logueó con el mismo usuario seed y rotó el refresh token. No es un bug del código: se resuelve cerrando sesión y volviendo a entrar. | — | Anotado (sin acción) |
 | B12-14 | Baja | Port | `CotizadorCourier.tsx` / bundle | `/calculadora` quedó en **200 kB exactos**: cero margen contra el presupuesto de CI. Cualquier import estático nuevo lo rompe. | `pnpm build` + `check-bundle-budget.mjs`. | A vigilar |
+| B12-16 | Baja | App (VGRP-70) | `/api/cotizador/*` | **Riesgo de costo.** Cada foto de `identificar-producto` es una llamada de visión a Anthropic, y no hay rate limit propio: sólo el gating por plan. Un usuario con plan podría disparar muchas seguidas. | — | A vigilar — decidir si se agrega un límite por usuario |
 
 ## Corregidos
 

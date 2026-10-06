@@ -277,4 +277,59 @@ test.describe("cotizador marítimo embebido (VGRP-58)", () => {
 
     expect(requestsIa, "cotizar marítimo sin producto no debería llamar a la IA").toEqual([]);
   });
+
+  // VGRP-70 — identificar el producto con una foto. La IA está mockeada (foto,
+  // partidas y NCM): sin clave y sin costo. La foto es un PNG de 1×1 generado
+  // acá; el navegador la achica/re-codifica a JPEG igual que una real.
+  test("completo identifica el producto con una foto y la NCM se detecta sola", async ({
+    page,
+  }) => {
+    let mediaTypeRecibido = "";
+    await page.route("**/api/cotizador/identificar-producto", async (route) => {
+      mediaTypeRecibido = (route.request().postDataJSON() as { mediaType: string }).mediaType;
+      await route.fulfill({
+        json: {
+          producto: "taladro percutor eléctrico",
+          detalle: "Herramienta eléctrica de mano con mandril",
+          confianza: 91,
+          dudas: "No se ve la potencia.",
+        },
+      });
+    });
+    await page.route("**/api/cotizador/sugerir-partidas", (route) =>
+      route.fulfill({ json: { partidas: ["8467"], interpretacion: "taladro" } }),
+    );
+    await page.route("**/api/cotizador/identificar-ncm", async (route) => {
+      const { candidates } = route.request().postDataJSON() as { candidates: { ncm: string }[] };
+      await route.fulfill({
+        json: { ncm: candidates[0]?.ncm, confianza: 80, razonamiento: "Mock.", alternativas: [] },
+      });
+    });
+
+    await login(page, COMPLETO.email, COMPLETO.password);
+    await page.goto("/calculadora");
+    await page.getByRole("radio", { name: /^Marítimo/ }).check();
+
+    await expect(page.getByRole("button", { name: "Identificar con una foto" })).toBeVisible();
+    await page.locator('input[type="file"][accept="image/*"]').setInputFiles({
+      name: "taladro.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(PNG_1X1, "base64"),
+    });
+
+    const descripcion = page.getByLabel("Descripción del producto");
+    await expect(descripcion).toHaveValue(
+      "taladro percutor eléctrico. Herramienta eléctrica de mano con mandril",
+    );
+    await expect(page.getByText("Lo que vemos en la foto")).toBeVisible();
+    await expect(page.getByText(/Para afinar: No se ve la potencia\./)).toBeVisible();
+    expect(mediaTypeRecibido).toBe("image/jpeg");
+
+    // El texto nuevo dispara la detección de NCM de siempre.
+    await expect(page.getByText(/Probabilidad: 80%/)).toBeVisible({ timeout: 15_000 });
+  });
 });
+
+/** PNG válido de 1×1 px (transparente). */
+const PNG_1X1 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
