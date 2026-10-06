@@ -10,7 +10,7 @@ import {
 import type { Tables } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../../admin.module.css";
-import { VideosReordenables } from "./VideosReordenables";
+import { VideosReordenables } from "./VideosReordenablesLazy";
 
 // VGRP-38 — listado de una entidad de contenido. Server Component: lectura
 // directa por service role (bypassa RLS; la barrera de autorización es el rol

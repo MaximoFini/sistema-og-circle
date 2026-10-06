@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
 
+# Los tests corren contra el MISMO proyecto Supabase (docs/TESTING.md) y su teardown borra
+# todos los usuarios de test que no son del seed: dos CI a la vez se pisan ("User not
+# found"). Corren de a uno; lo que ya está corriendo no se cancela (para no cortar un
+# teardown), pero de los pendientes GitHub se queda sólo con el más nuevo.
+concurrency:
+  group: ci-supabase-compartido
+  cancel-in-progress: false
+
 jobs:
   ci:
     runs-on: ubuntu-latest

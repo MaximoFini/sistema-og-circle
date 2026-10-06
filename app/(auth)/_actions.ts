@@ -228,15 +228,27 @@ export async function solicitarReset(
   // pide evitar. Lo único que se distingue es un error real de red/config
   // (host indetectable, Supabase inalcanzable, etc.), que no tiene nada que
   // ver con si la cuenta existe.
-  try {
-    const supabase = await createSupabaseServerClient();
-    const origin = await getOrigin();
-    await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${origin}/auth/callback`,
-    });
-  } catch {
+  //
+  // El pedido a Supabase corre en `after()`, no antes de responder: así las dos ramas
+  // tardan lo mismo (ver "Canal de timing" en docs/AUTH.md). Sólo la configuración
+  // (cliente y origen) se resuelve antes, porque es lo único que puede fallar sin
+  // depender de si la cuenta existe.
+  const config = await Promise.all([createSupabaseServerClient(), getOrigin()]).catch(() => null);
+  if (!config) {
     return { error: "No pudimos procesar tu pedido. Probá de nuevo en un momento." };
   }
+  const [supabase, origin] = config;
+
+  after(async () => {
+    try {
+      await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+        redirectTo: `${origin}/auth/callback`,
+      });
+    } catch (error) {
+      // Ya se respondió: acá no hay a quién devolverle el error, sólo dejar rastro.
+      console.error(`[reset-password] fallo al pedir el reset: ${String(error)}`);
+    }
+  });
 
   return {
     mensaje: "Si el email está registrado, te mandamos un link para recuperar tu contraseña.",
