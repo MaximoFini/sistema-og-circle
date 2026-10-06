@@ -309,7 +309,7 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
           </p>
         )}
 
-        <Conceptos terminos={["cif", "die", "te", "recuperable", "volumetrico"]} />
+        <Conceptos terminos={["cif", "die", "te", "iva", "recuperable", "volumetrico"]} />
       </div>
     </section>
   );

@@ -19,7 +19,11 @@ const GLOSARIO = {
   ],
   te: [
     "TE (tasa de estadística)",
-    "Un porcentaje chico que se suma a los derechos. También sale de la posición arancelaria.",
+    "Una tasa que cobra la aduana por registrar la importación, aparte de los derechos. En general es 3% del valor CIF; algunos productos no la pagan.",
+  ],
+  iva: [
+    "IVA",
+    "El mismo impuesto de cualquier compra, aplicado a lo que importás. Suele ser 21% o 10,5% según el producto, y se calcula sobre el CIF más los derechos y la tasa de estadística.",
   ],
   recuperable: [
     "IVA y percepciones recuperables",

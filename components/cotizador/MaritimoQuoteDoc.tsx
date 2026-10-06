@@ -52,7 +52,7 @@ export function MaritimoQuoteDoc({ refNumber, fecha, datos, res }: MaritimoQuote
     <div className={styles.hoja} data-maritimo-quote-doc="">
       <div className={styles.encabezado}>
         <div className={styles.logo}>
-          VE<span>GROUP</span>
+          OG <span>CIRCLE</span>
         </div>
         <div className={styles.tituloBloque}>
           <div className={styles.titulo}>COSTO DE IMPORTACIÓN</div>

@@ -181,7 +181,7 @@ export function MaritimoResultado({
           </span>
         </div>
 
-        <Conceptos terminos={["tnm3", "consolidado", "cif", "die", "te", "recuperable"]} />
+        <Conceptos terminos={["tnm3", "consolidado", "cif", "die", "te", "iva", "recuperable"]} />
       </section>
     </>
   );
