@@ -8,7 +8,7 @@
 // bajo test dentro de cada test. Sin red real, sin Supabase real: todo lo que
 // hablaría con Mercado Pago o con Supabase Auth está mockeado.
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NivelAcceso } from "@/lib/database.types";
 
 const mockGetVerifiedClaims = vi.fn();
@@ -190,6 +190,48 @@ describe("crearCheckout", () => {
     const result = await crearCheckout("completo");
 
     expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
+  });
+
+  // VGRP-74 — en producción sin MERCADOPAGO_WEBHOOK_SECRET no se abre el checkout.
+  describe("guard de producción sin secreto del webhook", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("VERCEL_ENV=production sin MERCADOPAGO_WEBHOOK_SECRET: ok:false genérico, no se arma ni crea la preferencia", async () => {
+      vi.stubEnv("VERCEL_ENV", "production");
+      vi.stubEnv("MERCADOPAGO_WEBHOOK_SECRET", "");
+
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo");
+
+      expect(result).toEqual({
+        ok: false,
+        error: "Los pagos no están disponibles en este momento. Probá más tarde.",
+      });
+      expect(mockArmarPreferencia).not.toHaveBeenCalled();
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it("VERCEL_ENV=production con el secreto cargado: el checkout sigue normal", async () => {
+      vi.stubEnv("VERCEL_ENV", "production");
+      vi.stubEnv("MERCADOPAGO_WEBHOOK_SECRET", "secreto-de-prueba");
+
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo");
+
+      expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
+    });
+
+    it("fuera de producción (preview/local) sin secreto no bloquea: el flujo de prueba sigue igual", async () => {
+      vi.stubEnv("VERCEL_ENV", "preview");
+      vi.stubEnv("MERCADOPAGO_WEBHOOK_SECRET", "");
+
+      const { crearCheckout } = await import("./_actions");
+      const result = await crearCheckout("completo");
+
+      expect(result).toEqual({ ok: true, url: "https://mp.example/checkout/pref-1" });
+    });
   });
 
   // Auditoría de Mercado Pago (decisión del equipo): bloquear la recompra

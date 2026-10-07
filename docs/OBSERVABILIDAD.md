@@ -75,9 +75,14 @@ código pueda hacer por sí solo. Una vez que exista el DSN real, alguien con ac
 dashboard de Sentry tiene que crear una **Alert Rule**:
 
 - Project: el proyecto de Sentry de este repo.
-- Condición: "An event is seen" (o "A new issue is created") con filtro por el mensaje o
-  el tag del evento — el `extra.detalle` que manda `reportarFalloDeProcesamiento` incluye
-  el string `mercadopago-webhook`, sirve para armar el filtro.
+- Condición: "An event is seen" (o "A new issue is created") con filtro por el mensaje
+  del evento. Todos los mensajes que emite el webhook (`captureMessage`:
+  `reportarProblemaDeHook`, `reportarPagoSinCorrelacion`, `reportarMontoInesperado`)
+  empiezan con `[mercadopago-webhook]`. El filtro recomendado es **"message contains
+  `[mercadopago-webhook]`"** + **environment = production**. Ojo: el fallo que responde
+  500 (`reportarFalloDeProcesamiento`) va por `captureException`, así que su mensaje es
+  el del error. Para ese caso la Alert Rule filtra por el **tag** `mercadopago-webhook`
+  = `fallo` (+ level >= error), no por el texto.
 - Acción: enviar email al canal/lista que decida el equipo.
 
 Sin esta Alert Rule, Sentry va a seguir capturando la excepción igual (aparece en el
@@ -92,8 +97,9 @@ monto pagado no coincide con el precio vigente del nivel comprado en Edge Config
 sólo puede pasar por una preferencia manipulada o un precio que cambió a mitad de un
 checkout en curso — en ambos casos, alguien tiene que mirarlo y activar el nivel a mano
 desde el panel (`/admin/pagos`) si corresponde. Mismo mecanismo de Alert Rule que la
-sección de arriba, pero con un filtro separado por el string `monto inesperado` (o por
-level `error` + el tag `mercadopago-webhook`, que ambos mensajes comparten).
+sección de arriba, pero con un filtro que además exige el texto `monto inesperado`:
+**"message contains `[mercadopago-webhook]`" + "message contains `monto inesperado`"**
++ environment = production.
 
 ## Hueco de auditoría del panel de admin — VGRP-35 (`admin-audit-gap`)
 

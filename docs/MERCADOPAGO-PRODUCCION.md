@@ -5,6 +5,35 @@ Explica qué hay que hacer, fuera del código, para que los pagos reales lleguen
 cuenta y la plataforma los active sola. El código (checkout, webhook, validaciones) ya
 está hecho y testeado — lo que falta acá son datos y configuración que sólo él puede dar.
 
+## Estado al 06/10/2026
+
+- **Aplicación creada** en la cuenta de Mercado Pago **VERA&DOLEATTO S.A.S.** (nº de
+  cuenta 8777916455918302). Es la cuenta que va a recibir los cobros.
+- **`MERCADOPAGO_ACCESS_TOKEN` de producción ya cargado** en Vercel (Production).
+- **`NEXT_PUBLIC_SITE_URL`** existe en Vercel (Production). Hay que verificar que su
+  valor sea `https://plataforma.ogcircle.com.ar` — de eso depende la URL que se le
+  manda a Mercado Pago para las notificaciones.
+- **Pendiente**:
+  - Configurar el webhook en el panel de la aplicación (paso 4), apuntando a
+    `https://plataforma.ogcircle.com.ar/api/webhooks/mercadopago`.
+  - Cargar `MERCADOPAGO_WEBHOOK_SECRET` en Vercel (Production) con la clave secreta
+    que muestra el panel al guardar el webhook.
+  - Cargar `SENTRY_DSN` y `NEXT_PUBLIC_SENTRY_DSN` en Vercel (Production).
+
+> **Advertencia (importante).** En producción, si falta `MERCADOPAGO_WEBHOOK_SECRET`,
+> el checkout queda **bloqueado**: el usuario ve un error genérico y no se crea la
+> preferencia en Mercado Pago. Esto lo implementa el ticket VGRP-74 en
+> `app/(app)/comprar/_actions.ts`. Es una protección a propósito: no se cobra
+> sin poder validar los avisos de pago. Por eso el secreto del webhook es requisito
+> antes de abrir los cobros, no un paso opcional.
+
+**Redeploy obligatorio.** Vercel sólo toma las variables de entorno en el deploy que
+se construye después de cargarlas. Después de cargar o cambiar cualquier variable
+(token, secreto del webhook, DSN de Sentry, URL del sitio), hay que hacer un **redeploy
+de Production** desde Vercel → Deployments → (último deploy) → "Redeploy", o hacer un
+push a la rama principal. Si no se redeploya, la app sigue corriendo con los valores
+viejos (o sin ellos).
+
 ## La regla de oro: la plata va a la cuenta dueña del Access Token
 
 Mercado Pago no tiene un "modo producción" que se prenda con un interruptor. Cada
@@ -69,7 +98,7 @@ va a recibir el dinero).
 
 - [ ] Cuenta de Mercado Pago de Jota con datos fiscales completos (sin esto, MP puede
       retener los pagos hasta que se completen).
-- [ ] Aplicación creada con credenciales de **producción** (no sandbox).
+- [x] Aplicación creada con credenciales de **producción** (no sandbox). (06/10/2026)
 - [ ] Webhook configurado en el panel de esa aplicación, apuntando al dominio real.
 - [ ] `MERCADOPAGO_ACCESS_TOKEN` y `MERCADOPAGO_WEBHOOK_SECRET` de producción cargados
       en Vercel (Production, no sólo Preview/Development).
