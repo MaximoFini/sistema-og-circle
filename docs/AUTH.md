@@ -152,6 +152,14 @@ dado el trade-off de arriba):
   entonces ningún registro deja sesión activa, duplicado o no) — decisión
   de producto que está fuera del alcance de este ticket.
 
+  **Medido el 06/10/2026:** en CI, un registro nuevo tarda 678-995 ms y uno
+  duplicado 213-259 ms (3 a 4 veces más), siempre. Crear una cuenta es
+  inevitablemente más lento que rechazar un duplicado, así que el canal de
+  timing del registro **está abierto** y se acepta. El test de
+  `auth-actions.test.ts` ya no exige tiempos "comparables": sólo falla si la
+  diferencia pasa de 2 s (por ejemplo, un mail enviado de forma síncrona). El
+  de recuperar contraseña sí sigue exigiendo tiempos comparables, y lo cumple.
+
 **Señal para verificar en el dashboard:** si `signUp()` deja de devolver
 `data.session` para un registro nuevo, es la señal de que "Confirm email"
 volvió a estar prendido — revisar Authentication → Sign In / Up →
