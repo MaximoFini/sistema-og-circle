@@ -102,7 +102,7 @@ El cliente manda solo los ids del stage reordenado; `asignarOrden` reparte los l
 // + onGuardado(video: VideoEditor), onCerrar()
 ```
 
-- Campos: título (requerido), descripción, link del video, publicado. En alta, `publicado` arranca en `false` (igual que hoy). **Sin selector de stage**: en alta va fijo en el body; en edición no se envía.
+- Campos: título (requerido), descripción, link del video, publicado. En alta, `publicado` arranca **marcado** (implementación, 08/10/2026): US-2 pide que el video aparezca en la primera casilla libre al guardar; si el admin lo desmarca queda como borrador en "Despublicados". Antes de implementar este punto decía `false` (como el formulario viejo), lo que contradecía a US-2. **Sin selector de stage**: en alta va fijo en el body; en edición no se envía.
 - Errores: `fieldErrors` del 400 y el mensaje del 409 se muestran dentro del panel, que se queda abierto con lo escrito (US-2, US-3).
 
 ### Rutas viejas

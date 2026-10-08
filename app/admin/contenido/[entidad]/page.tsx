@@ -6,11 +6,11 @@ import {
   type Entidad,
   esEntidadValida,
   listarContenido,
+  listarVideosParaEditor,
 } from "@/lib/data/admin/contenido";
-import type { Tables } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../../admin.module.css";
-import { VideosReordenables } from "./VideosReordenablesLazy";
+import { VideosEditor } from "./VideosEditor";
 
 // VGRP-38 — listado de una entidad de contenido. Server Component: lectura
 // directa por service role (bypassa RLS; la barrera de autorización es el rol
@@ -26,16 +26,32 @@ const TITULO: Record<string, string> = {
   servicios_financieros: "Servicios financieros",
 };
 
-function subtitulo(entidad: string, item: Record<string, unknown>): string {
-  if (entidad === "videos") return `Stage ${item.stage}`;
+function subtitulo(_entidad: string, item: Record<string, unknown>): string {
   if ("especialidad" in item) return String(item.especialidad ?? "");
   if ("rubro" in item) return String(item.rubro ?? "");
   return "";
 }
 
 function tituloItem(entidad: string, item: Record<string, unknown>): string {
-  if (entidad === "videos" || entidad === "servicios_financieros") return String(item.titulo ?? "");
+  if (entidad === "servicios_financieros") return String(item.titulo ?? "");
   return String(item.nombre ?? "");
+}
+
+// Los videos no usan el listado genérico: se editan sobre una réplica de las grillas del
+// Inicio (ver VideosEditor).
+async function ResultadosVideos() {
+  const admin = createServiceRoleClient();
+  const videos = await listarVideosParaEditor(admin);
+
+  return (
+    <>
+      <p className={styles.lede}>
+        Así lo ve el usuario en el Inicio. Tocá una casilla para agregar o editar un video y
+        arrastrá los videos de un mismo stage para cambiar su orden.
+      </p>
+      <VideosEditor inicial={videos} />
+    </>
+  );
 }
 
 async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
@@ -45,10 +61,7 @@ async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
 
   return (
     <>
-      <p className={styles.lede}>
-        {items.length} ítem(s),{" "}
-        {entidad === "videos" ? "arrastrá para reordenar." : 'ordenados por "orden".'}
-      </p>
+      <p className={styles.lede}>{items.length} ítem(s), ordenados por "orden".</p>
 
       {/* VGRP-54 punto 4 — "+ Crear nuevo" no depende de `items`, pero queda
           adentro del mismo Suspense que el lede (que sí depende) para no
@@ -61,15 +74,6 @@ async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
 
       {items.length === 0 ? (
         <p className={styles.vacio}>Todavía no hay ítems cargados.</p>
-      ) : entidad === "videos" ? (
-        <VideosReordenables
-          inicial={(items as Tables<"videos">[]).map((v) => ({
-            id: v.id,
-            titulo: v.titulo,
-            stage: v.stage,
-            publicado: v.publicado,
-          }))}
-        />
       ) : (
         <ul className={styles.itemLista}>
           {items.map((item) => {
@@ -111,7 +115,7 @@ export default async function ContenidoListaPage({
       <h1 className={styles.h1}>{TITULO[entidad]}</h1>
 
       <Suspense fallback={<p className={styles.vacio}>Cargando contenido…</p>}>
-        <ResultadosContenido entidad={entidad} />
+        {entidad === "videos" ? <ResultadosVideos /> : <ResultadosContenido entidad={entidad} />}
       </Suspense>
     </div>
   );

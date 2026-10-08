@@ -95,8 +95,14 @@ async function crearSesionAdminVideos(browser: Browser): Promise<{
         },
       });
       if (!res.ok()) {
+        // 409 = el stage ya tiene todas sus casillas ocupadas por videos PUBLICADOS: la
+        // base es compartida, así que un video real publicado le saca cupo a este fixture.
+        const pista =
+          res.status() === 409
+            ? " (el stage no tiene casillas libres: este test necesita cupo para publicar un video de fixture)"
+            : "";
         throw new Error(
-          `No se pudo crear el video de test vía /api/admin/contenido/videos: ${res.status()} ${await res.text()}`,
+          `No se pudo crear el video de test vía /api/admin/contenido/videos: ${res.status()} ${await res.text()}${pista}`,
         );
       }
       const body = (await res.json()) as { id: string };
@@ -297,19 +303,11 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
         publicado: true,
         orden: -10,
       });
-      // Completa el resto del stage para no depender de si hay filas reales de más.
-      const idV2 = await sesionAdmin.crearVideo({
-        stage: 2,
-        titulo: "VGRP-53 relleno a",
-        orden: -9,
-      });
-      const idV3 = await sesionAdmin.crearVideo({
-        stage: 2,
-        titulo: "VGRP-53 relleno b",
-        orden: -8,
-      });
+      // `orden: -10` lo deja primero entre los publicados, sin depender de filas reales.
+      // (Antes se creaban dos videos de relleno SIN publicar para completar el stage; un
+      // despublicado ya no ocupa casilla, así que no cumplían ninguna función.)
       await sesionAdmin.cerrar();
-      idsCreados.push(idV1, idV2, idV3);
+      idsCreados.push(idV1);
 
       await loginComo(page, created.email);
 
@@ -325,7 +323,7 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
     }
   });
 
-  test("una fila real NO publicada (video.id presente, estado='proximamente') muestra su propio título junto al badge 'Próximamente' — dos textos distintos, no es un tile de relleno", async ({
+  test("una fila real PUBLICADA pero sin link (video.id presente, estado='proximamente') muestra su propio título junto al badge 'Próximamente' — dos textos distintos, no es un tile de relleno", async ({
     page,
     browser,
   }) => {
@@ -333,14 +331,15 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
     const admin = createTestAdminClient();
     const idsCreados: string[] = [];
     try {
-      const titulo = "VGRP-53 stage3 no publicado";
+      const titulo = "VGRP-53 stage3 sin link";
       // orden muy negativo: CANTIDAD_STAGE[3] = 1, así que esta fila SIEMPRE es la que
       // ocupa el único slot visible, sin importar qué otra fila real exista para stage 3.
+      // Va PUBLICADA: un despublicado ya no ocupa casilla (ver el test de abajo).
       const sesionAdmin = await crearSesionAdminVideos(browser);
       const idV = await sesionAdmin.crearVideo({
         stage: 3,
         titulo,
-        publicado: false,
+        publicado: true,
         orden: -1_000_000,
       });
       await sesionAdmin.cerrar();
@@ -354,6 +353,38 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
       // No es interactuable: sin id publicado no hay ni thumbnail ni botón de marcar.
       await expect(seccion.getByRole("button", { name: "Marcar como visto" })).toHaveCount(0);
       await expect(seccion.getByRole("button", { name: /^Reproducir/ })).toHaveCount(0);
+    } finally {
+      await borrarVideosTest(admin, idsCreados);
+      await cleanupUser(created.userId);
+    }
+  });
+
+  test("un video DESPUBLICADO no se ve en Inicio ni ocupa casilla: en Stage 3 (1 casilla) sigue el tile de relleno y no aparece su título", async ({
+    page,
+    browser,
+  }) => {
+    const created = await createAuthenticatedUser("completo");
+    const admin = createTestAdminClient();
+    const idsCreados: string[] = [];
+    try {
+      const titulo = "VGRP-53 stage3 despublicado";
+      const sesionAdmin = await crearSesionAdminVideos(browser);
+      // Despublicado y con el orden más bajo posible: antes de este cambio habría sido la
+      // fila que se llevaba la única casilla. Un despublicado no cuenta para el cupo, así
+      // que el POST nunca recibe 409 por esto.
+      const idV = await sesionAdmin.crearVideo({
+        stage: 3,
+        titulo,
+        publicado: false,
+        orden: -1_000_000,
+      });
+      await sesionAdmin.cerrar();
+      idsCreados.push(idV);
+
+      await loginComo(page, created.email);
+
+      const seccion = page.getByRole("region", { name: "Agentes de compra en China" });
+      await expect(seccion.getByText(titulo, { exact: true })).toHaveCount(0);
     } finally {
       await borrarVideosTest(admin, idsCreados);
       await cleanupUser(created.userId);
@@ -376,8 +407,8 @@ test.describe("Camino de aprendizaje — VideoCard/VideoGrid (VGRP-53, hueco tot
       const seccion = page.getByRole("region", { name: "Agentes de compra en China" });
 
       // Sólo UN "Próximamente" (el propio tituloPaso del tile de relleno) — una fila real
-      // no publicada mostraría el título Y el badge por separado (ver el test de arriba),
-      // acá deben ser el mismo único texto.
+      // publicada sin link mostraría el título Y el badge por separado (ver el test de
+      // arriba), acá deben ser el mismo único texto.
       await expect(seccion.getByText("Próximamente", { exact: true })).toHaveCount(1);
       await expect(seccion.getByRole("button", { name: "Marcar como visto" })).toHaveCount(0);
       await expect(seccion.getByRole("button", { name: /^Reproducir/ })).toHaveCount(0);

@@ -55,24 +55,24 @@ Convención de verificación en cada tarea con código: `biome ci` (con el códi
 
 ## C. Interfaz del editor
 
-- [ ] **T10 — `VideoPanel` (modal de alta/edición)**
+- [x] **T10 — `VideoPanel` (modal de alta/edición)**
   Satisfies: US-2, US-3
   Depends on: T4, T9
-  Notes: `app/admin/contenido/[entidad]/VideoPanel.tsx`. Campos: título, descripción, link, publicado (en alta arranca sin publicar); sin selector de stage; en edición no envía `stage`. Muestra `fieldErrors` (400) y el mensaje del 409 sin cerrar. Botón "Despublicar" en edición de un video publicado (`PATCH publicado:false`). Accesibilidad: `role="dialog"`, `aria-modal`, foco inicial, trampa de foco y Escape (mismo patrón que `DatosModal`).
+  Notes: `app/admin/contenido/[entidad]/VideoPanel.tsx`. Campos: título, descripción, link, publicado (en alta arranca publicado: ver design.md); sin selector de stage; en edición no envía `stage`. Muestra `fieldErrors` (400) y el mensaje del 409 sin cerrar. Botón "Despublicar" en edición de un video publicado (`PATCH publicado:false`). Accesibilidad: `role="dialog"`, `aria-modal`, foco inicial, trampa de foco y Escape (mismo patrón que `DatosModal`).
 
-- [ ] **T11 — `VideosEditor` + grilla por stage con casillas tocables**
+- [x] **T11 — `VideosEditor` + grilla por stage con casillas tocables**
   Satisfies: US-1, US-2, US-3, US-4
   Depends on: T5, T6, T8, T10
   Notes: `VideosEditor.tsx` (cliente) con estado por stage, y un `DndContext` por stage (imposible soltar en el otro). Casillas vacías = `cupo − publicados`, tocables y no sortables. Sección "Despublicados" bajo cada grilla. Al guardar, actualizar el estado con la fila devuelta por la API (sin `router.refresh()`). Reordenar: optimista, `PUT .../videos/orden` con los ids del stage, rollback si falla. Cargar `@dnd-kit` con `lazy`/`dynamic` (regla 8 de `docs/RENDIMIENTO.md`).
 
-- [ ] **T12 — Cablear `/admin/contenido/videos` y retirar el listado viejo**
+- [x] **T12 — Cablear `/admin/contenido/videos` y retirar el listado viejo**
   Satisfies: US-5
   Depends on: T11
   Notes: En `app/admin/contenido/[entidad]/page.tsx`, para `videos` renderizar el editor con `listarVideosParaEditor`; sacar el botón "+ Crear nuevo" y el texto "arrastrá para reordenar" para videos. Borrar `VideosReordenables.tsx` y `VideosReordenablesLazy.tsx`. **No** tocar `nuevo/page.tsx`, `[id]/page.tsx` ni `ContenidoForm.tsx` (Stage 3).
 
 ## D. Tests de extremo a extremo y cierre
 
-- [ ] **T13 — Reescribir `e2e/admin-edita-video-revalida.spec.ts`**
+- [x] **T13 — Reescribir `e2e/admin-edita-video-revalida.spec.ts`**
   Satisfies: US-2, US-3, US-5
   Depends on: T12
   Notes: Hoy usa `/videos/nuevo` y `/videos/[id]`. Pasa a crear tocando una casilla vacía, editar desde el panel y comprobar que el Inicio del usuario se actualiza. Crear los videos de prueba **sin publicar** salvo lo imprescindible, y limpiar al terminar (cupo + base compartida). Revisar que `camino-aprendizaje.spec.ts` y `plataforma-bloqueada.spec.ts` no dependan de los videos que ya se borraron.
