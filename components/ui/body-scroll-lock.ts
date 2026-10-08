@@ -1,10 +1,12 @@
 // Bloqueo de scroll del <body> con CONTADOR: dos paneles abiertos a la vez no se pisan.
 //
-// El patrón "guardar el overflow previo y restaurarlo al cerrar" (NavDrawer,
-// CerrarSesionBoton, DatosModal) es frágil: si dos se solapan y se cierran en un orden
+// El patrón "guardar el overflow previo y restaurarlo al cerrar" (que usaban NavDrawer,
+// CerrarSesionBoton y DatosModal) es frágil: si dos se solapan y se cierran en un orden
 // distinto al de apertura, el que cierra último restaura "hidden" y el scroll queda
-// trabado en todas las páginas hasta recargar. Con un contador, el bloqueo se levanta
-// recién cuando se cierra el ÚLTIMO.
+// trabado en todas las páginas hasta recargar. Pasaba de verdad: el diálogo de "Cerrar
+// sesión" se abre desde el menú, y al desmontarse los dos juntos React limpia primero el
+// padre (menú) y después el hijo (diálogo). Con un contador, el bloqueo se levanta recién
+// cuando se cierra el ÚLTIMO, en cualquier orden.
 //
 // Lógica pura y sin React para poder testearla sin DOM (los tests del repo corren en
 // `node`). El hook que la usa está en `useBodyScrollLock.ts`.

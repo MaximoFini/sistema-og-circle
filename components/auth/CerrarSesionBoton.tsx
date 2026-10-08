@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useBodyScrollLock } from "@/components/ui/useBodyScrollLock";
 import { cerrarSesion } from "@/lib/auth/actions";
 import styles from "./CerrarSesionBoton.module.css";
 
@@ -76,14 +77,8 @@ export function CerrarSesionBoton({
     [cerrar],
   );
 
-  useEffect(() => {
-    if (!abierto) return;
-    const overflowPrevio = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = overflowPrevio;
-    };
-  }, [abierto]);
+  // Contador compartido, no "guardar y restaurar": ver el comentario en NavDrawer.
+  useBodyScrollLock(abierto);
 
   return (
     <>

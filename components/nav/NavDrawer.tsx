@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CerrarSesionBoton } from "@/components/auth/CerrarSesionBoton";
 import { Icon } from "@/components/ui/Icon";
+import { useBodyScrollLock } from "@/components/ui/useBodyScrollLock";
 import { DESTINOS_NAV } from "./destinos";
 import styles from "./nav.module.css";
 import { type PerfilResumen, UserFooter } from "./UserFooter";
@@ -77,15 +78,13 @@ export function NavDrawer({
     [onCerrar, triggerRef],
   );
 
-  // Scroll lock del body mientras el drawer está abierto, restaurado al cerrar.
-  useEffect(() => {
-    if (!abierto) return;
-    const overflowPrevio = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = overflowPrevio;
-    };
-  }, [abierto]);
+  // Scroll lock del body mientras el drawer está abierto. Con contador compartido
+  // (useBodyScrollLock): el drawer y el diálogo de "Cerrar sesión" que se abre desde él
+  // pueden desmontarse en el mismo commit (cerrar sesión desmonta el layout entero), y
+  // React corre las limpiezas de padre a hijo: con "guardar el valor previo y
+  // restaurarlo", el diálogo restauraba "hidden" último y el scroll quedaba trabado en
+  // todas las páginas hasta recargar.
+  useBodyScrollLock(abierto);
 
   if (!abierto) return null;
 
