@@ -18,9 +18,8 @@ export default async function ConfigPage() {
     <div className={styles.page}>
       <h1 className={styles.h1}>Configuración</h1>
       <p className={styles.lede}>
-        Precios por nivel y flags. Los cambios se reflejan en el resto del sistema sin
-        deploy — no hay control de descuentos ni de porcentaje promocional acá, no hay descuentos en
-        esta fase.
+        Precios por nivel y flags. Los cambios se reflejan en el resto del sistema sin deploy — no
+        hay control de descuentos ni de porcentaje promocional acá, no hay descuentos en esta fase.
       </p>
 
       <section className={styles.seccion}>
