@@ -96,7 +96,7 @@ async function ResultadosPagos({
           una consulta aparte sólo para el conteo — ninguna de las dos vale
           la pena por lo poco que tarda hoy este query. */}
       <p className={styles.lede}>
-        Ledger completo. Los aprobados que no quedaron aplicados están marcados{" "}
+        Los aprobados que no quedaron aplicados están marcados{" "}
         <span className={styles.badgeSinAplicar}>Sin aplicar</span>.
         {totalSinAplicar !== null && totalSinAplicar > 0
           ? ` Hay ${totalSinAplicar} en total.`
