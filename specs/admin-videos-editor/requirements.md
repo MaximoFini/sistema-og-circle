@@ -88,7 +88,7 @@ As a administrador, I want una única pantalla para los videos, so that no tengo
 **Acceptance criteria:**
 
 - THE SYSTEM SHALL servir en `/admin/contenido/videos` la nueva pantalla en lugar del listado actual.
-- THE SYSTEM SHALL dejar de usar las páginas de alta y de edición separadas para videos (`/admin/contenido/videos/nuevo` y `/admin/contenido/videos/[id]`).
+- THE SYSTEM SHALL NOT enlazar a las páginas de alta y de edición separadas para videos (`/admin/contenido/videos/nuevo` y `/admin/contenido/videos/[id]`) desde la pantalla nueva. Esas páginas se conservan por URL solo mientras el video de Stage 3 no tenga otra forma de gestionarse.
 - THE SYSTEM SHALL NOT cambiar `/admin/contenido/agentes`, `/profesionales` ni `/servicios_financieros`.
 - THE SYSTEM SHALL conservar el registro de auditoría de crear, editar, despublicar y reordenar, igual que hoy.
 

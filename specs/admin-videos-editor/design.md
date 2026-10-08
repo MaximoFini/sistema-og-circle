@@ -1,6 +1,6 @@
 # Design: Editor de videos del admin (réplica del Inicio)
 
-**Status:** Draft
+**Status:** Approved (2026-10-08)
 **Last updated:** 2026-10-08
 **Requirements:** [requirements.md](./requirements.md)
 
@@ -107,7 +107,7 @@ El cliente manda solo los ids del stage reordenado; `asignarOrden` reparte los l
 
 ### Rutas viejas
 
-`/admin/contenido/videos/nuevo` y `/admin/contenido/videos/[id]` pasan a `redirect("/admin/contenido/videos")`. Siguen funcionando para el resto de las entidades. Se elimina de `ContenidoForm.tsx` la configuración de campos de `videos`.
+`/admin/contenido/videos/nuevo` y `/admin/contenido/videos/[id]` **se dejan funcionando** pero sin ningún enlace que lleve a ellas desde la pantalla nueva: Stage 3 queda fuera del editor (decidido con el usuario), y esas páginas son hoy la única forma de gestionar el video explicativo de Agentes. Cuando Stage 3 entre al editor, se redirigen o se eliminan. `ContenidoForm.tsx` no cambia. Se elimina solo el listado viejo (`VideosReordenables*.tsx`) y el botón "+ Crear nuevo" para videos.
 
 ## Key flows
 
@@ -173,7 +173,7 @@ Despublicar (`PATCH publicado:false`): sale de `publicados`, entra en `despublic
 | US-3 despublicar, republicar al final, publicar con stage lleno | `actualizarContenido` (orden y cupo) |
 | US-4 reordenar solo dentro del stage | `DndContext` por stage + `PUT orden` |
 | US-4 sin tocar casillas vacías ni el otro stage | No sortables; `asignarOrden` por subconjunto |
-| US-5 reemplazar pantallas | `page.tsx`, redirecciones, baja de `VideosReordenables*` |
+| US-5 reemplazar pantallas | `page.tsx` y baja de `VideosReordenables*`; las páginas viejas de alta/edición quedan sin enlaces (Stage 3) |
 | US-5 auditoría | Rutas existentes con `conAuditoria` |
 
 ## Testing
@@ -186,7 +186,7 @@ Despublicar (`PATCH publicado:false`): sale de `publicados`, entra en `despublic
 
 ## Open questions / risks
 
-- **Stage 3 queda sin pantalla de gestión.** Hoy el video explicativo de Agentes (Stage 3) se carga con los formularios genéricos que este diseño redirige para `videos`. Se propone agregar una tercera sección compacta "Video explicativo de Agentes" (1 casilla) al mismo editor, con el mismo panel: cuesta poco y evita dejarlo huérfano. Eso modifica el Non-goal "Stage 3 queda fuera". **Necesita tu decisión.**
+- _(Resuelta)_ **Stage 3 queda fuera por ahora.** Se conservan las páginas viejas de alta y edición de videos (sin enlaces desde la pantalla nueva) para poder seguir gestionando el video explicativo de Agentes hasta que se incorpore al editor. Ojo: esas páginas permiten elegir cualquier stage, y con la regla de cupo del servidor también quedan sujetas al 409.
 - **Tests contra la base compartida.** Los tests de integración y e2e corren contra la base real. Con la regla de cupo, un test que cree un video publicado en un stage lleno de videos reales fallaría con 409. Los tests nuevos crean videos **sin publicar** por defecto, y los que necesiten publicar lo hacen en un stage con cupo y limpian al terminar.
 - **Condición de carrera.** El conteo de cupo y la escritura no son atómicos: dos admins publicando a la vez en el último lugar podrían pasarse por uno. La lectura igual muestra solo las primeras N, así que no se rompe nada visible; se acepta para una herramienta con pocos administradores.
 - **Refactor de `VideoCard`.** Extraer `CasillaVideo` toca la casilla del usuario. Se verifica con `e2e/camino-aprendizaje.spec.ts` y mirando el Inicio antes del PR.
