@@ -1,4 +1,4 @@
-// VGRP-36 — tests de integración de `lib/data/admin/usuarios.ts` contra el
+﻿// VGRP-36 — tests de integración de `lib/data/admin/usuarios.ts` contra el
 // proyecto real de Supabase (no hay base separada, ver docs/TESTING.md).
 //
 // Cada test crea sus propios usuarios ad hoc (@test.og-circle.invalid) y los
@@ -62,6 +62,7 @@ describe("listarUsuarios", () => {
     const fragmento = a.email.slice(12, 24);
 
     const { usuarios } = await listarUsuarios(admin, {
+      pruebas: "mostrar",
       q: fragmento,
       limit: 50,
     });
@@ -74,6 +75,7 @@ describe("listarUsuarios", () => {
     await nuevoUsuario("ninguno");
 
     const { usuarios } = await listarUsuarios(admin, {
+      pruebas: "mostrar",
       nivel: "completo",
       limit: 100,
     });
@@ -86,11 +88,12 @@ describe("listarUsuarios", () => {
     await nuevoUsuario("ninguno");
     await nuevoUsuario("ninguno");
 
-    const p1 = await listarUsuarios(admin, { limit: 2 });
+    const p1 = await listarUsuarios(admin, { pruebas: "mostrar", limit: 2 });
     expect(p1.usuarios).toHaveLength(2);
     expect(p1.nextCursor).not.toBeNull();
 
     const p2 = await listarUsuarios(admin, {
+      pruebas: "mostrar",
       limit: 2,
       cursor: p1.nextCursor ?? undefined,
     });
@@ -115,12 +118,14 @@ describe("listarUsuarios — filtros del panel (correcciones UI)", () => {
 
     // Comas y paréntesis no rompen el `.or()` de PostgREST.
     const porNombre = await listarUsuarios(admin, {
+      pruebas: "mostrar",
       q: `, (raro) ${sufijo}`,
       limit: 50,
     });
     expect(porNombre.usuarios.map((u) => u.id)).toEqual([a.userId]);
 
     const porTelefono = await listarUsuarios(admin, {
+      pruebas: "mostrar",
       q: `11 ${sufijo}`,
       limit: 50,
     });
@@ -140,6 +145,7 @@ describe("listarUsuarios — filtros del panel (correcciones UI)", () => {
     await admin.from("profiles").update({ terminos_aceptados_at: null }).eq("id", sin.userId);
 
     const aceptados = await listarUsuarios(admin, {
+      pruebas: "mostrar",
       terminos: "si",
       limit: 100,
     });
@@ -148,6 +154,7 @@ describe("listarUsuarios — filtros del panel (correcciones UI)", () => {
     expect(ids).not.toContain(sin.userId);
 
     const sinAceptar = await listarUsuarios(admin, {
+      pruebas: "mostrar",
       terminos: "no",
       limit: 100,
     });
@@ -168,7 +175,10 @@ describe("listarUsuarios — filtros del panel (correcciones UI)", () => {
   it("cuentas de prueba: se ocultan por defecto, `mostrar` las incluye y `solo` trae sólo ésas", async () => {
     const prueba = await nuevoUsuario("ninguno");
     const real = await nuevoUsuario("ninguno");
+    // Las dos se crean con el dominio de test, que la base marca como prueba al
+    // insertarlas (trigger de 20261008020000). Se fija a mano cuál hace de "real".
     await admin.from("profiles").update({ es_prueba: true }).eq("id", prueba.userId);
+    await admin.from("profiles").update({ es_prueba: false }).eq("id", real.userId);
 
     const porDefecto = (await listarUsuarios(admin, { limit: 100 })).usuarios.map((u) => u.id);
     expect(porDefecto).toContain(real.userId);
@@ -194,10 +204,11 @@ describe("listarUsuarios — filtros del panel (correcciones UI)", () => {
       await nuevoUsuario("ninguno");
       await nuevoUsuario("ninguno");
 
-      const p1 = await listarUsuarios(admin, { orden, limit: 2 });
+      const p1 = await listarUsuarios(admin, { pruebas: "mostrar", orden, limit: 2 });
       expect(p1.usuarios).toHaveLength(2);
       expect(p1.nextCursor).not.toBeNull();
       const p2 = await listarUsuarios(admin, {
+        pruebas: "mostrar",
         orden,
         limit: 2,
         cursor: p1.nextCursor ?? undefined,

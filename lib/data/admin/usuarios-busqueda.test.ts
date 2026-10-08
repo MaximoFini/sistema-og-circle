@@ -1,4 +1,4 @@
-// VGRP-47 §2/§3 — `escaparLike` y el keyset de `listarUsuarios` contra
+﻿// VGRP-47 §2/§3 — `escaparLike` y el keyset de `listarUsuarios` contra
 // Postgres real (no hay base de test separada, ver docs/TESTING.md). El
 // escape en sí ya está cubierto de forma pura y barata en `keyset.test.ts`
 // (sin pegarle a la base); acá se prueba el ÁNGULO que sólo tiene sentido
@@ -62,7 +62,10 @@ describe("listarUsuarios: escaparLike contra búsqueda real (VGRP-47 §2)", () =
     idConGuionBajo = await crearUsuario(conGuionBajo);
     idSinGuionBajo = await crearUsuario(sinGuionBajo);
 
-    const { usuarios } = await listarUsuarios(admin, { q: `guion_bajo-${sufijo}` });
+    const { usuarios } = await listarUsuarios(admin, {
+      pruebas: "mostrar",
+      q: `guion_bajo-${sufijo}`,
+    });
 
     const emails = usuarios.map((u) => u.email);
     expect(emails).toContain(`${conGuionBajo}${TEST_EMAIL_SUFFIX}`);
@@ -94,7 +97,7 @@ describe("listarUsuarios: escaparLike contra búsqueda real (VGRP-47 §2)", () =
     idConGuionBajo = creadoConPorcentaje; // reusa el afterEach de arriba
     idSinGuionBajo = await crearUsuario(sinPorcentaje);
 
-    const { usuarios } = await listarUsuarios(admin, { q: `100%-${sufijo}` });
+    const { usuarios } = await listarUsuarios(admin, { pruebas: "mostrar", q: `100%-${sufijo}` });
 
     const emails = usuarios.map((u) => u.email);
     expect(emails).toContain(`${conPorcentaje}${TEST_EMAIL_SUFFIX}`);
@@ -142,7 +145,11 @@ describe("listarUsuarios: keyset con empate exacto de created_at (VGRP-47 §3)",
     // Filtramos por nivel="ninguno" (default de crearUsuario) para no
     // depender de qué otros usuarios de test/seed existan en la base en este
     // momento — nos interesa sólo el orden relativo entre A y B.
-    const primeraPagina = await listarUsuarios(admin, { limit: 1, nivel: "ninguno" });
+    const primeraPagina = await listarUsuarios(admin, {
+      pruebas: "mostrar",
+      limit: 1,
+      nivel: "ninguno",
+    });
 
     // Buscamos la página que contiene a A o B (puede haber otros usuarios
     // nivel="ninguno" de otros tests corriendo antes en la misma suite,
@@ -157,7 +164,12 @@ describe("listarUsuarios: keyset con empate exacto de created_at (VGRP-47 §3)",
       if (idsVistos.has(idA) && idsVistos.has(idB)) break;
       cursor = paginaActual.nextCursor;
       if (!cursor) break;
-      paginaActual = await listarUsuarios(admin, { limit: 1, nivel: "ninguno", cursor });
+      paginaActual = await listarUsuarios(admin, {
+        pruebas: "mostrar",
+        limit: 1,
+        nivel: "ninguno",
+        cursor,
+      });
     }
 
     expect(idsVistos.has(idA)).toBe(true);
@@ -167,7 +179,7 @@ describe("listarUsuarios: keyset con empate exacto de created_at (VGRP-47 §3)",
     // cuántas veces aparece cada uno de los dos ids empatados.
     const conteo = new Map<string, number>();
     cursor = null;
-    paginaActual = await listarUsuarios(admin, { limit: 1, nivel: "ninguno" });
+    paginaActual = await listarUsuarios(admin, { pruebas: "mostrar", limit: 1, nivel: "ninguno" });
     guard = 0;
     for (;;) {
       guard++;
@@ -177,6 +189,7 @@ describe("listarUsuarios: keyset con empate exacto de created_at (VGRP-47 §3)",
       }
       if (!paginaActual.nextCursor) break;
       paginaActual = await listarUsuarios(admin, {
+        pruebas: "mostrar",
         limit: 1,
         nivel: "ninguno",
         cursor: paginaActual.nextCursor,
