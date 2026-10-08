@@ -21,7 +21,7 @@ import { unstable_cache } from "next/cache";
 import type { AppMetadataClaims } from "../auth/claims";
 import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
-import { TAG_POR_ENTIDAD } from "./admin/contenido";
+import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido";
 import { leerConFallback } from "./cache-fallback";
 import { resolverSecreto } from "./secretos";
 
@@ -62,7 +62,7 @@ async function obtenerFilasAgentes(admin: AdminClient): Promise<AgenteFila[]> {
 const obtenerFilasAgentesCached = unstable_cache(
   () => obtenerFilasAgentes(createServiceRoleClient()),
   ["agentes-filas"],
-  { tags: [TAG_POR_ENTIDAD.agentes] },
+  { tags: [TAG_POR_ENTIDAD.agentes], revalidate: REVALIDATE_CONTENIDO_SEGUNDOS },
 );
 
 function resolverAgentes(filas: AgenteFila[], claims: AppMetadataClaims | null): AgentePublico[] {

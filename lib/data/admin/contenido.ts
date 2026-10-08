@@ -48,6 +48,16 @@ export const TAG_POR_ENTIDAD: Record<Entidad, string> = {
   servicios_financieros: "grilla-servicios",
 };
 
+/**
+ * Vencimiento de RESPALDO (segundos) de las lecturas cacheadas de contenido. El
+ * mecanismo principal sigue siendo `revalidateTag` (cada escritura desde el panel de
+ * admin invalida al instante). Sin este piso, un cambio hecho por fuera del panel (un
+ * borrado directo en la base, un insert de un test) quedaba servido para siempre:
+ * el caché de datos de Vercel sobrevive a los deploys. Con él, como mucho una hora.
+ * Mismo criterio que `lib/config` (`revalidate: 3600`).
+ */
+export const REVALIDATE_CONTENIDO_SEGUNDOS = 3600;
+
 export class ItemNoEncontrado extends Error {
   constructor(entidad: Entidad, id: string) {
     super(`No existe un ítem de "${entidad}" con id ${id}.`);
