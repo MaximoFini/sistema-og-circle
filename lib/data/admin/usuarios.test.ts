@@ -155,11 +155,36 @@ describe("listarUsuarios — filtros del panel (correcciones UI)", () => {
   });
 
   it("filtra por rol", async () => {
+    // El admin del seed es una cuenta de prueba (`es_prueba`): se oculta por
+    // defecto, así que acá se pide verla explícitamente.
     const { usuarios } = await listarUsuarios(admin, {
       rol: "admin",
+      pruebas: "mostrar",
       limit: 100,
     });
     expect(usuarios.some((u) => u.id === actorId)).toBe(true);
+  });
+
+  it("cuentas de prueba: se ocultan por defecto, `mostrar` las incluye y `solo` trae sólo ésas", async () => {
+    const prueba = await nuevoUsuario("ninguno");
+    const real = await nuevoUsuario("ninguno");
+    await admin.from("profiles").update({ es_prueba: true }).eq("id", prueba.userId);
+
+    const porDefecto = (await listarUsuarios(admin, { limit: 100 })).usuarios.map((u) => u.id);
+    expect(porDefecto).toContain(real.userId);
+    expect(porDefecto).not.toContain(prueba.userId);
+
+    const todas = (await listarUsuarios(admin, { pruebas: "mostrar", limit: 100 })).usuarios.map(
+      (u) => u.id,
+    );
+    expect(todas).toContain(real.userId);
+    expect(todas).toContain(prueba.userId);
+
+    const soloPrueba = (await listarUsuarios(admin, { pruebas: "solo", limit: 100 })).usuarios.map(
+      (u) => u.id,
+    );
+    expect(soloPrueba).toContain(prueba.userId);
+    expect(soloPrueba).not.toContain(real.userId);
   });
 
   it.each(["antiguos", "alfabetico"] as const)(
