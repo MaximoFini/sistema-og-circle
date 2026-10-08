@@ -1,24 +1,24 @@
 "use client";
 
-// VGRP-40 — Edición de flags de fase. Sin paso de confirmación (US-3 no lo
+// VGRP-40 — Edición de flags. Sin paso de confirmación (US-3 no lo
 // pide, a diferencia de precios — ver design.md
 // specs/bloque-10-pendientes/design-vgrp40.md §Overview sobre por qué son dos
 // formularios separados). Fetch/estado vía useAdminMutation (../useAdminMutation).
+//
+// `flags.fase` ya no se edita desde acá (era informativo, no controla nada): el
+// endpoint igual lo exige, así que se reenvía tal cual está guardado.
 
 import { type FormEvent, useState } from "react";
 import { Button, Checkbox, FormError } from "@/components/ui";
 import type { Config } from "@/lib/config/schema";
-import { FASES } from "@/lib/config/schema";
 import styles from "../admin.module.css";
 import { useAdminMutation } from "../useAdminMutation";
 
 type Flags = Config["flags"];
-type Fase = Flags["fase"];
 
 export function FlagsForm({ flagsIniciales }: { flagsIniciales: Flags }) {
   const [checkoutHabilitado, setCheckoutHabilitado] = useState(flagsIniciales.checkout_habilitado);
   const [registroHabilitado, setRegistroHabilitado] = useState(flagsIniciales.registro_habilitado);
-  const [fase, setFase] = useState<Fase>(flagsIniciales.fase);
   const { enviando, refrescando, error, ok, submit } = useAdminMutation<{ flags: Flags }, unknown>({
     url: "/api/admin/config",
     mensajeOk: "Flags actualizados.",
@@ -30,7 +30,7 @@ export function FlagsForm({ flagsIniciales }: { flagsIniciales: Flags }) {
       flags: {
         checkout_habilitado: checkoutHabilitado,
         registro_habilitado: registroHabilitado,
-        fase,
+        fase: flagsIniciales.fase,
       },
     });
   }
@@ -53,20 +53,6 @@ export function FlagsForm({ flagsIniciales }: { flagsIniciales: Flags }) {
         checked={registroHabilitado}
         onChange={(e) => setRegistroHabilitado(e.target.checked)}
       />
-      <label className={styles.formCampo}>
-        <span className={styles.formLabel}>Fase</span>
-        <select
-          className={styles.selectNativo}
-          value={fase}
-          onChange={(e) => setFase(e.target.value as Fase)}
-        >
-          {FASES.map((f) => (
-            <option key={f} value={f}>
-              Fase {f}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <FormError>{error}</FormError>
       {ok ? <p className={styles.formOk}>{ok}</p> : null}

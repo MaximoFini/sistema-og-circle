@@ -262,6 +262,7 @@ export type Database = {
           bienvenida_enviada_at: string | null;
           created_at: string;
           email: string;
+          es_prueba: boolean;
           id: string;
           nivel: Database["public"]["Enums"]["nivel_acceso"];
           nombre: string | null;
@@ -277,6 +278,7 @@ export type Database = {
           bienvenida_enviada_at?: string | null;
           created_at?: string;
           email: string;
+          es_prueba?: boolean;
           id: string;
           nivel?: Database["public"]["Enums"]["nivel_acceso"];
           nombre?: string | null;
@@ -292,6 +294,7 @@ export type Database = {
           bienvenida_enviada_at?: string | null;
           created_at?: string;
           email?: string;
+          es_prueba?: boolean;
           id?: string;
           nivel?: Database["public"]["Enums"]["nivel_acceso"];
           nombre?: string | null;
