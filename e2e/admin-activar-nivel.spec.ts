@@ -28,7 +28,9 @@ test("el admin da acceso a un usuario indicando un motivo", async ({ page }) => 
   try {
     await login(page, SEED_ADMIN_USER.email, SEED_ADMIN_USER.password);
 
-    await page.goto(`/admin/usuarios?q=${encodeURIComponent(objetivo.email)}`);
+    // `pruebas=mostrar`: la cuenta de test (dominio @test.og-circle.invalid) es una cuenta
+    // de prueba y el listado las oculta por defecto.
+    await page.goto(`/admin/usuarios?q=${encodeURIComponent(objetivo.email)}&pruebas=mostrar`);
     await page.getByRole("link", { name: objetivo.email }).click();
     await page.waitForURL(`**/admin/usuarios/${objetivo.userId}`);
 
