@@ -126,7 +126,7 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
           <SeccionSlot
             eyebrow="Infraestructura"
             titulo="Agentes de compra en China"
-            descripcion="6 agentes verificados con los que ya opera Jota."
+            descripcion="6 agentes verificados con los que ya opera VeGroup."
           >
             <VideoGrid videos={stage3} reordenable={reordenable} />
             <AgentesGrid />
