@@ -32,10 +32,7 @@ export default function ContenidoIndexPage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.h1}>Contenido</h1>
-      <p className={styles.lede}>
-        Agentes, videos, profesionales y servicios financieros — CRUD con revalidación automática de
-        las grillas públicas.
-      </p>
+      <p className={styles.lede}>Agentes, videos, profesionales y servicios financieros.</p>
 
       <div className={styles.cards}>
         {ENTIDADES_UI.map((e) => (
