@@ -12,10 +12,10 @@ import * as Sentry from "@sentry/nextjs";
 import { track } from "@vercel/analytics/server";
 import { getNivel, nivelAlcanzaOSupera } from "@/lib/auth/claims";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
-import { esProduccion } from "@/lib/site-url";
 import type { NivelAcceso } from "@/lib/database.types";
 import { getPreferenceClient } from "@/lib/mercadopago/client";
 import { armarPreferencia, type NivelComprable } from "@/lib/mercadopago/preferencia";
+import { esProduccion } from "@/lib/site-url";
 import { perfilSchema } from "../perfil/_schemas";
 
 export type CrearCheckoutResult =
