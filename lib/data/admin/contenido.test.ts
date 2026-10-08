@@ -7,12 +7,14 @@ import { createTestAdminClient } from "../../../test/helpers/db-client";
 import { CANTIDAD_STAGE } from "../videos-config";
 import {
   actualizarContenido,
+  armarVideosEditor,
   borrarContenido,
   crearContenido,
   ENTIDADES,
   esEntidadValida,
   ItemNoEncontrado,
   listarContenido,
+  listarVideosParaEditor,
   StageCompleto,
 } from "./contenido";
 
@@ -305,5 +307,85 @@ describe("videos: cupo por stage y volver a publicar al final", () => {
     const maximo = Math.max(...(data ?? []).map((v) => v.orden));
     expect(publicado.resultado.orden).toBe(maximo);
     expect(publicado.resultado.orden).toBeGreaterThan(-500);
+  });
+});
+
+describe("armarVideosEditor (parte pura)", () => {
+  function fila(
+    n: number,
+    extra: { stage?: 1 | 2 | 3; publicado?: boolean; provider_ref?: string | null } = {},
+  ) {
+    return {
+      id: `id-${n}`,
+      stage: extra.stage ?? 1,
+      titulo: `Video ${n}`,
+      descripcion: null,
+      provider_ref: extra.provider_ref ?? null,
+      publicado: extra.publicado ?? true,
+      orden: n,
+    };
+  }
+
+  it("reparte por stage y separa publicados de despublicados, conservando el orden", () => {
+    const r = armarVideosEditor([
+      fila(1, { stage: 1 }),
+      fila(2, { stage: 2, publicado: false }),
+      fila(3, { stage: 1, publicado: false }),
+      fila(4, { stage: 2 }),
+    ]);
+
+    expect(r[1].publicados.map((v) => v.id)).toEqual(["id-1"]);
+    expect(r[1].despublicados.map((v) => v.id)).toEqual(["id-3"]);
+    expect(r[2].publicados.map((v) => v.id)).toEqual(["id-4"]);
+    expect(r[2].despublicados.map((v) => v.id)).toEqual(["id-2"]);
+  });
+
+  it("recorta los publicados al cupo del stage (misma regla que el Inicio) y deja pasar los despublicados", () => {
+    const filas = Array.from({ length: CANTIDAD_STAGE[2] + 2 }, (_, i) => fila(i, { stage: 2 }));
+    const r = armarVideosEditor([...filas, fila(99, { stage: 2, publicado: false })]);
+
+    expect(r[2].publicados).toHaveLength(CANTIDAD_STAGE[2]);
+    expect(r[2].publicados.map((v) => v.id)).toEqual(
+      filas.slice(0, CANTIDAD_STAGE[2]).map((v) => v.id),
+    );
+    expect(r[2].despublicados.map((v) => v.id)).toEqual(["id-99"]);
+  });
+
+  it("ignora el Stage 3 (fuera de este editor)", () => {
+    const r = armarVideosEditor([fila(1, { stage: 3 })]);
+
+    expect(r[1].publicados).toHaveLength(0);
+    expect(r[2].publicados).toHaveLength(0);
+    expect(Object.keys(r)).toEqual(["1", "2"]);
+  });
+
+  it("la miniatura sólo existe si está publicado y el link es válido", () => {
+    const r = armarVideosEditor([
+      fila(1, { provider_ref: "dQw4w9WgXcQ" }),
+      fila(2, { provider_ref: null }),
+      fila(3, { provider_ref: "dQw4w9WgXcQ", publicado: false }),
+    ]);
+
+    expect(r[1].publicados[0]?.thumbnailUrl).toContain("dQw4w9WgXcQ");
+    expect(r[1].publicados[1]?.thumbnailUrl).toBeNull();
+    expect(r[1].despublicados[0]?.thumbnailUrl).toBeNull();
+    // Al admin sí se le entrega el id para poder editarlo.
+    expect(r[1].despublicados[0]?.providerRef).toBe("dQw4w9WgXcQ");
+  });
+});
+
+describe("listarVideosParaEditor", () => {
+  it("un video despublicado aparece en `despublicados`, no en `publicados`", async () => {
+    const creado = await crearContenido(admin, "videos", {
+      stage: 2,
+      titulo: `Borrador editor ${crypto.randomUUID()}`,
+      publicado: false,
+    });
+    idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
+
+    const r = await listarVideosParaEditor(admin);
+
+    expect(r[2].despublicados.some((v) => v.id === creado.entidadId)).toBe(true);
+    expect(r[2].publicados.some((v) => v.id === creado.entidadId)).toBe(false);
   });
 });

@@ -29,27 +29,27 @@ Convención de verificación en cada tarea con código: `biome ci` (con el códi
   Depends on: T3
   Notes: `app/api/admin/contenido/[entidad]/route.ts` (POST) y `.../[id]/route.ts` (PATCH). Mensaje: "El Stage N ya tiene sus M casillas ocupadas. Despublicá un video antes de publicar otro." No debe capturarse en Sentry como error inesperado. Tests en los `route.test.ts` existentes.
 
-- [ ] **T5 — `listarVideosParaEditor(admin)`**
+- [x] **T5 — `listarVideosParaEditor(admin)`**
   Satisfies: US-1
   Depends on: T1
   Notes: Devuelve `{1:{publicados,despublicados},2:{...}}` con el tipo `VideoEditor` (incluye `thumbnailUrl` resuelta con `videoProvider`, igual que el Inicio). Publicados limitados al cupo; despublicados completos. Tests en `contenido.test.ts`.
 
 ## B. Componentes compartidos
 
-- [ ] **T6 — Textos de sección compartidos**
+- [x] **T6 — Textos de sección compartidos**
   Satisfies: US-1
   Notes: `components/inicio/secciones-formacion.ts` con eyebrow, título y descripción de Stage 1 y 2; `InicioShell.tsx` pasa a leerlos. Refactor puro: el Inicio queda idéntico (verificar con `e2e/camino-aprendizaje.spec.ts`).
 
-- [ ] **T7 — Extraer `CasillaVideo` presentacional de `VideoCard`**
+- [x] **T7 — Extraer `CasillaVideo` presentacional de `VideoCard`**
   Satisfies: US-1
   Notes: `components/video/CasillaVideo.tsx` (nodo numerado, línea, contenedor), sin estado ni contexto de progreso. `VideoCard` pasa a componerla sin cambiar su aspecto ni su comportamiento. Verificar el Inicio en pantalla y con `camino-aprendizaje`. Respetar `video.module.css` (no redeclarar propiedades de las primitivas de vidrio).
 
-- [ ] **T8 — `VideoGridReordenable` acepta `renderCard`**
+- [x] **T8 — `VideoGridReordenable` acepta `renderCard`**
   Satisfies: US-4
   Depends on: T7
   Notes: La prop decide qué se dibuja por video; el Inicio sigue pasando `VideoCard` (modo admin del `/dashboard` sin cambios de comportamiento).
 
-- [ ] **T9 — `useBodyScrollLock` (contador compartido)**
+- [x] **T9 — `useBodyScrollLock` (contador compartido)**
   Satisfies: Constraints (scroll del body)
   Notes: `components/ui/useBodyScrollLock.ts`: bloquea al primer uso y libera cuando se cierra el último. Test del hook (dos usos solapados, cierre en distinto orden). Solo lo usa el panel nuevo; migrar `NavDrawer`, `CerrarSesionBoton` y `DatosModal` queda como seguimiento aparte.
 

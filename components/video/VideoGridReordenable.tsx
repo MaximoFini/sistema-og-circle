@@ -25,19 +25,29 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useId, useState } from "react";
+import { Fragment, type ReactNode, useId, useState } from "react";
 import type { VideoGridItem } from "@/lib/data/videos";
 import { VideoCard } from "./VideoCard";
 import styles from "./video.module.css";
+
+/** Qué se dibuja por casilla (real o de relleno). El Inicio usa `VideoCard`; el editor del
+ *  admin pasa su propia casilla tocable. */
+export type RenderCasilla = (video: VideoGridItem, numero: number, esUltimo: boolean) => ReactNode;
+
+const renderVideoCard: RenderCasilla = (video, numero, esUltimo) => (
+  <VideoCard video={video} numero={numero} esUltimo={esUltimo} />
+);
 
 function PasoArrastrable({
   video,
   numero,
   esUltimo,
+  renderCasilla,
 }: {
   video: VideoGridItem;
   numero: number;
   esUltimo: boolean;
+  renderCasilla: RenderCasilla;
 }) {
   const {
     attributes,
@@ -55,7 +65,7 @@ function PasoArrastrable({
       className={`${styles.pasoArrastrable} ${isDragging ? styles.pasoArrastrando : ""}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <VideoCard video={video} numero={numero} esUltimo={esUltimo} />
+      {renderCasilla(video, numero, esUltimo)}
       <button
         type="button"
         ref={setActivatorNodeRef}
@@ -70,7 +80,16 @@ function PasoArrastrable({
   );
 }
 
-export function VideoGridReordenable({ videos }: { videos: VideoGridItem[] }) {
+export function VideoGridReordenable({
+  videos,
+  renderCasilla = renderVideoCard,
+  alReordenar,
+}: {
+  videos: VideoGridItem[];
+  renderCasilla?: RenderCasilla;
+  /** Se llama con los ids reales en el orden nuevo, después de que el servidor guardó. */
+  alReordenar?: (ids: string[]) => void;
+}) {
   const relleno = videos.filter((v) => v.id === null);
   const [reales, setReales] = useState(() => videos.filter((v) => v.id !== null));
   const idDnd = useId();
@@ -102,7 +121,10 @@ export function VideoGridReordenable({ videos }: { videos: VideoGridItem[] }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ids: nuevo.map((v) => v.id) }),
       });
-      if (res.ok) return;
+      if (res.ok) {
+        alReordenar?.(nuevo.map((v) => v.id as string));
+        return;
+      }
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       setReales(anterior);
       setError(data.error ?? "No se pudo guardar el orden.");
@@ -154,15 +176,13 @@ export function VideoGridReordenable({ videos }: { videos: VideoGridItem[] }) {
                 video={video}
                 numero={i + 1}
                 esUltimo={i === total - 1}
+                renderCasilla={renderCasilla}
               />
             ))}
             {relleno.map((video, i) => (
-              <VideoCard
-                key={`relleno-${i}`}
-                video={video}
-                numero={reales.length + i + 1}
-                esUltimo={reales.length + i === total - 1}
-              />
+              <Fragment key={`relleno-${i}`}>
+                {renderCasilla(video, reales.length + i + 1, reales.length + i === total - 1)}
+              </Fragment>
             ))}
           </div>
         </SortableContext>

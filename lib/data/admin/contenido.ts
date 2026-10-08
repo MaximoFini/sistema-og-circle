@@ -180,6 +180,83 @@ export async function listarContenido<E extends Entidad>(
   return (data ?? []) as Tables<E>[];
 }
 
+// -----------------------------------------------------------------------------
+// Editor de videos (/admin/contenido/videos) — réplica de las grillas del Inicio.
+// -----------------------------------------------------------------------------
+
+/** Un video tal como lo necesita el editor del admin (a diferencia del Inicio, acá el
+ *  `provider_ref` SÍ viaja: el admin puede verlo y editarlo). */
+export interface VideoEditor {
+  id: string;
+  stage: 1 | 2 | 3;
+  titulo: string;
+  descripcion: string | null;
+  providerRef: string | null;
+  publicado: boolean;
+  orden: number;
+  /** Miniatura ya resuelta: sólo si está publicado y su link es válido, igual que el Inicio. */
+  thumbnailUrl: string | null;
+}
+
+export interface GrillaEditor {
+  /** Las casillas ocupadas, por `orden`, hasta `CANTIDAD_STAGE[stage]` (misma regla que el Inicio). */
+  publicados: VideoEditor[];
+  /** Fuera de la grilla: no ocupan casilla. */
+  despublicados: VideoEditor[];
+}
+
+export type VideosParaEditor = Record<1 | 2, GrillaEditor>;
+
+type FilaVideoEditor = Pick<
+  Tables<"videos">,
+  "id" | "stage" | "titulo" | "descripcion" | "provider_ref" | "publicado" | "orden"
+>;
+
+/**
+ * Parte pura de `listarVideosParaEditor`: reparte filas (ya ordenadas por `orden`) en las
+ * dos grillas. Los publicados se recortan al cupo del stage con la MISMA regla que la
+ * lectura del usuario (`armarGrilla`), así el editor nunca muestra una casilla que el
+ * usuario no ve. El Stage 3 no entra (fuera de este editor).
+ */
+export function armarVideosEditor(filasOrdenadas: FilaVideoEditor[]): VideosParaEditor {
+  const resultado: VideosParaEditor = {
+    1: { publicados: [], despublicados: [] },
+    2: { publicados: [], despublicados: [] },
+  };
+
+  for (const fila of filasOrdenadas) {
+    if (fila.stage !== 1 && fila.stage !== 2) continue;
+    const ref =
+      fila.publicado && fila.provider_ref ? videoProvider.parsearRef(fila.provider_ref) : null;
+    const video: VideoEditor = {
+      id: fila.id,
+      stage: fila.stage,
+      titulo: fila.titulo,
+      descripcion: fila.descripcion,
+      providerRef: fila.provider_ref,
+      publicado: fila.publicado,
+      orden: fila.orden,
+      thumbnailUrl: ref ? videoProvider.urlThumbnail(ref) : null,
+    };
+    const grilla = resultado[fila.stage];
+    if (!fila.publicado) grilla.despublicados.push(video);
+    else if (grilla.publicados.length < CANTIDAD_STAGE[fila.stage]) grilla.publicados.push(video);
+  }
+  return resultado;
+}
+
+export async function listarVideosParaEditor(admin: AdminClient): Promise<VideosParaEditor> {
+  const { data, error } = await admin
+    .from("videos")
+    .select("id, stage, titulo, descripcion, provider_ref, publicado, orden")
+    .in("stage", [1, 2])
+    .order("orden", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(500);
+  if (error) throw error;
+  return armarVideosEditor((data ?? []) as FilaVideoEditor[]);
+}
+
 export async function obtenerContenido<E extends Entidad>(
   admin: AdminClient,
   entidad: E,

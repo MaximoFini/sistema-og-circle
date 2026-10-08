@@ -37,6 +37,7 @@ import styles from "./inicio.module.css";
 import { ProfesionalesGrid } from "./ProfesionalesGrid";
 import { SeccionSlot } from "./SeccionSlot";
 import { ServiciosFinancierosGrid } from "./ServiciosFinancierosGrid";
+import { SECCIONES_FORMACION } from "./secciones-formacion";
 
 // VGRP-77: `bloqueado` es el Inicio de quien no tiene plan, que se ve borroso
 // detrás de <TarjetaDesbloqueo>. El blur no protege nada, así que lo sensible
@@ -95,12 +96,7 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
           {/* Bloque propio para Stage 1 + columna lateral: acota el `sticky` de la
               columna a este bloque (sin él, se deslizaría sobre el resto de la grilla). */}
           <div className={styles.bentoPrincipal}>
-            <SeccionSlot
-              eyebrow="Stage 1"
-              titulo="Formación: importaciones"
-              ancho="amplio"
-              descripcion="8 videos que te llevan de cero a tu primera importación."
-            >
+            <SeccionSlot {...SECCIONES_FORMACION[1]} ancho="amplio">
               <VideoGrid videos={stage1} reordenable={reordenable} />
             </SeccionSlot>
 
@@ -121,11 +117,7 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
                 </NextLink>
               </SeccionSlot>
 
-              <SeccionSlot
-                eyebrow="Stage 2"
-                titulo="Formación: armá tu tienda"
-                descripcion="3 videos para vender lo que importaste (Tienda Nube, Shopify)."
-              >
+              <SeccionSlot {...SECCIONES_FORMACION[2]}>
                 <VideoGrid videos={stage2} reordenable={reordenable} />
               </SeccionSlot>
             </div>
