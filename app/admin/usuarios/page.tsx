@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { z } from "zod";
 import { TextLink } from "@/components/ui";
-import { listarUsuarios, ORDENES_USUARIOS } from "@/lib/data/admin/usuarios";
+import { listarUsuarios, ORDENES_USUARIOS, PRUEBAS_USUARIOS } from "@/lib/data/admin/usuarios";
 import { Constants } from "@/lib/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../admin.module.css";
@@ -28,6 +28,7 @@ const searchSchema = z.object({
   rol: z.enum(Constants.public.Enums.rol_usuario).optional(),
   terminos: z.enum(["si", "no"]).optional(),
   origen: z.enum(ORIGENES).optional(),
+  pruebas: z.enum(PRUEBAS_USUARIOS).optional(),
   desde: z.iso.date().optional(),
   hasta: z.iso.date().optional(),
   orden: z.enum(ORDENES_USUARIOS).optional(),

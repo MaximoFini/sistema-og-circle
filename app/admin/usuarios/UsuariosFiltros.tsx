@@ -1,5 +1,10 @@
 import { Button, TextFieldBase } from "@/components/ui";
-import { ORDENES_USUARIOS, type OrdenUsuarios } from "@/lib/data/admin/usuarios";
+import {
+  ORDENES_USUARIOS,
+  type OrdenUsuarios,
+  PRUEBAS_USUARIOS,
+  type PruebasUsuarios,
+} from "@/lib/data/admin/usuarios";
 import styles from "../admin.module.css";
 import { NIVEL_LABELS, NIVELES, ORIGEN_LABELS, ORIGENES, ROL_LABELS, ROLES } from "../etiquetas";
 
@@ -15,12 +20,19 @@ const ETIQUETAS_ORDEN: Record<OrdenUsuarios, string> = {
   alfabetico: "Alfabético (email)",
 };
 
+// Cuentas de prueba (`profiles.es_prueba`): sin valor se ocultan.
+const ETIQUETAS_PRUEBAS: Record<PruebasUsuarios, string> = {
+  mostrar: "Mostrar",
+  solo: "Solo de prueba",
+};
+
 export function UsuariosFiltros({
   q,
   nivel,
   rol,
   terminos,
   origen,
+  pruebas,
   desde,
   hasta,
   orden,
@@ -30,6 +42,7 @@ export function UsuariosFiltros({
   rol?: string;
   terminos?: string;
   origen?: string;
+  pruebas?: string;
   desde?: string;
   hasta?: string;
   orden?: string;
@@ -81,6 +94,17 @@ export function UsuariosFiltros({
           {ORIGENES.map((o) => (
             <option key={o} value={o}>
               {ORIGEN_LABELS[o]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.filtroCampo}>
+        <span className={styles.filtroLabel}>Cuentas de prueba</span>
+        <select name="pruebas" defaultValue={pruebas ?? ""} className={styles.selectNativo}>
+          <option value="">Ocultar</option>
+          {PRUEBAS_USUARIOS.map((p) => (
+            <option key={p} value={p}>
+              {ETIQUETAS_PRUEBAS[p]}
             </option>
           ))}
         </select>

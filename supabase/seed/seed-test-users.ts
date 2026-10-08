@@ -70,6 +70,14 @@ async function upsertSeedUser(
   // login emita el JWT con el claim correcto. Va DESPUÉS del pago para que,
   // aunque en el futuro se cambie por `proyectarNivel`, el ledger ya esté listo.
   await applyNivelRol(admin, userId, user.nivel, user.rol);
+
+  // Las cuentas seed son de prueba: no ensucian /admin/usuarios (se ocultan por
+  // defecto, ver profiles.es_prueba). Se marca acá para que sobreviva a un re-seed.
+  const { error: pruebaError } = await admin
+    .from("profiles")
+    .update({ es_prueba: true })
+    .eq("id", userId);
+  if (pruebaError) throw pruebaError;
 }
 
 async function main() {
