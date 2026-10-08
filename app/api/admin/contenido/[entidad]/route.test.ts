@@ -11,6 +11,15 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+class StageCompletoMock extends Error {
+  constructor() {
+    super(
+      "El Stage 2 ya tiene sus 3 casillas ocupadas. Despublicá un video antes de publicar otro.",
+    );
+    this.name = "StageCompleto";
+  }
+}
+
 const mockRequireAdmin = vi.fn();
 const mockListarContenido = vi.fn();
 const mockCrearContenido = vi.fn();
@@ -35,6 +44,7 @@ vi.mock("@/lib/data/admin/contenido", () => ({
   esEntidadValida: (v: string): boolean => (ENTIDADES_REALES as readonly string[]).includes(v),
   listarContenido: (...args: unknown[]) => mockListarContenido(...args),
   crearContenido: (...args: unknown[]) => mockCrearContenido(...args),
+  StageCompleto: StageCompletoMock,
   TAG_POR_ENTIDAD,
 }));
 
@@ -232,6 +242,16 @@ describe("GET|POST /api/admin/contenido/[entidad]", () => {
       );
       expect(mockRevalidateTag).toHaveBeenCalledTimes(1);
       expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-agentes");
+    });
+
+    it("stage completo (StageCompleto) -> 409 con el mensaje, no crea nada, no revalida y no lo manda a Sentry", async () => {
+      mockCrearContenido.mockRejectedValue(new StageCompletoMock());
+
+      const res = await callPost("videos", { stage: 2, titulo: "x", publicado: true });
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toMatch(/Stage 2 ya tiene sus 3 casillas/);
+      expect(mockRevalidateTag).not.toHaveBeenCalled();
+      expect(mockCaptureException).not.toHaveBeenCalled();
     });
 
     it("una escritura FALLIDA (error inesperado, no-Zod) no revalida nada", async () => {

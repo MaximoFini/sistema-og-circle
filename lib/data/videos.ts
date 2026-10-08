@@ -20,16 +20,13 @@ import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { videoProvider } from "../video/provider";
 import { TAG_POR_ENTIDAD } from "./admin/contenido";
+import { CANTIDAD_STAGE, TOTAL_VIDEOS } from "./videos-config";
 
 type AdminClient = SupabaseClient<Database>;
 
-/** Tamaño fijo de cada grilla (PRD / MODULOS.md §2) — no depende de cuántas filas haya
- *  cargadas todavía en la tabla, ver requirements-vgrp29.md "Decisiones asumidas".
- *  stage 3 (VGRP-31) = video explicativo del directorio de agentes, 1 solo video. */
-export const CANTIDAD_STAGE = { 1: 8, 2: 3, 3: 1 } as const;
-// El explicativo (stage 3) NO cuenta acá: MODULOS.md §2 fija el contador de stats en
-// "X / 11" (8+3, formación) — el video de agentes es infraestructura, otra sección.
-export const TOTAL_VIDEOS = CANTIDAD_STAGE[1] + CANTIDAD_STAGE[2];
+// Los cupos viven en un módulo sin dependencias (ver videos-config.ts) y se re-exportan
+// acá para que los imports existentes no cambien.
+export { CANTIDAD_STAGE, TOTAL_VIDEOS };
 
 export interface VideoGridItem {
   /** null = tile sintético de relleno (la fila todavía no existe en la tabla); nunca
@@ -55,9 +52,13 @@ function tileRelleno(): VideoGridItem {
 
 /**
  * Núcleo testable (cliente inyectado, mismo patrón que lib/data/admin/contenido.ts).
- * Sólo resuelve `embedUrl`/`thumbnailUrl` cuando la fila está `publicado=true` Y tiene
- * `provider_ref` — es el único punto de esta función con esa decisión, para que un test
- * de integración pueda verificarla directamente (US-3).
+ * Sólo resuelve `embedUrl`/`thumbnailUrl` cuando la fila tiene `provider_ref` válido — es
+ * el único punto de esta función con esa decisión, para que un test de integración pueda
+ * verificarla directamente (US-3).
+ *
+ * Un video despublicado NO ocupa casilla: el filtro `publicado = true` va en la consulta,
+ * ANTES de limitar a la cantidad del stage. Si se filtrara después de cortar, un
+ * despublicado se llevaría un lugar y dejaría afuera a uno publicado.
  */
 export async function obtenerVideosPorStage(
   admin: AdminClient,
@@ -67,7 +68,9 @@ export async function obtenerVideosPorStage(
     .from("videos")
     .select("id, titulo, descripcion, provider_ref, publicado, orden")
     .eq("stage", stage)
-    .order("orden", { ascending: true });
+    .eq("publicado", true)
+    .order("orden", { ascending: true })
+    .limit(CANTIDAD_STAGE[stage]);
   if (error) throw error;
 
   return armarGrilla(data ?? [], stage);

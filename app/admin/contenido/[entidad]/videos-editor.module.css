@@ -1,0 +1,271 @@
+/* Editor de videos del admin (/admin/contenido/videos): panel de alta/edición y las
+   piezas propias del editor. La casilla en sí (nodo, línea, miniatura, título) NO se
+   redibuja acá: usa las clases de components/video/video.module.css vía CasillaVideo, para
+   que se vea igual que el Inicio. */
+
+.secciones {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Casillas tocables                                                    */
+/* ------------------------------------------------------------------ */
+
+/* Todo el contenido de la casilla es un botón: tocar en cualquier parte la abre. Se
+   resetea el aspecto de <button> para que el layout interno sea el del Inicio. */
+.casillaBoton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.casillaBoton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Interior de la casilla: mismas piezas que el Inicio (components/video/video.module.css),
+   pero como <span> porque viven dentro de un <button> (un <div> o <p> ahí no es HTML
+   válido). Se componen las clases del Inicio y sólo se fuerza el `display`. */
+.filaMedia {
+  composes: filaMedia from "../../../../components/video/video.module.css";
+}
+
+.textoPaso {
+  composes: textoPaso from "../../../../components/video/video.module.css";
+}
+
+.miniatura {
+  composes: thumbBtn from "../../../../components/video/video.module.css";
+  display: block;
+  cursor: inherit;
+}
+
+.tituloPaso {
+  composes: tituloPaso from "../../../../components/video/video.module.css";
+  display: block;
+}
+
+/* Pista de acción, a la derecha del título: "Editar" / "+ Agregar video". */
+.pista {
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.casillaVacia .pista {
+  color: var(--accent);
+}
+
+@media (hover: hover) {
+  .casillaBoton:hover .pista {
+    color: var(--text-primary);
+  }
+}
+
+.casillaBorrador {
+  font-size: var(--fs-footnote);
+  color: var(--text-faint);
+}
+
+/* ------------------------------------------------------------------ */
+/* Despublicados (debajo de cada grilla, sólo admin)                    */
+/* ------------------------------------------------------------------ */
+
+.despublicados {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.despublicadosTitulo {
+  margin: 0;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.despublicadoFila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--text-secondary);
+  text-align: left;
+  background: var(--fill);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.despublicadoFila:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .despublicadoFila:hover {
+    background: var(--fill-hover);
+  }
+}
+
+.despublicadoTitulo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Panel (modal) de alta y edición                                      */
+/* ------------------------------------------------------------------ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.5);
+  animation: aparecer var(--duration-base) linear;
+}
+
+.panel {
+  composes: raised from "../../../../components/ui/glass.module.css";
+  --g-radius: 26px;
+  /* Por variable y no `position: fixed`: quien compone una primitiva no redeclara
+     sus propiedades (CLAUDE.md). */
+  --g-position: fixed;
+  z-index: 101;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100vw - 32px);
+  max-width: 480px;
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+  animation: entrar var(--duration-slow) var(--ease-out-expo);
+}
+
+/* El scroll va en este hijo y no en `.panel`: un elemento de vidrio no scrollea él
+   mismo (regla en glass.module.css). */
+.cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px 24px;
+}
+
+@media (min-width: 640px) {
+  .cuerpo {
+    padding: 32px;
+  }
+}
+
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cabeceraTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.eyebrow {
+  composes: eyebrow from "../../../../components/ui/type.module.css";
+}
+
+.tituloPanel {
+  composes: title2 from "../../../../components/ui/type.module.css";
+  margin: 0;
+}
+
+.cerrar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) linear;
+}
+
+@media (hover: hover) {
+  .cerrar:hover {
+    background: var(--fill-hover);
+  }
+}
+
+.cerrar:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 12px)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .panel {
+    animation: none;
+  }
+}

@@ -24,6 +24,7 @@ import {
   borrarContenido,
   esEntidadValida,
   ItemNoEncontrado,
+  StageCompleto,
   TAG_POR_ENTIDAD,
 } from "@/lib/data/admin/contenido";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -72,6 +73,11 @@ export async function PATCH(req: Request, { params }: Params): Promise<Response>
   } catch (e) {
     if (e instanceof ItemNoEncontrado) {
       return Response.json({ error: "No encontrado." }, { status: 404 });
+    }
+    // Publicar un video más con el stage completo: no es un error inesperado, no va a
+    // Sentry; no se cambió nada.
+    if (e instanceof StageCompleto) {
+      return Response.json({ error: e.message }, { status: 409 });
     }
     if (e instanceof z.ZodError) {
       return Response.json(
