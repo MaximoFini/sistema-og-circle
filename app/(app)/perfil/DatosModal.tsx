@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, Icon } from "@/components/ui";
+import { useBodyScrollLock } from "@/components/ui/useBodyScrollLock";
 import { PerfilForm } from "./PerfilForm";
 import styles from "./perfil.module.css";
 
@@ -77,14 +78,8 @@ export function DatosModal({
     [cerrar],
   );
 
-  useEffect(() => {
-    if (!abierto) return;
-    const overflowPrevio = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = overflowPrevio;
-    };
-  }, [abierto]);
+  // Contador compartido, no "guardar y restaurar": ver el comentario en NavDrawer.
+  useBodyScrollLock(abierto);
 
   return (
     <>
