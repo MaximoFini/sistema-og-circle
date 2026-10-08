@@ -15,6 +15,15 @@ class ItemNoEncontradoMock extends Error {
   }
 }
 
+class StageCompletoMock extends Error {
+  constructor() {
+    super(
+      "El Stage 2 ya tiene sus 3 casillas ocupadas. Despublicá un video antes de publicar otro.",
+    );
+    this.name = "StageCompleto";
+  }
+}
+
 const mockRequireAdmin = vi.fn();
 const mockActualizarContenido = vi.fn();
 const mockBorrarContenido = vi.fn();
@@ -40,6 +49,7 @@ vi.mock("@/lib/data/admin/contenido", () => ({
   actualizarContenido: (...args: unknown[]) => mockActualizarContenido(...args),
   borrarContenido: (...args: unknown[]) => mockBorrarContenido(...args),
   ItemNoEncontrado: ItemNoEncontradoMock,
+  StageCompleto: StageCompletoMock,
   TAG_POR_ENTIDAD,
 }));
 
@@ -176,6 +186,16 @@ describe("PATCH|DELETE /api/admin/contenido/[entidad]/[id]", () => {
       const res = await callPatch("agentes", UUID, { nombre: "x" });
       expect(res.status).toBe(404);
       expect(mockRevalidateTag).not.toHaveBeenCalled();
+    });
+
+    it("stage completo (StageCompleto) -> 409 con el mensaje, no revalida y no lo manda a Sentry", async () => {
+      mockActualizarContenido.mockRejectedValue(new StageCompletoMock());
+
+      const res = await callPatch("videos", UUID, { publicado: true });
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toMatch(/Stage 2 ya tiene sus 3 casillas/);
+      expect(mockRevalidateTag).not.toHaveBeenCalled();
+      expect(mockCaptureException).not.toHaveBeenCalled();
     });
 
     it("happy path -> 200 + fila actualizada + conAuditoria(accion='editar_contenido', entidadId=id) + revalidateTag UNA vez", async () => {

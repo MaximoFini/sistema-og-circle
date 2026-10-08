@@ -17,6 +17,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database, Json, Tables, TablesInsert, TablesUpdate } from "../../database.types";
 import { videoProvider } from "../../video/provider";
+import { CANTIDAD_STAGE } from "../videos-config";
 import type { ResultadoMutacion } from "./audit-log";
 
 type AdminClient = SupabaseClient<Database>;
@@ -51,6 +52,26 @@ export class ItemNoEncontrado extends Error {
   constructor(entidad: Entidad, id: string) {
     super(`No existe un ítem de "${entidad}" con id ${id}.`);
     this.name = "ItemNoEncontrado";
+  }
+}
+
+/**
+ * El stage ya tiene todas sus casillas ocupadas por videos publicados
+ * (`CANTIDAD_STAGE`). La grilla del Inicio muestra sólo las primeras N, así que
+ * publicar uno más lo dejaría oculto: se rechaza (HTTP 409) en vez de aceptarlo.
+ */
+export class StageCompleto extends Error {
+  readonly stage: 1 | 2 | 3;
+  readonly cupo: number;
+  constructor(stage: 1 | 2 | 3) {
+    const cupo = CANTIDAD_STAGE[stage];
+    super(
+      `El Stage ${stage} ya tiene sus ${cupo} casillas ocupadas. ` +
+        "Despublicá un video antes de publicar otro.",
+    );
+    this.name = "StageCompleto";
+    this.stage = stage;
+    this.cupo = cupo;
   }
 }
 
@@ -191,6 +212,30 @@ async function proximoOrdenVideo(admin: AdminClient): Promise<number> {
 }
 
 /**
+ * Lanza `StageCompleto` si publicar un video más en `stage` superaría las casillas
+ * del stage. `excluirId` saca de la cuenta al propio video cuando ya existe (no se
+ * cuenta a sí mismo). No es atómico con la escritura posterior: dos admins
+ * publicando a la vez en el último lugar podrían pasarse por uno; la lectura igual
+ * muestra sólo las primeras N, así que no se rompe nada visible.
+ */
+async function verificarCupoVideo(
+  admin: AdminClient,
+  stage: 1 | 2 | 3,
+  excluirId?: string,
+): Promise<void> {
+  let consulta = admin
+    .from("videos")
+    .select("id", { count: "exact", head: true })
+    .eq("stage", stage)
+    .eq("publicado", true);
+  if (excluirId) consulta = consulta.neq("id", excluirId);
+
+  const { count, error } = await consulta;
+  if (error) throw error;
+  if ((count ?? 0) >= CANTIDAD_STAGE[stage]) throw new StageCompleto(stage);
+}
+
+/**
  * Reparte los "lugares" (valores de `orden`) que hoy ocupa un grupo de videos
  * entre `ids`, en el orden nuevo: `ids[0]` toma el lugar más bajo, etc. Así se
  * puede reordenar un subconjunto (un stage) sin pisar el orden del resto, y el
@@ -265,8 +310,11 @@ export async function crearContenido<E extends Entidad>(
 ): Promise<ResultadoMutacion<Tables<E>>> {
   const datos = SCHEMAS[entidad].parse(valores) as TablesInsert<E>;
 
-  if (entidad === "videos" && (datos as { orden?: number }).orden === undefined) {
-    (datos as { orden?: number }).orden = await proximoOrdenVideo(admin);
+  if (entidad === "videos") {
+    const video = datos as { stage: 1 | 2 | 3; publicado: boolean; orden?: number };
+    // Un video que nace publicado ocupa una casilla: tiene que haber lugar.
+    if (video.publicado) await verificarCupoVideo(admin, video.stage);
+    if (video.orden === undefined) video.orden = await proximoOrdenVideo(admin);
   }
 
   const { data, error } = await tabla(admin, entidad).insert(datos).select().single();
@@ -294,6 +342,23 @@ export async function actualizarContenido<E extends Entidad>(
     .maybeSingle();
   if (errorAnterior) throw errorAnterior;
   if (!anterior) throw new ItemNoEncontrado(entidad, id);
+
+  if (entidad === "videos") {
+    const previo = anterior as { stage: 1 | 2 | 3; publicado: boolean };
+    const cambios = datos as { stage?: 1 | 2 | 3; publicado?: boolean; orden?: number };
+    const stageFinal = cambios.stage ?? previo.stage;
+    const publicadoFinal = cambios.publicado ?? previo.publicado;
+    const pasaAPublicado = publicadoFinal && !previo.publicado;
+    const cambiaDeStagePublicado = publicadoFinal && stageFinal !== previo.stage;
+
+    // Sólo se valida cuando el video PASA a ocupar una casilla. Editar el título de uno
+    // ya publicado nunca puede fallar por cupo, aunque el stage esté completo.
+    if (pasaAPublicado || cambiaDeStagePublicado) {
+      await verificarCupoVideo(admin, stageFinal, id);
+    }
+    // Al volver a publicar, el video vuelve al final de su grilla (no a su lugar anterior).
+    if (pasaAPublicado) cambios.orden = await proximoOrdenVideo(admin);
+  }
 
   const { data, error } = await tabla(admin, entidad).update(datos).eq("id", id).select().single();
   if (error) throw error;

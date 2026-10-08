@@ -23,6 +23,7 @@ import {
   crearContenido,
   esEntidadValida,
   listarContenido,
+  StageCompleto,
   TAG_POR_ENTIDAD,
 } from "@/lib/data/admin/contenido";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -76,6 +77,11 @@ export async function POST(
     revalidateTag(TAG_POR_ENTIDAD[entidad]);
     return Response.json(out);
   } catch (e) {
+    // Publicar un video más con el stage completo: no es un error inesperado, no va a
+    // Sentry; no se creó nada.
+    if (e instanceof StageCompleto) {
+      return Response.json({ error: e.message }, { status: 409 });
+    }
     if (e instanceof z.ZodError) {
       return Response.json(
         { error: "Datos inválidos.", fieldErrors: z.flattenError(e).fieldErrors },

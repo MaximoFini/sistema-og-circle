@@ -52,9 +52,13 @@ vi.mock("@sentry/nextjs", () => ({
 vi.mock("../supabase/service-role", () => ({
   createServiceRoleClient: () => ({
     from: () => ({
+      // select().eq(stage).eq(publicado).order().limit(): el `limit` final es lo que
+      // obtenerVideosPorStage espera (el mock conserva el nombre `ordenMock`).
       select: () => ({
         eq: () => ({
-          order: ordenMock,
+          eq: () => ({
+            order: () => ({ limit: ordenMock }),
+          }),
         }),
       }),
     }),
@@ -66,7 +70,7 @@ const { obtenerVideosStage1, obtenerVideosStage2, CANTIDAD_STAGE } = await impor
 beforeEach(() => {
   ordenMock.mockReset();
   captureExceptionMock.mockReset();
-  // "La base tira": el .order(...) final de la query (awaited por
+  // "La base tira": el .limit(...) final de la query (awaited por
   // obtenerVideosPorStage) devuelve un error, tal como haría supabase-js real ante una
   // falla de conexión/credenciales.
   ordenMock.mockResolvedValue({

@@ -1,6 +1,6 @@
-# Tasks: Editor de videos del admin (réplica del Inicio)
+﻿# Tasks: Editor de videos del admin (réplica del Inicio)
 
-**Status:** Draft
+**Status:** In progress
 **Last updated:** 2026-10-08
 **Design:** [design.md](./design.md)
 
@@ -10,21 +10,21 @@ Convención de verificación en cada tarea con código: `biome ci` (con el códi
 
 ## A. Base de datos y lógica (sin interfaz)
 
-- [ ] **T1 — Extraer `CANTIDAD_STAGE` y `TOTAL_VIDEOS` a `lib/data/videos-config.ts`**
+- [x] **T1 — Extraer `CANTIDAD_STAGE` y `TOTAL_VIDEOS` a `lib/data/videos-config.ts`**
   Satisfies: Constraints (cupos sin duplicar)
   Notes: Módulo sin imports. `lib/data/videos.ts` los re-exporta para que ningún import actual cambie. Evita el ciclo `videos.ts` ↔ `admin/contenido.ts`. Sin cambio de comportamiento.
 
-- [ ] **T2 — Los despublicados dejan de ocupar casilla en la lectura del usuario**
+- [x] **T2 — Los despublicados dejan de ocupar casilla en la lectura del usuario**
   Satisfies: US-1
   Depends on: T1
   Notes: En `obtenerVideosPorStage` (`lib/data/videos.ts`) agregar `.eq("publicado", true)` antes de `slice(0, cantidad)`; mantener normalización del `provider_ref` y el relleno. Tests en `lib/data/videos.test.ts` y `videos-fallback.unit.test.ts`: un despublicado no ocupa lugar, y con más publicados que el cupo se muestran solo los primeros N.
 
-- [ ] **T3 — Cupo por stage y "volver a publicar al final" en `lib/data/admin/contenido.ts`**
+- [x] **T3 — Cupo por stage y "volver a publicar al final" en `lib/data/admin/contenido.ts`**
   Satisfies: US-2, US-3
   Depends on: T1
   Notes: Clase `StageCompleto`. En `crearContenido` y `actualizarContenido` para `videos`: si queda publicado, contar publicados del stage (excluyendo el propio id) y lanzar `StageCompleto` si `>= CANTIDAD_STAGE[stage]`. En `actualizarContenido`, si pasa de `publicado=false` a `true`, asignar `orden = proximoOrdenVideo()`. Tests en `lib/data/admin/contenido.test.ts`: lleno → error sin escribir; despublicar libera; publicar mueve al final; crear despublicado con stage lleno es válido.
 
-- [ ] **T4 — Mapear `StageCompleto` a HTTP 409 en las rutas de contenido**
+- [x] **T4 — Mapear `StageCompleto` a HTTP 409 en las rutas de contenido**
   Satisfies: US-2, US-3
   Depends on: T3
   Notes: `app/api/admin/contenido/[entidad]/route.ts` (POST) y `.../[id]/route.ts` (PATCH). Mensaje: "El Stage N ya tiene sus M casillas ocupadas. Despublicá un video antes de publicar otro." No debe capturarse en Sentry como error inesperado. Tests en los `route.test.ts` existentes.

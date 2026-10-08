@@ -78,7 +78,7 @@ describe("obtenerVideosPorStage", () => {
     expect(item?.thumbnailUrl).toBe(videoProvider.urlThumbnail("dQw4w9WgXcQ"));
   });
 
-  it("US-3 — publicado=false CON provider_ref real nunca expone el provider_ref: 'proximamente', URLs null", async () => {
+  it("US-3 — publicado=false CON provider_ref real no aparece en la grilla y nunca expone el provider_ref", async () => {
     const video = await crearVideoTest({
       stage: 2,
       titulo: "Test no publicado",
@@ -87,15 +87,34 @@ describe("obtenerVideosPorStage", () => {
     });
 
     const items = await obtenerVideosPorStage(admin, 2);
-    const item = items.find((i) => i.id === video.id);
 
-    expect(item).toBeDefined();
-    expect(item?.estado).toBe("proximamente");
-    expect(item?.embedUrl).toBeNull();
-    expect(item?.thumbnailUrl).toBeNull();
-    // Ninguna URL generada contiene el provider_ref sensible — chequeo directo, no
-    // sólo "es null".
-    expect(JSON.stringify(item)).not.toContain("secreto-no-debe-salir");
+    // Un despublicado no ocupa casilla: ni siquiera figura como "Próximamente".
+    expect(items.find((i) => i.id === video.id)).toBeUndefined();
+    // Ninguna URL generada contiene el provider_ref sensible — chequeo directo sobre
+    // toda la grilla, no sólo "es null".
+    expect(JSON.stringify(items)).not.toContain("secreto-no-debe-salir");
+  });
+
+  it("un despublicado no le quita el lugar a un publicado: con 3 despublicados primeros, el publicado entra igual", async () => {
+    // Antes de este cambio el stage 2 (3 casillas) se recortaba a las primeras 3 filas por
+    // `orden` y recién después se miraba `publicado`: tres despublicados adelante dejaban
+    // afuera al publicado.
+    await crearVideoTest({ stage: 2, titulo: "Borrador 1", orden: PRIMERO });
+    await crearVideoTest({ stage: 2, titulo: "Borrador 2", orden: PRIMERO + 1 });
+    await crearVideoTest({ stage: 2, titulo: "Borrador 3", orden: PRIMERO + 2 });
+    const publicado = await crearVideoTest({
+      stage: 2,
+      titulo: "Publicado",
+      provider_ref: "dQw4w9WgXcQ",
+      publicado: true,
+      orden: PRIMERO + 3,
+    });
+
+    const items = await obtenerVideosPorStage(admin, 2);
+
+    expect(items).toHaveLength(CANTIDAD_STAGE[2]);
+    expect(items[0]?.id).toBe(publicado.id);
+    expect(items[0]?.estado).toBe("disponible");
   });
 
   it("publicado=true pero sin provider_ref queda 'proximamente' (no hay nada que reproducir)", async () => {
@@ -127,9 +146,10 @@ describe("obtenerVideosPorStage", () => {
   });
 
   it("no agrega sintéticos si ya hay exactamente el tamaño fijo de filas reales", async () => {
-    await crearVideoTest({ stage: 2, titulo: "V1" });
-    await crearVideoTest({ stage: 2, titulo: "V2" });
-    await crearVideoTest({ stage: 2, titulo: "V3" });
+    // Publicados (los despublicados ya no ocupan casilla).
+    await crearVideoTest({ stage: 2, titulo: "V1", publicado: true });
+    await crearVideoTest({ stage: 2, titulo: "V2", publicado: true });
+    await crearVideoTest({ stage: 2, titulo: "V3", publicado: true });
 
     const items = await obtenerVideosPorStage(admin, 2);
 
@@ -138,8 +158,18 @@ describe("obtenerVideosPorStage", () => {
   });
 
   it("respeta el orden ('orden' ascendente)", async () => {
-    const b = await crearVideoTest({ stage: 2, titulo: "Segundo", orden: PRIMERO + 2 });
-    const a = await crearVideoTest({ stage: 2, titulo: "Primero", orden: PRIMERO + 1 });
+    const b = await crearVideoTest({
+      stage: 2,
+      titulo: "Segundo",
+      publicado: true,
+      orden: PRIMERO + 2,
+    });
+    const a = await crearVideoTest({
+      stage: 2,
+      titulo: "Primero",
+      publicado: true,
+      orden: PRIMERO + 1,
+    });
 
     const items = await obtenerVideosPorStage(admin, 2);
     const propios = items.filter((i) => i.id === a.id || i.id === b.id).map((i) => i.id);

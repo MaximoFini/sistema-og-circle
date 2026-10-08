@@ -51,14 +51,17 @@ vi.mock("@/lib/supabase/service-role", () => ({
   createServiceRoleClient: () => mockCreateServiceRoleClient(),
 }));
 
-/** Cliente Supabase falso: `.from("videos").select(...).eq(...).order(...)` resuelve un
- *  error, simulando que la base no responde (service role vencida, Postgres caído, etc). */
+/** Cliente Supabase falso: `.from("videos").select(...).eq(...).eq(...).order(...).limit(...)`
+ *  resuelve un error, simulando que la base no responde (service role vencida, Postgres
+ *  caído, etc). */
 function fakeFailingClient() {
-  const order = vi.fn().mockResolvedValue({
+  const limit = vi.fn().mockResolvedValue({
     data: null,
     error: { message: "conexión rechazada", code: "ECONNREFUSED" },
   });
-  const eq = vi.fn().mockReturnValue({ order });
+  const order = vi.fn().mockReturnValue({ limit });
+  const eqPublicado = vi.fn().mockReturnValue({ order });
+  const eq = vi.fn().mockReturnValue({ eq: eqPublicado });
   const select = vi.fn().mockReturnValue({ eq });
   const from = vi.fn().mockReturnValue({ select });
   return { from };
