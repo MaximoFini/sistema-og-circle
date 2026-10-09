@@ -83,7 +83,7 @@ test.describe("/perfil — VGRP-52", () => {
       // VGRP-59/60 (Bloque 13 — plan único): ya no hay un bloque "Avanzado
       // suma, además" separado — un solo plan, una sola lista con todo.
       const accesos = page.getByRole("region", { name: "Accesos habilitados" });
-      await expect(accesos.getByText("Formación completa (11 videos)")).toBeVisible();
+      await expect(accesos.getByText("Formación en video y materiales")).toBeVisible();
       await expect(accesos.getByText("Calculadora de costos")).toBeVisible();
       await expect(accesos.getByText("Directorio de profesionales")).toBeVisible();
       await expect(accesos.getByText("Servicios financieros")).toBeVisible();

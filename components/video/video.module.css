@@ -119,11 +119,6 @@
   box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.5);
 }
 
-.nodoBloqueado {
-  color: var(--text-faint);
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.12);
-}
-
 .linea {
   width: 1.5px;
   flex: 1;
@@ -218,11 +213,6 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 
-.etiquetaProximamente {
-  font-size: var(--fs-footnote);
-  color: var(--text-faint);
-}
-
 .embed {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -238,17 +228,6 @@
   line-height: 1.35;
   letter-spacing: -0.012em;
   color: var(--text-primary);
-}
-
-/* Paso todavía no publicado: sólo el título, atenuado. */
-.fila[data-disponible="false"] .contenido {
-  padding-top: 10px;
-  padding-bottom: 20px;
-}
-
-.fila[data-disponible="false"] .tituloPaso {
-  font-weight: 400;
-  color: var(--text-muted);
 }
 
 .botonVisto {

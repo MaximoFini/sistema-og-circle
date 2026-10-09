@@ -1,4 +1,9 @@
-// VGRP-29 — lectura de la tabla `videos` para las grillas de Stage 1/2 de Inicio.
+// VGRP-29 — lectura de la tabla `videos` para las secciones de formación (Stage 1/2) y el
+// video explicativo de agentes (stage 3).
+//
+// VGRP-88: la formación vive en /formacion y deja de tener un tamaño fijo. Cada stage
+// muestra EXACTAMENTE los videos publicados y reproducibles (sin tope y sin tiles de
+// relleno "Próximamente"): Stage 2 va a tener ~15 videos y crece a medida que se graban.
 //
 // `import "server-only"` de entrada (pedido explícito del ticket): este archivo es el
 // único lugar donde se lee `provider_ref` de la base y se decide si se resuelve a una
@@ -23,41 +28,24 @@ import { TAG_POR_ENTIDAD } from "./admin/contenido";
 
 type AdminClient = SupabaseClient<Database>;
 
-/** Tamaño fijo de cada grilla (PRD / MODULOS.md §2) — no depende de cuántas filas haya
- *  cargadas todavía en la tabla, ver requirements-vgrp29.md "Decisiones asumidas".
- *  stage 3 (VGRP-31) = video explicativo del directorio de agentes, 1 solo video. */
-export const CANTIDAD_STAGE = { 1: 8, 2: 3, 3: 1 } as const;
-// El explicativo (stage 3) NO cuenta acá: MODULOS.md §2 fija el contador de stats en
-// "X / 11" (8+3, formación) — el video de agentes es infraestructura, otra sección.
-export const TOTAL_VIDEOS = CANTIDAD_STAGE[1] + CANTIDAD_STAGE[2];
+/** Red de contención de la consulta, no un tope de producto (docs/RENDIMIENTO.md, regla 7:
+ *  todo listado lleva `.limit()` explícito). Ningún stage se acerca a este número. */
+const LIMITE_FILAS = 200;
 
+/** Un video publicado y reproducible. Ya no existen los tiles de relleno: todo ítem es una
+ *  fila real de la tabla. */
 export interface VideoGridItem {
-  /** null = tile sintético de relleno (la fila todavía no existe en la tabla); nunca
-   *  marcable como visto. */
-  id: string | null;
+  id: string;
   titulo: string;
   descripcion: string | null;
-  estado: "disponible" | "proximamente";
   embedUrl: string | null;
   thumbnailUrl: string | null;
 }
 
-function tileRelleno(): VideoGridItem {
-  return {
-    id: null,
-    titulo: "Próximamente",
-    descripcion: null,
-    estado: "proximamente",
-    embedUrl: null,
-    thumbnailUrl: null,
-  };
-}
-
 /**
  * Núcleo testable (cliente inyectado, mismo patrón que lib/data/admin/contenido.ts).
- * Sólo resuelve `embedUrl`/`thumbnailUrl` cuando la fila está `publicado=true` Y tiene
- * `provider_ref` — es el único punto de esta función con esa decisión, para que un test
- * de integración pueda verificarla directamente (US-3).
+ * Sólo devuelve filas `publicado=true` con `provider_ref` válido — es el único punto con
+ * esa decisión, para que un test de integración pueda verificarla directamente (US-3).
  */
 export async function obtenerVideosPorStage(
   admin: AdminClient,
@@ -67,10 +55,13 @@ export async function obtenerVideosPorStage(
     .from("videos")
     .select("id, titulo, descripcion, provider_ref, publicado, orden")
     .eq("stage", stage)
-    .order("orden", { ascending: true });
+    .eq("publicado", true)
+    .not("provider_ref", "is", null)
+    .order("orden", { ascending: true })
+    .limit(LIMITE_FILAS);
   if (error) throw error;
 
-  return armarGrilla(data ?? [], stage);
+  return armarGrilla(data ?? []);
 }
 
 type FilaVideo = Pick<
@@ -79,32 +70,27 @@ type FilaVideo = Pick<
 >;
 
 /**
- * Parte pura de la lectura: recorta las filas (ya ordenadas) al tamaño fijo del stage,
- * resuelve las URLs y completa con tiles de relleno. Está separada de la consulta para
- * poder testear el relleno sin depender de cuántas filas reales tenga la tabla.
+ * Parte pura de la lectura: resuelve las URLs de las filas (ya ordenadas) y descarta las que
+ * no se pueden reproducir. Separada de la consulta para poder testearla sin base.
+ *
+ * Se normaliza también al leer: una fila vieja con un ref inválido (se llegó a guardar el
+ * `si=` de un link de Compartir) se descarta en vez de mostrar un embed roto.
  */
-export function armarGrilla(filasOrdenadas: FilaVideo[], stage: 1 | 2 | 3): VideoGridItem[] {
-  const cantidad = CANTIDAD_STAGE[stage];
-  const filas: VideoGridItem[] = filasOrdenadas.slice(0, cantidad).map((fila) => {
-    // Se normaliza también al leer: una fila vieja con un ref inválido (se llegó a
-    // guardar el `si=` de un link de Compartir) queda "Próximamente" en vez de un
-    // embed roto.
+export function armarGrilla(filasOrdenadas: FilaVideo[]): VideoGridItem[] {
+  return filasOrdenadas.flatMap((fila) => {
     const ref =
       fila.publicado && fila.provider_ref ? videoProvider.parsearRef(fila.provider_ref) : null;
-    return {
-      id: fila.id,
-      titulo: fila.titulo,
-      descripcion: fila.descripcion,
-      estado: ref ? "disponible" : "proximamente",
-      embedUrl: ref ? videoProvider.urlEmbed(ref) : null,
-      thumbnailUrl: ref ? videoProvider.urlThumbnail(ref) : null,
-    };
+    if (!ref) return [];
+    return [
+      {
+        id: fila.id,
+        titulo: fila.titulo,
+        descripcion: fila.descripcion,
+        embedUrl: videoProvider.urlEmbed(ref),
+        thumbnailUrl: videoProvider.urlThumbnail(ref),
+      },
+    ];
   });
-
-  while (filas.length < cantidad) {
-    filas.push(tileRelleno());
-  }
-  return filas;
 }
 
 // unstable_cache no puede recibir el cliente (no serializable) — cada invocación crea
@@ -117,38 +103,28 @@ const obtenerVideosPorStageCached = unstable_cache(
   { tags: [TAG_POR_ENTIDAD.videos] },
 );
 
-/** La grilla entera como tiles de relleno: la forma degradada de `obtenerVideosStageConFallback`. */
-function grillaDeRelleno(stage: 1 | 2 | 3): VideoGridItem[] {
-  return Array.from({ length: CANTIDAD_STAGE[stage] }, () => tileRelleno());
-}
-
 /**
- * Fail-open sobre la lectura cacheada: si la base no responde, la grilla sale
- * en tiles de "Próximamente" en vez de propagar el error.
+ * Fail-open sobre la lectura cacheada: si la base no responde, devuelve la lista vacía
+ * (que la UI muestra como "los videos están en camino") en vez de propagar el error.
  *
- * El motivo es el BUILD, no el runtime. `app/(app)/dashboard/[variante]` es una
- * ruta estática (`generateStaticParams` + `dynamicParams = false`), así que este
- * await corre durante `next build`: sin este catch, cualquier problema de base o
- * de credenciales en el entorno de build —una service role key vencida fue
- * exactamente el caso— voltea el deploy entero de la app, incluidas las rutas
+ * El motivo es el BUILD, no el runtime. `app/(app)/dashboard/[variante]` y
+ * `app/(app)/formacion/[variante]` son rutas estáticas (`generateStaticParams` +
+ * `dynamicParams = false`), así que este await corre durante `next build`: sin este catch,
+ * cualquier problema de base o de credenciales en el entorno de build —una service role key
+ * vencida fue exactamente el caso— voltea el deploy entero de la app, incluidas las rutas
  * que no tienen nada que ver con videos.
  *
- * El precio, explícito: cuando falla en build, el HTML estático queda con la
- * grilla vacía servida desde el CDN hasta el próximo `revalidateTag` (el que
- * VGRP-38 ya dispara en cada escritura sobre `videos`). Se prefiere una sección
- * degradada a un sitio caído, y Sentry avisa que pasó.
+ * El precio, explícito: cuando falla en build, el HTML estático queda sin videos servido
+ * desde el CDN hasta el próximo `revalidateTag` (el que VGRP-38 ya dispara en cada
+ * escritura sobre `videos`) o hasta que venza el `revalidate` de la página. Se prefiere una
+ * sección degradada a un sitio caído, y Sentry avisa que pasó.
  *
  * El catch va AFUERA de `unstable_cache` a propósito: así el fallo no se cachea
  * y el request siguiente vuelve a intentar la lectura real.
  *
- * VGRP-53 — extendido a stage 3: originalmente (57ebd28) este wrapper sólo
- * cubría Stage 1/2, y `obtenerVideosStage3()` llamaba directo a
- * `obtenerVideosPorStageCached(3)`, sin try/catch. Como `InicioShell` resuelve
- * stage1/stage2/stage3/links con un único `Promise.all`, si la lectura de
- * stage 3 fallaba durante `next build`, TODO el `Promise.all` rechazaba —
- * volteando la ruta estática entera, exactamente el incidente que 57ebd28
- * vino a evitar para Stage 1/2. Ver lib/data/videos-fallback.unit.test.ts
- * para la cobertura de este hallazgo.
+ * VGRP-53 — cubre también stage 3: `InicioShell` resuelve los stages con un único
+ * `Promise.all`, así que un stage sin fallback voltearía la ruta estática entera. Ver
+ * lib/data/videos-fallback.unit.test.ts.
  */
 async function obtenerVideosStageConFallback(stage: 1 | 2 | 3): Promise<VideoGridItem[]> {
   try {
@@ -162,12 +138,12 @@ async function obtenerVideosStageConFallback(stage: 1 | 2 | 3): Promise<VideoGri
       extra: {
         stage,
         detalle:
-          "No se pudo leer la tabla `videos`; la grilla de Inicio se sirve con tiles de " +
-          "relleno. Si ocurrió durante `next build`, el HTML estático queda degradado " +
-          "hasta el próximo revalidateTag.",
+          "No se pudo leer la tabla `videos`; la sección se sirve sin videos. Si ocurrió " +
+          "durante `next build`, el HTML estático queda degradado hasta el próximo " +
+          "revalidateTag.",
       },
     });
-    return grillaDeRelleno(stage);
+    return [];
   }
 }
 
@@ -181,4 +157,17 @@ export function obtenerVideosStage2(): Promise<VideoGridItem[]> {
 
 export function obtenerVideosStage3(): Promise<VideoGridItem[]> {
   return obtenerVideosStageConFallback(3);
+}
+
+// VGRP-77 — sin plan, los embeds no viajan al cliente. La pantalla borrosa (Inicio y, desde
+// VGRP-88, /formacion) se renderiza igual con títulos y miniaturas, pero con `embedUrl`
+// en `null`: el blur no protege nada, así que lo sensible se saca ANTES de renderizar.
+export function sinEmbed(videos: VideoGridItem[]): VideoGridItem[] {
+  return videos.map((video) => ({ ...video, embedUrl: null }));
+}
+
+/** Ids de los videos de formación (Stage 1 + Stage 2): el total del contador de progreso.
+ *  El explicativo de agentes (stage 3) no cuenta. */
+export function idsDeFormacion(...stages: VideoGridItem[][]): string[] {
+  return stages.flat().map((video) => video.id);
 }

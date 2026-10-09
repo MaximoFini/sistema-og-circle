@@ -280,3 +280,7 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
   que nadie recuerda por qué es un `drop index` esperando a ejecutarse por
   error). Análisis original (por qué se pensó redundante) sigue en el
   commit `dbe403c` si hace falta retomarlo con un caso de uso distinto.
+- `20261009120000_materiales.sql` (VGRP-88) — aplicada vía SQL Editor. Tabla
+  `materiales` (RLS activo, sin policies: solo service role) y bucket privado
+  `materiales`. Sin FK nuevas, así que no hay índices pendientes; el listado
+  lee con `.order("orden").limit(200)` sobre una tabla de decenas de filas.

@@ -1,9 +1,9 @@
 "use client";
 
-// Listado de videos con reorden por arrastre (mouse, táctil y teclado).
-// Guarda al soltar: actualiza la lista al instante y, si el PUT falla, vuelve
-// al orden anterior y avisa. El orden lo define solo esta pantalla — el form de
-// crear/editar ya no tiene campo "orden".
+// Listado con reorden por arrastre (mouse, táctil y teclado), para las entidades que se
+// ordenan así: videos y, desde VGRP-88, materiales. Guarda al soltar: actualiza la lista al
+// instante y, si el PUT falla, vuelve al orden anterior y avisa. El orden lo define solo esta
+// pantalla — el form de crear/editar no tiene campo "orden".
 
 import {
   closestCenter,
@@ -26,14 +26,32 @@ import { useId, useState } from "react";
 import { FormError, TextLink } from "@/components/ui";
 import styles from "../../admin.module.css";
 
-export interface VideoItem {
+export interface ItemReordenable {
   id: string;
   titulo: string;
-  stage: number;
+  /** Segunda línea (ej. "Stage 2", "PDF · 2,3 MB"). */
+  subtitulo: string;
   publicado: boolean;
 }
 
-function FilaVideo({ video, posicion }: { video: VideoItem; posicion: number }) {
+export interface ListadoReordenableProps {
+  /** Entidad de la URL: arma el link de edición y el endpoint de orden. */
+  entidad: "videos" | "materiales";
+  inicial: ItemReordenable[];
+}
+
+/** Sustantivo para los anuncios del lector de pantalla y el fallback de títulos. */
+const SUSTANTIVO = { videos: "video", materiales: "material" } as const;
+
+function Fila({
+  entidad,
+  item,
+  posicion,
+}: {
+  entidad: ListadoReordenableProps["entidad"];
+  item: ItemReordenable;
+  posicion: number;
+}) {
   const {
     attributes,
     listeners,
@@ -42,7 +60,7 @@ function FilaVideo({ video, posicion }: { video: VideoItem; posicion: number }) 
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: video.id });
+  } = useSortable({ id: item.id });
 
   return (
     <li
@@ -54,63 +72,64 @@ function FilaVideo({ video, posicion }: { video: VideoItem; posicion: number }) 
         type="button"
         ref={setActivatorNodeRef}
         className={styles.itemAgarre}
-        aria-label={`Mover "${video.titulo}"`}
+        aria-label={`Mover "${item.titulo}"`}
         {...attributes}
         {...listeners}
       >
         <span aria-hidden="true">⠿</span>
       </button>
       <TextLink
-        href={`/admin/contenido/videos/${video.id}`}
-        className={`${styles.itemFila} ${video.publicado ? "" : styles.itemInactivo}`}
+        href={`/admin/contenido/${entidad}/${item.id}`}
+        className={`${styles.itemFila} ${item.publicado ? "" : styles.itemInactivo}`}
       >
         <span className={styles.itemInfo}>
-          <span className={styles.itemTitulo}>{video.titulo}</span>
-          <span className={styles.itemSub}>Stage {video.stage}</span>
+          <span className={styles.itemTitulo}>{item.titulo}</span>
+          <span className={styles.itemSub}>{item.subtitulo}</span>
         </span>
         <span className={styles.itemSub}>
-          posición {posicion} · publicado: {video.publicado ? "sí" : "no"}
+          posición {posicion} · {item.publicado ? "publicado" : "Oculto"}
         </span>
       </TextLink>
     </li>
   );
 }
 
-export function VideosReordenables({ inicial }: { inicial: VideoItem[] }) {
-  const [videos, setVideos] = useState(inicial);
+export function ListadoReordenable({ entidad, inicial }: ListadoReordenableProps) {
+  const [items, setItems] = useState(inicial);
   const idDnd = useId();
   const [error, setError] = useState<string | null>(null);
+  const sustantivo = SUSTANTIVO[entidad];
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const titulo = (id: string | number) => videos.find((v) => v.id === id)?.titulo ?? "video";
+  const titulo = (id: string | number) => items.find((v) => v.id === id)?.titulo ?? sustantivo;
 
   async function onDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
 
-    const anterior = videos;
+    const anterior = items;
     const desde = anterior.findIndex((v) => v.id === active.id);
     const hasta = anterior.findIndex((v) => v.id === over.id);
     const nuevo = arrayMove(anterior, desde, hasta);
 
-    setVideos(nuevo);
+    setItems(nuevo);
     setError(null);
 
     try {
-      const res = await fetch("/api/admin/contenido/videos/orden", {
+      const res = await fetch(`/api/admin/contenido/${entidad}/orden`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ids: nuevo.map((v) => v.id) }),
       });
       if (res.ok) return;
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setVideos(anterior);
+      setItems(anterior);
       setError(data.error ?? "No se pudo guardar el orden.");
     } catch {
-      setVideos(anterior);
+      setItems(anterior);
       setError("No se pudo conectar. Reintentá.");
     }
   }
@@ -125,8 +144,7 @@ export function VideosReordenables({ inicial }: { inicial: VideoItem[] }) {
         onDragEnd={onDragEnd}
         accessibility={{
           screenReaderInstructions: {
-            draggable:
-              "Para mover un video, presioná espacio, usá las flechas arriba y abajo, y presioná espacio de nuevo para soltarlo. Escape cancela.",
+            draggable: `Para mover un ${sustantivo}, presioná espacio, usá las flechas arriba y abajo, y presioná espacio de nuevo para soltarlo. Escape cancela.`,
           },
           announcements: {
             onDragStart: ({ active }) => `Levantaste "${titulo(active.id)}".`,
@@ -140,10 +158,10 @@ export function VideosReordenables({ inicial }: { inicial: VideoItem[] }) {
           },
         }}
       >
-        <SortableContext items={videos.map((v) => v.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={items.map((v) => v.id)} strategy={verticalListSortingStrategy}>
           <ul className={styles.itemLista}>
-            {videos.map((video, i) => (
-              <FilaVideo key={video.id} video={video} posicion={i + 1} />
+            {items.map((item, i) => (
+              <Fila key={item.id} entidad={entidad} item={item} posicion={i + 1} />
             ))}
           </ul>
         </SortableContext>

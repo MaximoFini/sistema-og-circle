@@ -1,4 +1,4 @@
-// VGRP-27 — fuente única de los 5 destinos de navegación (MODULOS.md §8).
+// VGRP-27 — fuente única de los destinos de navegación (MODULOS.md §8).
 // Sin lógica: sólo datos. El drawer los recorre para renderizar; cualquier
 // otro lugar que necesite la misma lista (footer, breadcrumb futuro) importa
 // de acá en vez de duplicarla.
@@ -25,6 +25,9 @@ export interface DestinoNav {
 // agrega acá un "próximamente" que el ticket no pidió (evitar scope creep).
 export const DESTINOS_NAV: readonly DestinoNav[] = [
   { href: "/dashboard", label: "Inicio", icono: "inicio" },
+  // VGRP-88: la formación (Stage 1, Stage 2 y materiales) vive en su propia página. Se ve
+  // también sin plan: la pantalla borrosa con la tarjeta de desbloqueo.
+  { href: "/formacion", label: "Formación", icono: "formacion" },
   // VGRP-57: la calculadora vive adentro de la app (antes era un link externo a
   // vegroup.vercel.app). Destino interno: el drawer la marca activa y muestra chevron.
   { href: "/calculadora", label: "Calculadora", icono: "calculadora" },

@@ -13,16 +13,23 @@ Presenta la plataforma y precios, con CTA de registro/compra. Sin login. Separad
 La pantalla más densa de la plataforma. De arriba a abajo, según el prototipo:
 
 - **Ticker superior** — carrusel de info de depósitos/CUIT + botón de carga de packing list / proforma FOB. Rota cada 4.2 segundos en el prototipo.
-- **Stats del usuario** — nivel activo, videos completados (formato "X / 11"), envíos activos.
-- **Stage 1** — grid de 8 videos de importaciones. Estado "próximamente" hasta que estén grabados y disponibles.
-- **Banner a la calculadora** — acceso directo.
-- **Stage 2** — 3 videos para armar tienda (Tienda Nube, Shopify, ambas con Claude Code). Mismo criterio de "próximamente" que Stage 1.
+- **Stats del usuario** — nivel activo, videos completados (formato "vistos / publicados": cuenta solo los videos de Stage 1 + Stage 2 publicados hoy), envíos activos.
+- **Tarjetas de formación** (VGRP-88) — una por stage, con el progreso, el próximo video sin ver y "Continuar" (lleva a `/formacion` con ese video desplegado). Los videos en sí viven en `/formacion`.
+- **Accesos directos** — a toda la formación (`/formacion`) y a la calculadora.
 - **Directorio de 6 agentes de compra en China** + video explicativo.
 - **Banner de comunidad**.
 - **Profesionales al servicio** — 4 perfiles: contable, automatizaciones, agencia de marketing, UGC creator.
 - **Servicios financieros** — pagos al exterior, gestión financiera, calculadora de costos locales.
 
 **Regla de UI:** el contenido restringido por nivel queda visualmente bloqueado con indicación de qué nivel hace falta para desbloquearlo (no se oculta sin explicación).
+
+## 2b. Formación (`/formacion`, VGRP-88)
+
+- **Stage 1** — videos de importaciones. **Stage 2** — videos para armar y vender en una tienda online (~15: Tienda Nube, Shopify, Claude Code). El mismo camino de aprendizaje de siempre: el video se despliega en su fila, se marca como visto. Sin tope de videos y sin tiles "próximamente": se ven los publicados, en el orden que define el admin (arrastrando, acá o en el panel).
+- **Materiales adicionales** — PDF, PowerPoint, Excel y Word para descargar (hasta 50 MB c/u), no atados a ningún stage. Se ven los primeros 6 con "Ver todos". La descarga es una URL firmada de 2 minutos que solo se genera con plan; el archivo vive en un bucket privado de Supabase Storage.
+- Sin plan: la pantalla real, borrosa, con la tarjeta de desbloqueo encima (mismo patrón que Inicio y Calculadora).
+- Admin: `/admin/contenido/materiales` — subir (con progreso y cancelar), editar, reemplazar el archivo, publicar/ocultar, reordenar y borrar. Muestra el espacio usado sobre el 1 GB del plan Free.
+- Spec: `specs/formacion-materiales/`.
 
 ## 3. Calculadora
 
@@ -56,7 +63,7 @@ Hasta que exista, la confirmación de pagos manuales se resuelve con un mini-end
 
 ## 8. Navegación
 
-Header con menú hamburguesa (no sidebar fija) que abre un panel lateral (drawer) con los 5 destinos: Inicio, Calculadora, Comunidad, Tracking, Perfil.
+Header con menú hamburguesa (no sidebar fija) que abre un panel lateral (drawer) con los destinos: Inicio, Formación, Calculadora, Comunidad, Tracking, Perfil.
 
 ## 9. Si querés hacer X, andá a Y
 

@@ -19,13 +19,29 @@ const mockCreateServiceRoleClient = vi.fn();
 const mockRevalidateTag = vi.fn();
 const mockCaptureException = vi.fn();
 
-const ENTIDADES_REALES = ["agentes", "videos", "profesionales", "servicios_financieros"] as const;
+const ENTIDADES_REALES = [
+  "agentes",
+  "videos",
+  "profesionales",
+  "servicios_financieros",
+  "materiales",
+] as const;
 const TAG_POR_ENTIDAD: Record<(typeof ENTIDADES_REALES)[number], string> = {
   agentes: "grilla-agentes",
   videos: "grilla-videos",
   profesionales: "grilla-profesionales",
   servicios_financieros: "grilla-servicios",
+  materiales: "grilla-materiales",
 };
+
+// VGRP-88: el archivo de un material no sirve. La ruta lo reconoce con `instanceof`, así que
+// el mock del módulo tiene que exportar la MISMA clase que lanzan los tests.
+class ArchivoInvalidoMock extends Error {
+  constructor(mensaje = "El archivo supera el máximo de 50 MB.") {
+    super(mensaje);
+    this.name = "ArchivoInvalido";
+  }
+}
 
 vi.mock("@/lib/auth/admin", () => ({
   requireAdmin: () => mockRequireAdmin(),
@@ -35,6 +51,7 @@ vi.mock("@/lib/data/admin/contenido", () => ({
   esEntidadValida: (v: string): boolean => (ENTIDADES_REALES as readonly string[]).includes(v),
   listarContenido: (...args: unknown[]) => mockListarContenido(...args),
   crearContenido: (...args: unknown[]) => mockCrearContenido(...args),
+  ArchivoInvalido: ArchivoInvalidoMock,
   TAG_POR_ENTIDAD,
 }));
 
@@ -232,6 +249,41 @@ describe("GET|POST /api/admin/contenido/[entidad]", () => {
       );
       expect(mockRevalidateTag).toHaveBeenCalledTimes(1);
       expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-agentes");
+    });
+
+    // VGRP-88 — materiales: el archivo vive en Storage y la fila lo referencia.
+    it("materiales: happy path -> revalidateTag('grilla-materiales') y auditoría crear_contenido", async () => {
+      mockCrearContenido.mockResolvedValue({
+        resultado: { id: "m1", titulo: "Guía" },
+        valorAnterior: null,
+        valorNuevo: { id: "m1" },
+        entidadId: "m1",
+      });
+
+      const res = await callPost("materiales", {
+        titulo: "Guía",
+        storage_path_pendiente: "pendientes/123e4567-e89b-12d3-a456-426614174000.pdf",
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockConAuditoria).toHaveBeenCalledWith(
+        { marker: "admin-client" },
+        expect.objectContaining({ accion: "crear_contenido", entidad: "materiales" }),
+        expect.any(Function),
+      );
+      expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-materiales");
+    });
+
+    it("un archivo inválido (ArchivoInvalido) -> 400 con el mensaje para el admin, sin revalidar ni avisar a Sentry", async () => {
+      mockCrearContenido.mockRejectedValue(new ArchivoInvalidoMock("El archivo está vacío."));
+
+      const res = await callPost("materiales", { titulo: "Guía" });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "El archivo está vacío." });
+      expect(mockRevalidateTag).not.toHaveBeenCalled();
+      // Es un error del pedido, no un bug: no ensucia Sentry.
+      expect(mockCaptureException).not.toHaveBeenCalled();
     });
 
     it("una escritura FALLIDA (error inesperado, no-Zod) no revalida nada", async () => {

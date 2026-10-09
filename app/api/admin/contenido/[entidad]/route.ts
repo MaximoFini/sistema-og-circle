@@ -20,6 +20,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
 import {
+  ArchivoInvalido,
   crearContenido,
   esEntidadValida,
   listarContenido,
@@ -81,6 +82,11 @@ export async function POST(
         { error: "Datos inválidos.", fieldErrors: z.flattenError(e).fieldErrors },
         { status: 400 },
       );
+    }
+    // VGRP-88: el archivo de un material no sirve (no se subió, está vacío, pasa el tope).
+    // El mensaje está escrito para que lo lea el admin.
+    if (e instanceof ArchivoInvalido) {
+      return Response.json({ error: e.message }, { status: 400 });
     }
     Sentry.captureException(e, { extra: { detalle: "crearContenido", entidad } });
     return Response.json({ error: "No se pudo crear el ítem." }, { status: 500 });

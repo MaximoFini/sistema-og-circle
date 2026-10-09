@@ -17,7 +17,7 @@ De `landing.md` sección 5, las 4 cards del problema mapean 1:1 a las 4 piezas d
 | "No sé cuánto me sale realmente" (piensa que gana 40%, en realidad es 4% después de arancel, IVA, tasa estadística y despacho) | Calculadora de costos de importación |
 | "No sé en quién confiar" (buscar agente en Instagram es una lotería) | Directorio de 6 agentes de compra verificados en China |
 | "No sé cómo pagarles" (mandar plata a China sin estructura) | SWIFT + servicios financieros (solo nivel Avanzado) |
-| "¿Y ahora dónde lo vendo?" | Stage 2: 3 videos para armar tienda (Tienda Nube / Shopify) |
+| "¿Y ahora dónde lo vendo?" | Stage 2: ~15 videos para armar tienda (Tienda Nube / Shopify), más materiales descargables |
 
 ## 3. Quién lo usa y con qué permisos
 
@@ -25,7 +25,7 @@ No hay roles de equipo/staff definidos todavía más allá de "administrador" (c
 
 | Nivel | Precio (early adopter) | Qué desbloquea |
 |---|---|---|
-| Principiante | $75.000 | Formación completa (11 videos), calculadora, comunidad, profesionales, servicios financieros |
+| Principiante | $75.000 | Formación completa (videos de Stage 1 y 2, y materiales), calculadora, comunidad, profesionales, servicios financieros |
 | Avanzado | $125.000 | Todo lo de Principiante + depósitos Miami/China/España, agente de muestras y de volumen, flete y despacho gestionado, tracking, marítimo, SWIFT |
 
 Un usuario puede subir de Principiante a Avanzado pagando solo la diferencia ($60.000 ARS según `resumen-ejecutivo.md` §2.2). El control de acceso por nivel se planea implementar con **Row-Level Security en Supabase** directo en la base — no en el frontend — para que un usuario Principiante no pueda leer contenido de Avanzado ni haciendo una consulta directa.
@@ -39,7 +39,8 @@ Un usuario puede subir de Principiante a Avanzado pagando solo la diferencia ($6
 | FOB | Free On Board — el costo del producto antes de flete, seguro y aduana. Es el dato que se carga en la calculadora. |
 | Depósito | Punto físico de consolidación de mercadería antes de enviarla a Argentina. Ubicados en Miami, China y España (los dos últimos solo nivel Avanzado). |
 | Despacho | Trámite aduanero para nacionalizar la mercadería al llegar a Argentina. |
-| Stage 1 / Stage 2 | Los dos bloques de formación en video. Stage 1 = importaciones (8 videos). Stage 2 = armar tienda online (3 videos: Tienda Nube, Shopify, ambas con Claude Code). |
+| Stage 1 / Stage 2 | Los dos bloques de formación en video, en `/formacion`. Stage 1 = importaciones. Stage 2 = armar tienda online (~15 videos: Tienda Nube, Shopify, Claude Code). Sin cantidad fija: se muestran los publicados (VGRP-88). |
+| Materiales adicionales | Archivos descargables de `/formacion` (PDF, PowerPoint, Excel, Word), no atados a un stage. Los sube el admin; se descargan con plan (VGRP-88). |
 | Early adopter | Quien se anota en la lista de espera durante la Fase 1 (landing). Recibe 10% de descuento de por vida sobre el precio del nivel elegido. |
 | Traxcargo | Sistema externo de tracking de envíos al que la plataforma planea enlazar (no reconstruir) para el módulo de tracking. |
 
@@ -63,7 +64,7 @@ La versión más simple del producto que ya permite generar ingresos reales.
 - Registro + login (email/contraseña + Google) y recuperación de contraseña
 - Checkout con Mercado Pago automático vía webhook
 - Panel de administración mínimo: activación de nivel y gestión de usuarios
-- Dashboard básico con Stage 1 y Stage 2 (placeholders hasta que los videos estén listos)
+- Dashboard básico con el resumen de Stage 1 y Stage 2 (los videos y los materiales viven en `/formacion`, VGRP-88)
 - Enlace a la calculadora existente
 - Directorio de agentes de compra en China
 - Sección de profesionales al servicio

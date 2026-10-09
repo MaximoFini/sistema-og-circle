@@ -43,7 +43,7 @@ async function loginComo(
   await page.waitForURL("**/dashboard");
 }
 
-test("un admin crea y después edita un video desde /admin/contenido, y el usuario lo ve en Inicio sin deploy (revalidateTag real)", async ({
+test("un admin crea y después edita un video desde /admin/contenido, y el usuario lo ve en /formacion sin deploy (revalidateTag real)", async ({
   page,
   browser,
 }) => {
@@ -52,8 +52,9 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
   // 30s por defecto. Contra el build de CI sobra margen.
   test.setTimeout(60_000);
 
-  const tituloOriginal = `Video revalidate ${randomUUID()}`;
-  const tituloNuevo = `Video revalidado ${randomUUID()}`;
+  // Prefijo "[test]": red de contención de test/helpers/cleanup.ts si la corrida se corta.
+  const tituloOriginal = `[test] Video revalidate ${randomUUID()}`;
+  const tituloNuevo = `[test] Video revalidado ${randomUUID()}`;
 
   // VGRP-59/60 (Bloque 13 — plan único): la policy de RLS de `videos`
   // (videos_select_con_acceso) ahora exige nivel='completo' — antes
@@ -63,12 +64,15 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
   const paginaAdmin = await contextoAdmin.newPage();
 
   try {
-    // 1) El admin crea el video desde el panel real (stage 2 — mismo stage que
-    // renderiza InicioShell en la sección "Formación: armá tu tienda").
+    // 1) El admin crea el video desde el panel real (stage 2 — la sección "Formación: armá
+    // tu tienda" de /formacion). VGRP-88: /formacion solo muestra videos publicados y con
+    // link, así que se cargan los dos desde el form.
     await loginComo(paginaAdmin, SEED_ADMIN_USER.email, SEED_ADMIN_USER.password);
     await paginaAdmin.goto("/admin/contenido/videos/nuevo");
     await paginaAdmin.getByLabel("Stage").selectOption("2");
     await paginaAdmin.getByLabel("Título").fill(tituloOriginal);
+    await paginaAdmin.getByLabel(/Link del video/).fill("https://youtu.be/dQw4w9WgXcQ");
+    await paginaAdmin.getByLabel("Publicado").check();
     await paginaAdmin.getByRole("button", { name: "Crear" }).click();
     await paginaAdmin.waitForURL("**/admin/contenido/videos");
 
@@ -82,25 +86,22 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     const videoId = video?.id as string;
     expect(videoId).toBeTruthy();
 
-    // Orden bien negativo a propósito: la grilla de stage 2 es de tamaño FIJO (3,
-    // CANTIDAD_STAGE — lib/data/videos.ts) y corta por "orden" ascendente, y un
-    // video nuevo queda AL FINAL (el form ya no tiene campo "orden" — se reordena
-    // arrastrando, commit 85683e6). Sin esto, si ya hay 3+ videos de stage 2 reales
-    // cargados, este quedaría afuera de la grilla y el test fallaría por una razón
-    // que no tiene nada que ver con revalidateTag. Va directo por service role (no
-    // por el reorden del panel, que reasignaría el orden de los videos reales) y
-    // ANTES de la primera lectura de Inicio: el create ya invalidó el tag, así que
-    // esa primera lectura trae este orden.
+    // Orden bien negativo para que quede primero en su stage (VGRP-88: ya no hay tope de
+    // videos, pero así el test no depende de cuántos videos reales haya). Va directo por
+    // service role (no por el reorden del panel, que reasignaría el orden de los videos
+    // reales) y ANTES de la primera lectura: el create ya invalidó el tag, así que esa
+    // primera lectura trae este orden.
     const { error: ordenError } = await admin
       .from("videos")
       .update({ orden: -999999 })
       .eq("id", videoId);
     expect(ordenError).toBeNull();
 
-    // 2) El usuario carga Inicio: el título ORIGINAL ya tiene que estar (el
-    // create de arriba ya revalidó el tag antes de este punto) — ancla: si esto
-    // no aparece, el resto del test no prueba nada real.
+    // 2) El usuario carga /formacion (VGRP-88: los videos ya no están en Inicio): el
+    // título ORIGINAL ya tiene que estar (el create de arriba ya revalidó el tag antes de
+    // este punto) — ancla: si esto no aparece, el resto del test no prueba nada real.
     await loginComo(page, usuario.email, PASSWORD);
+    await page.goto("/formacion");
     await expect(page.getByText(tituloOriginal)).toBeVisible();
 
     // 3) El admin edita el mismo video.
@@ -109,7 +110,7 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     await paginaAdmin.getByRole("button", { name: "Guardar cambios" }).click();
     await paginaAdmin.waitForURL("**/admin/contenido/videos");
 
-    // 4) El usuario, en su propia sesión, recarga Inicio: sin ningún deploy,
+    // 4) El usuario, en su propia sesión, recarga /formacion: sin ningún deploy,
     // revalidateTag ya invalidó la lectura cacheada.
     await page.reload();
     await expect(page.getByText(tituloNuevo)).toBeVisible();

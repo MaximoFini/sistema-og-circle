@@ -17,6 +17,11 @@ const ENTIDADES_UI = [
     desc: "Formación: importaciones y armá tu tienda. Link de YouTube sensible.",
   },
   {
+    slug: "materiales",
+    titulo: "Materiales adicionales",
+    desc: "PDF, PowerPoint, Excel y Word descargables desde Formación. Hasta 50 MB.",
+  },
+  {
     slug: "profesionales",
     titulo: "Profesionales",
     desc: "Contador, marketing, automatizaciones, UGC.",
@@ -33,8 +38,8 @@ export default function ContenidoIndexPage() {
     <div className={styles.page}>
       <h1 className={styles.h1}>Contenido</h1>
       <p className={styles.lede}>
-        Agentes, videos, profesionales y servicios financieros — CRUD con revalidación automática de
-        las grillas públicas.
+        Agentes, videos, materiales, profesionales y servicios financieros — CRUD con revalidación
+        automática de las grillas públicas.
       </p>
 
       <div className={styles.cards}>

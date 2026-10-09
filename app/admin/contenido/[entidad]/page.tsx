@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { CSSProperties } from "react";
 import { Suspense } from "react";
 import { TextLink } from "@/components/ui";
 import {
@@ -8,14 +9,20 @@ import {
   listarContenido,
 } from "@/lib/data/admin/contenido";
 import type { Tables } from "@/lib/database.types";
+import { EXTENSIONES, type ExtensionMaterial, formatearTamano } from "@/lib/materiales/tipos";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import styles from "../../admin.module.css";
-import { VideosReordenables } from "./VideosReordenablesLazy";
+import { estadoEspacio } from "./espacio";
+import { ListadoReordenable } from "./ListadoReordenableLazy";
+import materialesStyles from "./materiales-admin.module.css";
 
 // VGRP-38 — listado de una entidad de contenido. Server Component: lectura
 // directa por service role (bypassa RLS; la barrera de autorización es el rol
 // de la capa de ruta — middleware + layout), mismo criterio que
 // app/admin/usuarios/page.tsx.
+//
+// VGRP-88: videos y materiales se reordenan arrastrando (ListadoReordenable); materiales
+// suma el indicador de espacio usado de Storage (plan Free, 1 GB).
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +31,7 @@ const TITULO: Record<string, string> = {
   videos: "Videos",
   profesionales: "Profesionales",
   servicios_financieros: "Servicios financieros",
+  materiales: "Materiales adicionales",
 };
 
 function subtitulo(entidad: string, item: Record<string, unknown>): string {
@@ -38,36 +46,92 @@ function tituloItem(entidad: string, item: Record<string, unknown>): string {
   return String(item.nombre ?? "");
 }
 
+/** "PDF · 2,3 MB" para la segunda línea de un material. */
+function subtituloMaterial(m: Tables<"materiales">): string {
+  const tipo = EXTENSIONES[m.extension as ExtensionMaterial]?.tipo ?? m.extension;
+  const etiqueta = { pdf: "PDF", powerpoint: "PowerPoint", excel: "Excel", word: "Word" }[tipo];
+  return `${etiqueta ?? tipo} · ${formatearTamano(Number(m.tamano_bytes))}`;
+}
+
+function IndicadorEspacio({ materiales }: { materiales: Tables<"materiales">[] }) {
+  const espacio = estadoEspacio(materiales.map((m) => m.tamano_bytes));
+  return (
+    <div className={materialesStyles.espacio}>
+      <p
+        className={
+          espacio.advertencia ? materialesStyles.espacioAdvertencia : materialesStyles.espacioTexto
+        }
+      >
+        {espacio.texto}
+        {espacio.advertencia ? " — queda poco lugar en Storage (plan Free)." : ""}
+      </p>
+      <div
+        className={materialesStyles.espacioBarra}
+        role="progressbar"
+        aria-label="Espacio usado en Storage"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={espacio.porcentaje}
+      >
+        <div
+          className={
+            espacio.advertencia
+              ? materialesStyles.espacioLlenoAdvertencia
+              : materialesStyles.espacioLleno
+          }
+          style={{ "--p": `${espacio.porcentaje}%` } as CSSProperties}
+        />
+      </div>
+    </div>
+  );
+}
+
 async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
   const admin = createServiceRoleClient();
   const items = await listarContenido(admin, entidad);
   const campo = campoVigencia(entidad);
+  const reordenable = entidad === "videos" || entidad === "materiales";
 
   return (
     <>
       <p className={styles.lede}>
         {items.length} ítem(s),{" "}
-        {entidad === "videos" ? "arrastrá para reordenar." : 'ordenados por "orden".'}
+        {reordenable ? "arrastrá para reordenar." : 'ordenados por "orden".'}
       </p>
+
+      {entidad === "materiales" ? (
+        <IndicadorEspacio materiales={items as Tables<"materiales">[]} />
+      ) : null}
 
       {/* VGRP-54 punto 4 — "+ Crear nuevo" no depende de `items`, pero queda
           adentro del mismo Suspense que el lede (que sí depende) para no
           invertir el orden visual actual (hoy el lede va antes del botón). */}
       <div className={styles.formAcciones}>
         <TextLink href={`/admin/contenido/${entidad}/nuevo`} className={`${styles.card}`}>
-          + Crear nuevo
+          {entidad === "materiales" ? "+ Subir material" : "+ Crear nuevo"}
         </TextLink>
       </div>
 
       {items.length === 0 ? (
         <p className={styles.vacio}>Todavía no hay ítems cargados.</p>
       ) : entidad === "videos" ? (
-        <VideosReordenables
+        <ListadoReordenable
+          entidad="videos"
           inicial={(items as Tables<"videos">[]).map((v) => ({
             id: v.id,
             titulo: v.titulo,
-            stage: v.stage,
+            subtitulo: `Stage ${v.stage}`,
             publicado: v.publicado,
+          }))}
+        />
+      ) : entidad === "materiales" ? (
+        <ListadoReordenable
+          entidad="materiales"
+          inicial={(items as Tables<"materiales">[]).map((m) => ({
+            id: m.id,
+            titulo: m.titulo,
+            subtitulo: subtituloMaterial(m),
+            publicado: m.publicado,
           }))}
         />
       ) : (

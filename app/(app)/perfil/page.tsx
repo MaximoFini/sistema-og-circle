@@ -27,7 +27,7 @@ import styles from "./perfil.module.css";
 // =============================================================================
 
 const ACCESOS_COMPLETO = [
-  "Formación completa (11 videos)",
+  "Formación en video y materiales",
   "Calculadora de costos",
   "Directorio de profesionales",
   "Servicios financieros",

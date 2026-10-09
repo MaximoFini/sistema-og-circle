@@ -34,6 +34,8 @@ export interface SeccionSlotProps {
   ancho?: "completo" | "amplio" | "mitad";
   /** Ícono del acceso directo (sólo `variante="banner"`). */
   icono?: IconName;
+  /** VGRP-88 — id del `<section>`, para linkear a una sección puntual (ej. `#stage-2`). */
+  id?: string;
 }
 
 const CLASE_ANCHO = {
@@ -52,6 +54,7 @@ export function SeccionSlot({
   children,
   ancho = "completo",
   icono,
+  id,
 }: SeccionSlotProps) {
   const esBanner = variante === "banner";
   const claseVariante = esBanner
@@ -61,7 +64,7 @@ export function SeccionSlot({
     : styles.card;
 
   return (
-    <section className={`${claseVariante} ${CLASE_ANCHO[ancho]}`} aria-label={titulo}>
+    <section id={id} className={`${claseVariante} ${CLASE_ANCHO[ancho]}`} aria-label={titulo}>
       {esBanner && icono ? (
         <span className={proximamente ? styles.bannerIconoQuieto : styles.bannerIcono}>
           <Icon name={icono} size={22} />

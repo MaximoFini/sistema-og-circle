@@ -51,17 +51,22 @@ vi.mock("@/lib/supabase/service-role", () => ({
   createServiceRoleClient: () => mockCreateServiceRoleClient(),
 }));
 
-/** Cliente Supabase falso: `.from("videos").select(...).eq(...).order(...)` resuelve un
- *  error, simulando que la base no responde (service role vencida, Postgres caído, etc). */
+/** Cliente Supabase falso: la cadena `.from("videos").select().eq().eq().not().order()
+ *  .limit()` resuelve un error en el `.limit()` final, simulando que la base no responde
+ *  (service role vencida, Postgres caído, etc). */
 function fakeFailingClient() {
-  const order = vi.fn().mockResolvedValue({
+  const limit = vi.fn().mockResolvedValue({
     data: null,
     error: { message: "conexión rechazada", code: "ECONNREFUSED" },
   });
-  const eq = vi.fn().mockReturnValue({ order });
-  const select = vi.fn().mockReturnValue({ eq });
-  const from = vi.fn().mockReturnValue({ select });
-  return { from };
+  const cadena = {
+    select: vi.fn(() => cadena),
+    eq: vi.fn(() => cadena),
+    not: vi.fn(() => cadena),
+    order: vi.fn(() => cadena),
+    limit,
+  };
+  return { from: vi.fn(() => cadena) };
 }
 
 describe("obtenerVideosStage1/2/3 — fail-open ante una base que falla (VGRP-53, hallazgo del punto 1)", () => {
@@ -72,27 +77,18 @@ describe("obtenerVideosStage1/2/3 — fail-open ante una base que falla (VGRP-53
     mockCreateServiceRoleClient.mockReturnValue(fakeFailingClient());
   });
 
-  it("stage 1 y 2 degradan a tiles de relleno en vez de propagar (comportamiento ya existente, 57ebd28 — control)", async () => {
-    const { obtenerVideosStage1, obtenerVideosStage2, CANTIDAD_STAGE } = await import("./videos");
+  it("stage 1 y 2 degradan a la lista vacía en vez de propagar (comportamiento ya existente, 57ebd28 — control)", async () => {
+    const { obtenerVideosStage1, obtenerVideosStage2 } = await import("./videos");
 
-    const s1 = await obtenerVideosStage1();
-    const s2 = await obtenerVideosStage2();
-
-    expect(s1).toHaveLength(CANTIDAD_STAGE[1]);
-    expect(s1.every((v) => v.id === null && v.estado === "proximamente")).toBe(true);
-    expect(s2).toHaveLength(CANTIDAD_STAGE[2]);
-    expect(s2.every((v) => v.id === null && v.estado === "proximamente")).toBe(true);
+    await expect(obtenerVideosStage1()).resolves.toEqual([]);
+    await expect(obtenerVideosStage2()).resolves.toEqual([]);
     expect(mockCaptureException).toHaveBeenCalledTimes(2);
   });
 
-  it("stage 3 (VGRP-53, con el fix aplicado) TAMBIÉN degrada a 1 tile de relleno — antes de este fix, esto rechazaba y volteaba el Promise.all de InicioShell en build", async () => {
-    const { obtenerVideosStage3, CANTIDAD_STAGE } = await import("./videos");
+  it("stage 3 (VGRP-53, con el fix aplicado) TAMBIÉN degrada a la lista vacía — antes de este fix, esto rechazaba y volteaba el Promise.all de InicioShell en build", async () => {
+    const { obtenerVideosStage3 } = await import("./videos");
 
-    const s3 = await obtenerVideosStage3();
-
-    expect(s3).toHaveLength(CANTIDAD_STAGE[3]);
-    expect(s3[0]?.id).toBeNull();
-    expect(s3[0]?.estado).toBe("proximamente");
+    await expect(obtenerVideosStage3()).resolves.toEqual([]);
     expect(mockCaptureException).toHaveBeenCalledTimes(1);
     const [, opciones] = mockCaptureException.mock.calls[0];
     expect(opciones).toMatchObject({ tags: { "videos-grilla-degradada": "true" } });

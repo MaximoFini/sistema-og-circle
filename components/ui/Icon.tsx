@@ -126,6 +126,21 @@ const PATHS = {
       <path d="M18 6 6 18" />
     </>
   ),
+  // VGRP-88 — Formación (menú) y descarga de materiales.
+  formacion: (
+    <>
+      <rect x="3.5" y="5" width="17" height="11.5" rx="2.5" />
+      <path d="M10.2 8.4v4.7l3.9-2.35z" />
+      <path d="M8.5 19.5h7" />
+    </>
+  ),
+  descargar: (
+    <>
+      <path d="M12 4.5v10" />
+      <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+      <path d="M5.5 19h13" />
+    </>
+  ),
   ojoTachado: (
     <>
       <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />

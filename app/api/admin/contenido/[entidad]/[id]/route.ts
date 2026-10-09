@@ -20,6 +20,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
 import {
+  ArchivoInvalido,
   actualizarContenido,
   borrarContenido,
   esEntidadValida,
@@ -78,6 +79,10 @@ export async function PATCH(req: Request, { params }: Params): Promise<Response>
         { error: "Datos inválidos.", fieldErrors: z.flattenError(e).fieldErrors },
         { status: 400 },
       );
+    }
+    // VGRP-88: el archivo de reemplazo de un material no sirve (ver POST de [entidad]).
+    if (e instanceof ArchivoInvalido) {
+      return Response.json({ error: e.message }, { status: 400 });
     }
     Sentry.captureException(e, { extra: { detalle: "actualizarContenido", entidad, id } });
     return Response.json({ error: "No se pudo actualizar el ítem." }, { status: 500 });

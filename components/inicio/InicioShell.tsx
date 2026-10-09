@@ -26,27 +26,25 @@ import { ProgresoVideosProvider } from "@/components/video/ProgresoVideosProvide
 import { StatsVideos } from "@/components/video/StatsVideos";
 import { VideoGrid } from "@/components/video/VideoGrid";
 import {
+  idsDeFormacion,
   obtenerVideosStage1,
   obtenerVideosStage2,
   obtenerVideosStage3,
-  TOTAL_VIDEOS,
-  type VideoGridItem,
+  sinEmbed,
 } from "@/lib/data/videos";
 import { AgentesGrid } from "./AgentesGrid";
 import styles from "./inicio.module.css";
 import { ProfesionalesGrid } from "./ProfesionalesGrid";
+import { aResumenes } from "./resumenStage";
 import { SeccionSlot } from "./SeccionSlot";
 import { ServiciosFinancierosGrid } from "./ServiciosFinancierosGrid";
+import { TarjetaStage } from "./TarjetaStage";
 
 // VGRP-77: `bloqueado` es el Inicio de quien no tiene plan, que se ve borroso
-// detrás de <TarjetaDesbloqueo>. El blur no protege nada, así que lo sensible
-// se saca ACÁ, antes de renderizar: los `embedUrl` de los videos quedan en
-// `null` (títulos y miniaturas sí viajan). Las grillas de agentes,
-// profesionales y servicios no cambian: sus secretos ya los resuelve cada
-// Route Handler según los claims de quien pide.
-function sinEmbed(videos: VideoGridItem[]): VideoGridItem[] {
-  return videos.map((video) => ({ ...video, embedUrl: null }));
-}
+// detrás de <TarjetaDesbloqueo>. Lo sensible se saca ACÁ, antes de renderizar: los
+// `embedUrl` de los videos quedan en `null` (`sinEmbed`, en lib/data/videos.ts; títulos y
+// miniaturas sí viajan). Las grillas de agentes, profesionales y servicios no cambian:
+// sus secretos ya los resuelve cada Route Handler según los claims de quien pide.
 
 export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }) {
   const grillas = await Promise.all([
@@ -63,7 +61,7 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
   const reordenable = !bloqueado;
 
   return (
-    <ProgresoVideosProvider totalVideos={TOTAL_VIDEOS}>
+    <ProgresoVideosProvider idsFormacion={idsDeFormacion(stage1, stage2)}>
       <div className={styles.shell}>
         <header className={styles.saludo}>
           <div className={styles.heroTexto}>
@@ -92,21 +90,42 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
         </header>
 
         <div className={styles.grilla}>
-          {/* Bloque propio para Stage 1 + columna lateral: acota el `sticky` de la
-              columna a este bloque (sin él, se deslizaría sobre el resto de la grilla). */}
+          {/* VGRP-88: los videos viven en /formacion. Acá, un resumen por stage (progreso y
+              próximo video) y los accesos directos. Bloque propio para acotar el `sticky`
+              de la columna lateral (sin él, se deslizaría sobre el resto de la grilla). */}
           <div className={styles.bentoPrincipal}>
-            <SeccionSlot
-              eyebrow="Stage 1"
-              titulo="Formación: importaciones"
-              ancho="amplio"
-              descripcion="8 videos que te llevan de cero a tu primera importación."
-            >
-              <VideoGrid videos={stage1} reordenable={reordenable} />
-            </SeccionSlot>
+            <div className={styles.columnaFormacion}>
+              <SeccionSlot
+                eyebrow="Stage 1"
+                titulo="Formación: importaciones"
+                descripcion="Tu camino de cero a tu primera importación."
+              >
+                <TarjetaStage videos={aResumenes(stage1)} />
+              </SeccionSlot>
 
-            {/* Columna lateral de la grilla bento (desde 1024px): calculadora + Stage 2,
-              al lado del camino largo de Stage 1. En mobile es un bloque más. */}
+              <SeccionSlot
+                eyebrow="Stage 2"
+                titulo="Formación: armá tu tienda"
+                descripcion="Para vender lo que importaste (Tienda Nube, Shopify)."
+              >
+                <TarjetaStage videos={aResumenes(stage2)} />
+              </SeccionSlot>
+            </div>
+
+            {/* Columna lateral de la grilla bento (desde 1024px). En mobile es un bloque más. */}
             <div className={styles.columnaLateral}>
+              <SeccionSlot
+                eyebrow="Formación"
+                titulo="Todos los videos y materiales"
+                descripcion="Stage 1, Stage 2 y los materiales para descargar."
+                variante="banner"
+                icono="formacion"
+              >
+                <NextLink href="/formacion" className={styles.ctaBanner}>
+                  Ver toda la formación
+                </NextLink>
+              </SeccionSlot>
+
               <SeccionSlot
                 eyebrow="Herramienta"
                 titulo="Calculadora de costos"
@@ -120,14 +139,6 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
                   Abrir calculadora
                 </NextLink>
               </SeccionSlot>
-
-              <SeccionSlot
-                eyebrow="Stage 2"
-                titulo="Formación: armá tu tienda"
-                descripcion="3 videos para vender lo que importaste (Tienda Nube, Shopify)."
-              >
-                <VideoGrid videos={stage2} reordenable={reordenable} />
-              </SeccionSlot>
             </div>
           </div>
 
@@ -136,7 +147,7 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
             titulo="Agentes de compra en China"
             descripcion="6 agentes verificados con los que ya opera Jota."
           >
-            <VideoGrid videos={stage3} reordenable={reordenable} />
+            {stage3.length > 0 ? <VideoGrid videos={stage3} reordenable={reordenable} /> : null}
             <AgentesGrid />
           </SeccionSlot>
 

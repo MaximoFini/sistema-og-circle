@@ -49,7 +49,7 @@ interface Beneficio {
 // ponemos a tu disposición" de la landing (OGCircleFeatures). Lo que la
 // plataforma todavía no tiene va marcado "Pronto", igual que en el menú.
 const BENEFICIOS: Beneficio[] = [
-  { icono: "play", texto: "11 videos, paso a paso" },
+  { icono: "play", texto: "Formación en video, paso a paso" },
   { icono: "calculadora", texto: "Calculadora comercial" },
   { icono: "barco", texto: "Calculadora marítima" },
   { icono: "ubicacion", texto: "Depósitos en China, Miami y España", partner: "vegroup" },

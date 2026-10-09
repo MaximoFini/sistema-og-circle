@@ -135,6 +135,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      materiales: {
+        Row: {
+          created_at: string;
+          descripcion: string | null;
+          extension: string;
+          id: string;
+          orden: number;
+          publicado: boolean;
+          storage_path: string;
+          tamano_bytes: number;
+          tipo: string;
+          titulo: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          descripcion?: string | null;
+          extension: string;
+          id?: string;
+          orden?: number;
+          publicado?: boolean;
+          storage_path: string;
+          tamano_bytes: number;
+          tipo: string;
+          titulo: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          descripcion?: string | null;
+          extension?: string;
+          id?: string;
+          orden?: number;
+          publicado?: boolean;
+          storage_path?: string;
+          tamano_bytes?: number;
+          tipo?: string;
+          titulo?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       nivel_overrides: {
         Row: {
           actor_id: string | null;

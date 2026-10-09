@@ -23,12 +23,28 @@ const mockCreateServiceRoleClient = vi.fn();
 const mockRevalidateTag = vi.fn();
 const mockCaptureException = vi.fn();
 
-const ENTIDADES_REALES = ["agentes", "videos", "profesionales", "servicios_financieros"] as const;
+// VGRP-88: el archivo de reemplazo de un material no sirve. La ruta lo reconoce con
+// `instanceof`, así que el mock del módulo exporta la MISMA clase que lanzan los tests.
+class ArchivoInvalidoMock extends Error {
+  constructor(mensaje = "El archivo supera el máximo de 50 MB.") {
+    super(mensaje);
+    this.name = "ArchivoInvalido";
+  }
+}
+
+const ENTIDADES_REALES = [
+  "agentes",
+  "videos",
+  "profesionales",
+  "servicios_financieros",
+  "materiales",
+] as const;
 const TAG_POR_ENTIDAD: Record<(typeof ENTIDADES_REALES)[number], string> = {
   agentes: "grilla-agentes",
   videos: "grilla-videos",
   profesionales: "grilla-profesionales",
   servicios_financieros: "grilla-servicios",
+  materiales: "grilla-materiales",
 };
 
 vi.mock("@/lib/auth/admin", () => ({
@@ -40,6 +56,7 @@ vi.mock("@/lib/data/admin/contenido", () => ({
   actualizarContenido: (...args: unknown[]) => mockActualizarContenido(...args),
   borrarContenido: (...args: unknown[]) => mockBorrarContenido(...args),
   ItemNoEncontrado: ItemNoEncontradoMock,
+  ArchivoInvalido: ArchivoInvalidoMock,
   TAG_POR_ENTIDAD,
 }));
 
@@ -122,6 +139,39 @@ describe("PATCH|DELETE /api/admin/contenido/[entidad]/[id]", () => {
   });
 
   describe("PATCH", () => {
+    // VGRP-88 — reemplazar el archivo de un material.
+    it("materiales: un archivo de reemplazo inválido -> 400 con el mensaje, sin revalidar ni ensuciar Sentry", async () => {
+      mockActualizarContenido.mockRejectedValue(new ArchivoInvalidoMock("El archivo está vacío."));
+
+      const res = await callPatch("materiales", UUID, {
+        storage_path_pendiente: "pendientes/123e4567-e89b-12d3-a456-426614174000.pdf",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "El archivo está vacío." });
+      expect(mockRevalidateTag).not.toHaveBeenCalled();
+      expect(mockCaptureException).not.toHaveBeenCalled();
+    });
+
+    it("materiales: happy path -> auditoría editar_contenido y revalidateTag('grilla-materiales')", async () => {
+      mockActualizarContenido.mockResolvedValue({
+        resultado: { id: UUID },
+        valorAnterior: {},
+        valorNuevo: {},
+        entidadId: UUID,
+      });
+
+      const res = await callPatch("materiales", UUID, { publicado: false });
+
+      expect(res.status).toBe(200);
+      expect(mockConAuditoria).toHaveBeenCalledWith(
+        { marker: "admin-client" },
+        expect.objectContaining({ accion: "editar_contenido", entidad: "materiales" }),
+        expect.any(Function),
+      );
+      expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-materiales");
+    });
+
     it("sin sesión -> 401, no llama a actualizarContenido", async () => {
       mockRequireAdmin.mockResolvedValue({
         ok: false,
