@@ -16,22 +16,15 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ResultadoMutacion } from "../data/admin/audit-log";
-import { ItemNoEncontrado } from "../data/admin/contenido";
+import { ItemNoEncontrado, tabla } from "../data/admin/contenido";
 import type { Database } from "../database.types";
 import type { EntidadConFoto } from "./constantes";
 import { borrarFoto, subirFoto, urlPublicaFoto } from "./storage";
 
 type AdminClient = SupabaseClient<Database>;
 
-/** Mismo motivo que `tabla()` en contenido.ts: el generador de tipos no
- *  angosta `.from()` con un nombre de tabla que es una unión. Ambas tablas
- *  tienen `id` y `foto_path`, que es lo único que se toca acá. */
-function tabla(admin: AdminClient, entidad: EntidadConFoto) {
-  return (admin as unknown as SupabaseClient).from(entidad);
-}
-
 /** Lo que el audit log necesita de la fila: su nombre (para describirla) y la foto. */
-export interface FotoActual {
+interface FotoActual {
   nombre: string;
   foto_path: string | null;
 }

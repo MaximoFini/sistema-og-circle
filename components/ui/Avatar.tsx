@@ -28,10 +28,8 @@ function urlOptimizada(src: string, px: number): string {
 /** src + srcset 1x/2x. Un `blob:` (vista previa local) va directo, sin optimizar. */
 function fuente(src: string, size: number): { src: string; srcSet?: string } {
   if (src.startsWith("blob:")) return { src };
-  return {
-    src: urlOptimizada(src, size),
-    srcSet: `${urlOptimizada(src, size)} 1x, ${urlOptimizada(src, size * 2)} 2x`,
-  };
+  const x1 = urlOptimizada(src, size);
+  return { src: x1, srcSet: `${x1} 1x, ${urlOptimizada(src, size * 2)} 2x` };
 }
 
 export interface AvatarProps {

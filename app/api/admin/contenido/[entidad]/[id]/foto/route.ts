@@ -32,6 +32,9 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Holgura sobre el tope de la foto para los bordes y campos del multipart. */
+const MARGEN_MULTIPART_BYTES = 64 * 1024;
+
 type Params = { params: Promise<{ entidad: string; id: string }> };
 
 function validarRuta(entidad: string, id: string) {
@@ -55,7 +58,7 @@ async function leerArchivo(req: Request): Promise<{ buffer: Buffer } | { error: 
   // Corte temprano por Content-Length: no leer al servidor un body enorme.
   // El multipart agrega unos cientos de bytes al archivo, de ahí el margen.
   const largo = Number(req.headers.get("content-length") ?? "0");
-  if (largo > FOTO_SUBIDA_MAX_BYTES + 64 * 1024) {
+  if (largo > FOTO_SUBIDA_MAX_BYTES + MARGEN_MULTIPART_BYTES) {
     return { error: "La foto es demasiado pesada. Probá con otra imagen." };
   }
 

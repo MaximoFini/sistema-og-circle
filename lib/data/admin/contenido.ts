@@ -176,7 +176,7 @@ const SCHEMAS = {
  * helper es el único punto del archivo con un cast a `any` — todo lo que
  * entra o sale de acá sigue tipado por las firmas públicas de abajo.
  */
-function tabla(admin: AdminClient, entidad: Entidad) {
+export function tabla(admin: AdminClient, entidad: Entidad) {
   return (admin as unknown as SupabaseClient).from(entidad);
 }
 
