@@ -273,21 +273,7 @@
   min-width: 0;
 }
 
-/* Avatar con iniciales (como Contactos de Apple). */
-.iniciales {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #5f5a55, #413e3a);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #fff;
-}
+/* El avatar (foto o iniciales) es la primitiva components/ui/Avatar. */
 
 .agenteNombre {
   display: flex;

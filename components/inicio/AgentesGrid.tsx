@@ -12,12 +12,12 @@
 
 import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
-import { iniciales } from "./iniciales";
+import { Avatar } from "@/components/ui/Avatar";
 import styles from "./inicio.module.css";
 
 interface AgenteRespuesta {
   id: string;
-  publicMeta: { nombre: string; especialidad: string };
+  publicMeta: { nombre: string; especialidad: string; fotoUrl: string | null };
   contacto: string | null;
 }
 
@@ -64,9 +64,7 @@ export function AgentesGrid() {
           {/* <span>, no <div>: e2e/gating-contenido.spec.ts toma el ÚLTIMO div que
               contiene el nombre y espera que sea la tarjeta entera (con el CTA). */}
           <span className={styles.agenteCabecera}>
-            <span className={styles.iniciales} aria-hidden="true">
-              {iniciales(agente.publicMeta.nombre)}
-            </span>
+            <Avatar nombre={agente.publicMeta.nombre} fotoUrl={agente.publicMeta.fotoUrl} />
             <span className={styles.agenteNombre}>
               <strong>{agente.publicMeta.nombre}</strong>
               <span className={styles.meta}>{agente.publicMeta.especialidad}</span>

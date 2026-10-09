@@ -69,6 +69,22 @@ describe("obtenerProfesionales", () => {
     expect(item?.contacto).toBeNull();
   });
 
+  it("fotoUrl: null sin foto, URL pública con foto — aun sin plan", async () => {
+    const sinFoto = await crearProfesionalTest({ nombre: "Test sin foto" });
+    const conFoto = await crearProfesionalTest({ nombre: "Test con foto" });
+    const path = `profesionales/${conFoto.id}/foto.webp`;
+    await admin.from("profesionales").update({ foto_path: path }).eq("id", conFoto.id);
+
+    const items = await obtenerProfesionales(admin, { app_metadata: { nivel: "ninguno" } });
+
+    expect(items.find((i) => i.id === sinFoto.id)?.publicMeta.fotoUrl).toBeNull();
+    const item = items.find((i) => i.id === conFoto.id);
+    expect(item?.publicMeta.fotoUrl).toMatch(
+      new RegExp(`/storage/v1/object/public/fotos-directorio/${path}$`),
+    );
+    expect(item?.contacto).toBeNull();
+  });
+
   it("excluye filas activo=false", async () => {
     const prof = await crearProfesionalTest({ nombre: "Test inactivo", activo: false });
 

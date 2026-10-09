@@ -84,6 +84,7 @@ export type Database = {
           contacto: string | null;
           created_at: string;
           especialidad: string;
+          foto_path: string | null;
           id: string;
           nombre: string;
           orden: number;
@@ -94,6 +95,7 @@ export type Database = {
           contacto?: string | null;
           created_at?: string;
           especialidad: string;
+          foto_path?: string | null;
           id?: string;
           nombre: string;
           orden?: number;
@@ -104,6 +106,7 @@ export type Database = {
           contacto?: string | null;
           created_at?: string;
           especialidad?: string;
+          foto_path?: string | null;
           id?: string;
           nombre?: string;
           orden?: number;
@@ -227,6 +230,7 @@ export type Database = {
           contacto: string | null;
           created_at: string;
           descripcion: string | null;
+          foto_path: string | null;
           id: string;
           nombre: string;
           orden: number;
@@ -238,6 +242,7 @@ export type Database = {
           contacto?: string | null;
           created_at?: string;
           descripcion?: string | null;
+          foto_path?: string | null;
           id?: string;
           nombre: string;
           orden?: number;
@@ -249,6 +254,7 @@ export type Database = {
           contacto?: string | null;
           created_at?: string;
           descripcion?: string | null;
+          foto_path?: string | null;
           id?: string;
           nombre?: string;
           orden?: number;

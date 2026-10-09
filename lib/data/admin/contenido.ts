@@ -16,6 +16,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database, Json, Tables, TablesInsert, TablesUpdate } from "../../database.types";
+import { tieneFoto } from "../../fotos/constantes";
+import { borrarFoto } from "../../fotos/storage";
 import { videoProvider } from "../../video/provider";
 import { CANTIDAD_STAGE } from "../videos-config";
 import type { ResultadoMutacion } from "./audit-log";
@@ -87,6 +89,10 @@ export class StageCompleto extends Error {
 
 // -----------------------------------------------------------------------------
 // Schemas de Zod — uno por entidad, porque los campos no coinciden entre sí.
+//
+// `foto_path` (agentes/profesionales) NO está en ningún schema a propósito: Zod
+// descarta las claves desconocidas, así que un POST/PATCH genérico no puede
+// escribirlo. La única vía es PUT|DELETE .../[id]/foto (lib/fotos/mutaciones.ts).
 // -----------------------------------------------------------------------------
 
 const agenteSchema = z.object({
@@ -483,6 +489,12 @@ export async function borrarContenido<E extends Entidad>(
 
   const { error } = await tabla(admin, entidad).delete().eq("id", id);
   if (error) throw error;
+
+  // Foto de perfil: después del DELETE (si el objeto no se puede borrar queda
+  // huérfano en Storage y va a Sentry, pero la fila ya no existe — nunca al revés).
+  if (tieneFoto(entidad)) {
+    await borrarFoto(admin, (anterior as { foto_path: string | null }).foto_path);
+  }
 
   return {
     resultado: null,

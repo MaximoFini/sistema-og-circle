@@ -1,0 +1,161 @@
+/* Foto de perfil de agentes / profesionales: campo del form + editor de recorte.
+   El diálogo usa el mismo lenguaje que components/auth/CerrarSesionBoton.module.css:
+   hoja inferior en mobile, diálogo centrado desde 640px. */
+
+/* --- Campo en el form ---------------------------------------------------- */
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.campoLabel {
+  padding-inline: 4px;
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.campoAyuda {
+  composes: footnote from "../../../../components/ui/type.module.css";
+  padding-inline: 4px;
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* El input nativo queda oculto: lo abre el botón "Elegir foto". */
+.inputArchivo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Editor de recorte (diálogo) --------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  animation: aparecer var(--duration-base) linear;
+}
+
+.panel {
+  composes: raised from "../../../../components/ui/glass.module.css";
+  --g-position: fixed;
+  --g-radius: 26px;
+  position: fixed;
+  z-index: 201;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  animation: hoja-in var(--duration-slow) var(--ease-out-expo);
+}
+
+.titulo {
+  composes: title2 from "../../../../components/ui/type.module.css";
+}
+
+.ayuda {
+  margin: 0;
+  font-size: var(--fs-callout);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* react-easy-crop se posiciona en absoluto dentro de su contenedor: necesita
+   un ancestro `relative` con tamaño propio. Cuadrado, como la foto final. */
+.area {
+  position: relative;
+  /* Cuadrado que entra en pantallas bajas (celular apaisado) sin scroll. */
+  width: min(100%, 55dvh);
+  margin-inline: auto;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #000;
+}
+
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.zoomLabel {
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.zoomInput {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.botones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .overlay {
+    background: rgba(0, 0, 0, 0.32);
+  }
+
+  .panel {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    width: calc(100vw - 32px);
+    max-width: 440px;
+    padding: 28px;
+    animation: modal-in var(--duration-base) var(--ease-out-expo);
+  }
+
+  .botones {
+    flex-direction: row-reverse;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hoja-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.96);
+    opacity: 0;
+  }
+}

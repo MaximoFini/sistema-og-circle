@@ -182,6 +182,19 @@ export function describirAccion(f: FilaAudit, ctx: ContextoAudit): Descripcion {
       return { titulo, detalle: esEdicion ? conFallback(diferencias(anterior, nuevo)) : [] };
     }
 
+    // Foto de perfil (specs/foto-perfil-agentes-profesionales): sin detalle — el
+    // único dato que cambia es la ruta del archivo, que no le dice nada al admin.
+    case "cambiar_foto_contenido":
+    case "quitar_foto_contenido": {
+      const verbo = f.accion === "cambiar_foto_contenido" ? "Cambió" : "Quitó";
+      const objeto = OBJETOS[f.entidad] ?? `un ítem de ${f.entidad}`;
+      const de = objeto.startsWith("el ") ? `del ${objeto.slice(3)}` : `de ${objeto}`;
+      return {
+        titulo: conNombre(`${verbo} la foto ${de}`, nombreItem(nuevo) ?? nombreItem(anterior)),
+        detalle: [],
+      };
+    }
+
     case "reordenar_contenido": {
       const n = Array.isArray(f.valorNuevo) ? f.valorNuevo.length : 0;
       return {

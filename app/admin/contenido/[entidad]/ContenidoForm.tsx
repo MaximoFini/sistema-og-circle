@@ -9,8 +9,10 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Button, Checkbox, FormError } from "@/components/ui";
+import { tieneFoto } from "@/lib/fotos/constantes";
 import { videoProvider } from "@/lib/video/provider";
 import styles from "../../admin.module.css";
+import { type CambioFoto, CampoFoto } from "./CampoFoto";
 
 // VGRP-59/60 (Bloque 13 — plan único): `nivel_requerido` se dropeó de
 // agentes/videos/servicios_financieros (ya no tiene sentido distinguir nivel
@@ -75,6 +77,8 @@ export interface ContenidoFormProps {
   entidad: string;
   /** Presente = editar; ausente = crear. */
   item?: Record<string, unknown> & { id: string };
+  /** Agentes / profesionales: URL de la foto guardada hoy (null = sin foto). */
+  fotoActualUrl?: string | null;
 }
 
 interface RespuestaError {
@@ -82,7 +86,31 @@ interface RespuestaError {
   fieldErrors?: Record<string, string[]>;
 }
 
-export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
+/**
+ * Foto de perfil — segundo paso, DESPUÉS de guardar el registro (design.md
+ * §Key flows). Devuelve el mensaje de error, o null si salió bien.
+ */
+async function aplicarFoto(entidad: string, id: string, cambio: CambioFoto) {
+  if (cambio.tipo === "sin-cambios") return null;
+  const url = `/api/admin/contenido/${entidad}/${id}/foto`;
+  try {
+    let res: Response;
+    if (cambio.tipo === "nueva") {
+      const form = new FormData();
+      form.set("foto", cambio.blob, "foto.webp");
+      res = await fetch(url, { method: "PUT", body: form });
+    } else {
+      res = await fetch(url, { method: "DELETE" });
+    }
+    if (res.ok) return null;
+    const data = (await res.json().catch(() => ({}))) as RespuestaError;
+    return data.error ?? "No se pudo guardar la foto.";
+  } catch {
+    return "No se pudo conectar.";
+  }
+}
+
+export function ContenidoForm({ entidad, item, fotoActualUrl = null }: ContenidoFormProps) {
   const router = useRouter();
   const campos = CAMPOS[entidad] ?? [];
   const [valores, setValores] = useState<Record<string, unknown>>(() => {
@@ -95,9 +123,16 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
   const [borrando, setBorrando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [erroresCampo, setErroresCampo] = useState<Record<string, string>>({});
+  const conFoto = tieneFoto(entidad);
+  const [cambioFoto, setCambioFoto] = useState<CambioFoto>({ tipo: "sin-cambios" });
+  // Alta cuyo registro se guardó pero la foto no: el próximo "Guardar" edita
+  // ESE registro (no crea otro) y reintenta la foto, sin salir de la página
+  // — el recorte sólo existe en memoria de este form.
+  const [idCreado, setIdCreado] = useState<string | null>(null);
 
   const urlBase = `/api/admin/contenido/${entidad}`;
-  const url = item ? `${urlBase}/${item.id}` : urlBase;
+  const idActual = item?.id ?? idCreado;
+  const url = idActual ? `${urlBase}/${idActual}` : urlBase;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -107,12 +142,24 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
 
     try {
       const res = await fetch(url, {
-        method: item ? "PATCH" : "POST",
+        method: idActual ? "PATCH" : "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(valores),
       });
 
       if (res.ok) {
+        const guardado = (await res.json().catch(() => ({}))) as { id?: string };
+        const id = idActual ?? guardado.id;
+        if (conFoto && id) {
+          const errorFoto = await aplicarFoto(entidad, id, cambioFoto);
+          if (errorFoto) {
+            setIdCreado(id);
+            setError(
+              `El ítem se guardó, pero la foto no: ${errorFoto} Volvé a guardar para reintentar.`,
+            );
+            return;
+          }
+        }
         router.push(`/admin/contenido/${entidad}`);
         router.refresh();
         return;
@@ -169,6 +216,15 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
 
   return (
     <form className={styles.formCambiarNivel} onSubmit={onSubmit}>
+      {conFoto ? (
+        <CampoFoto
+          nombre={String(valores.nombre ?? "")}
+          fotoActualUrl={fotoActualUrl}
+          cambio={cambioFoto}
+          onCambio={setCambioFoto}
+          disabled={enviando}
+        />
+      ) : null}
       {campos.map((campo) =>
         campo.tipo === "checkbox" ? (
           // Caso aparte: el Checkbox del sistema trae su propia etiqueta
@@ -243,7 +299,7 @@ export function ContenidoForm({ entidad, item }: ContenidoFormProps) {
 
       <div className={styles.formAcciones}>
         <Button type="submit" loading={enviando}>
-          {item ? "Guardar cambios" : "Crear"}
+          {idActual ? "Guardar cambios" : "Crear"}
         </Button>
         {item ? (
           <Button type="button" variant="ghost" loading={borrando} onClick={onBorrar}>
