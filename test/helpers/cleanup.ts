@@ -10,6 +10,7 @@
 // borra nada por otro criterio — es la única forma de que esto sea seguro
 // corriendo contra el proyecto real.
 
+import { type EntidadConFoto, FOTO_BUCKET, tieneFoto } from "../../lib/fotos/constantes";
 import { createTestAdminClient } from "./db-client";
 import { isTestEmail, SEED_USERS } from "./seed-users";
 import { withAuthRetry } from "./with-auth-retry";
@@ -192,6 +193,27 @@ const TABLAS_CONTENIDO_POR_COLUMNA_MARCADORA = [
 ] as const;
 
 /**
+ * Foto de perfil (specs/foto-perfil-agentes-profesionales): todo objeto vive
+ * bajo `<entidad>/<id>/`, así que listar la carpeta de cada fila de test
+ * también agarra los huérfanos de un reemplazo cortado a la mitad.
+ */
+async function borrarFotosDeTest(
+  admin: ReturnType<typeof createTestAdminClient>,
+  entidad: EntidadConFoto,
+  ids: string[],
+) {
+  const bucket = admin.storage.from(FOTO_BUCKET);
+  for (const id of ids) {
+    const { data, error } = await bucket.list(`${entidad}/${id}`);
+    if (error) throw error;
+    const paths = (data ?? []).map((o) => `${entidad}/${id}/${o.name}`);
+    if (paths.length === 0) continue;
+    const { error: removeError } = await bucket.remove(paths);
+    if (removeError) throw removeError;
+  }
+}
+
+/**
  * Borra, en las 4 tablas de contenido, cualquier fila cuyo nombre/título
  * empiece con `MARCADOR_CONTENIDO_TEST`. Nunca toca una fila sin ese prefijo
  * — es lo único que hace seguro correr esto contra el proyecto real
@@ -210,6 +232,7 @@ export async function cleanupContenidoDeTest(): Promise<{ filasBorradas: number 
     if (!data || data.length === 0) continue;
 
     const ids = data.map((f) => f.id);
+    if (tieneFoto(tabla)) await borrarFotosDeTest(admin, tabla, ids);
     const { error: deleteError } = await admin.from(tabla).delete().in("id", ids);
     if (deleteError) throw deleteError;
     filasBorradas += ids.length;

@@ -2,6 +2,13 @@ import withBundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
+// Foto de perfil de agentes/profesionales (specs/foto-perfil-agentes-profesionales):
+// next/image sólo optimiza imágenes de hosts declarados. Se acota al bucket
+// público `fotos-directorio`, no a todo el Storage del proyecto.
+const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL)
+  : null;
+
 const nextConfig: NextConfig = {
   // VGRP-48 — expone el ambiente real de Vercel al bundle del cliente SIN
   // depender de que "Automatically expose System Environment Variables"
@@ -25,6 +32,15 @@ const nextConfig: NextConfig = {
   // YouTube, fuera del alcance de este optimizador).
   images: {
     formats: ["image/avif", "image/webp"],
+    remotePatterns: supabaseHost
+      ? [
+          {
+            protocol: supabaseHost.protocol === "http:" ? "http" : "https",
+            hostname: supabaseHost.hostname,
+            pathname: "/storage/v1/object/public/fotos-directorio/**",
+          },
+        ]
+      : [],
   },
 
   // VGRP-56 punto 7 — `experimental.optimizePackageImports` para

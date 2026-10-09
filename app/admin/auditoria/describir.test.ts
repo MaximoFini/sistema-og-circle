@@ -84,6 +84,31 @@ describe("describirAccion", () => {
     ).toBe("Borró el agente “Pepe”");
   });
 
+  it("foto de perfil: verbo, tipo y nombre, sin mostrar la ruta del archivo", () => {
+    const cambio = describirAccion(
+      fila({
+        accion: "cambiar_foto_contenido",
+        entidad: "agentes",
+        valorAnterior: { nombre: "Pepe", foto_path: null },
+        valorNuevo: { nombre: "Pepe", foto_path: "agentes/x/y.webp" },
+      }),
+      ctx,
+    );
+    expect(cambio).toEqual({ titulo: "Cambió la foto del agente “Pepe”", detalle: [] });
+
+    expect(
+      describirAccion(
+        fila({
+          accion: "quitar_foto_contenido",
+          entidad: "profesionales",
+          valorAnterior: { nombre: "Contadora Ana", foto_path: "profesionales/x/y.webp" },
+          valorNuevo: { nombre: "Contadora Ana", foto_path: null },
+        }),
+        ctx,
+      ).titulo,
+    ).toBe("Quitó la foto del profesional “Contadora Ana”");
+  });
+
   it("editar_contenido: sólo los campos que cambiaron, sin columnas de sistema", () => {
     const d = describirAccion(
       fila({

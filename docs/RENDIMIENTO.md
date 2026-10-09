@@ -280,3 +280,21 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
   que nadie recuerda por qué es un `drop index` esperando a ejecutarse por
   error). Análisis original (por qué se pensó redundante) sigue en el
   commit `dbe403c` si hace falta retomarlo con un caso de uso distinto.
+
+## `Avatar` y foto de perfil — sin `next/image` en el cliente (feat/foto-perfil-directorio)
+
+- `Avatar.tsx` (nuevo componente) muestra la foto de agentes/profesionales y recae en iniciales si falla.
+- **Problema detectado:** importar `next/image` (o `getImageProps()`) arrastra ~5 kB gzip al chunk compartido con `ContenidoBloqueado`/`TarjetaDesbloqueo`, que está en `/dashboard` y todas las rutas de usuario. Con el import, `/dashboard` subía de 198 kB a 204 kB (fuera de presupuesto de 200 kB).
+- **Solución:** `Avatar` no importa nada de `next/image`. Construye el srcset manualmente contra `/_next/image?url=...&w=N&q=75`, usando los `ANCHOS_PERMITIDOS` del optimizador de Next (valores de `images.imageSizes` por defecto: 16, 32, 48, 64, 96, 128, 256, 384). El optimizador sigue convirtiendo a AVIF/WebP; sólo se evita el módulo de utilidades en el cliente.
+- **`Avatar` NO se exporta desde el barril `components/ui/index.ts`:** comentario explícito en el barril. Se importa directo: `import { Avatar } from "@/components/ui/Avatar"`.
+- **Medición post-cambio (`next build` en worktree `01-sistema-ogcircle-foto`):**
+
+| Ruta | Antes (main) | Después |
+|---|---|---|
+| `shared by all` | 186 kB | **187 kB** (+1 kB — `lib/fotos/constantes` y `lib/fotos/cliente` en el chunk compartido del admin) |
+| `/dashboard` | 198 kB | **198 kB** (sin cambio) |
+| `/admin/contenido/[entidad]/nuevo` | 197 kB | **200 kB** (+3 kB — `CampoFoto` + `RecorteFotoModal` lazy) |
+| `/admin/contenido/[entidad]/[id]` | 197 kB | **200 kB** (igual que /nuevo) |
+
+- Todas las rutas dentro del presupuesto de `scripts/check-bundle-budget.mjs` (200 kB default, 195 kB shared). Verificado con `pnpm check:bundle` en el worktree: 52/52 rutas ✅.
+- `react-easy-crop` (editor de recorte) se carga con `next/dynamic({ ssr: false })` desde `CampoFoto`, así que no aparece en el First Load — sólo descarga cuando el admin abre el campo de foto en un formulario.

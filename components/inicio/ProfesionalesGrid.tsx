@@ -6,12 +6,17 @@
 // una vez resuelto.
 
 import { useEffect, useState } from "react";
-import { iniciales } from "./iniciales";
+import { Avatar } from "@/components/ui/Avatar";
 import styles from "./inicio.module.css";
 
 interface ProfesionalRespuesta {
   id: string;
-  publicMeta: { nombre: string; rubro: string; descripcion: string | null };
+  publicMeta: {
+    nombre: string;
+    rubro: string;
+    descripcion: string | null;
+    fotoUrl: string | null;
+  };
   contacto: string | null;
 }
 
@@ -51,9 +56,7 @@ export function ProfesionalesGrid() {
           {/* <span>, no <div>: e2e/gating-contenido.spec.ts toma el ÚLTIMO div que
               contiene el nombre y espera que sea la tarjeta entera (con el CTA). */}
           <span className={styles.agenteCabecera}>
-            <span className={styles.iniciales} aria-hidden="true">
-              {iniciales(prof.publicMeta.nombre)}
-            </span>
+            <Avatar nombre={prof.publicMeta.nombre} fotoUrl={prof.publicMeta.fotoUrl} />
             <span className={styles.agenteNombre}>
               <strong>{prof.publicMeta.nombre}</strong>
               <span className={styles.meta}>{prof.publicMeta.rubro}</span>

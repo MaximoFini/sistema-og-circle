@@ -20,6 +20,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import type { AppMetadataClaims } from "../auth/claims";
 import type { Database } from "../database.types";
+import { urlPublicaFoto } from "../fotos/storage";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido";
 import { leerConFallback } from "./cache-fallback";
@@ -32,6 +33,8 @@ export interface AgentePublico {
   publicMeta: {
     nombre: string;
     especialidad: string;
+    /** Foto de perfil (pública, no gateada). null = sin foto → iniciales. */
+    fotoUrl: string | null;
   };
   /** null = bloqueado (sin plan) — nunca se envía el contacto real. */
   contacto: string | null;
@@ -41,6 +44,7 @@ interface AgenteFila {
   id: string;
   nombre: string;
   especialidad: string;
+  foto_path: string | null;
   /** CRUDO, sin resolver por nivel — sólo se cachea esto, nunca el resultado
    *  de `resolverSecreto()`. */
   contacto: string | null;
@@ -49,7 +53,7 @@ interface AgenteFila {
 async function obtenerFilasAgentes(admin: AdminClient): Promise<AgenteFila[]> {
   const { data, error } = await admin
     .from("agentes")
-    .select("id, nombre, especialidad, contacto")
+    .select("id, nombre, especialidad, foto_path, contacto")
     .eq("activo", true)
     .order("orden", { ascending: true });
   if (error) throw error;
@@ -71,6 +75,7 @@ function resolverAgentes(filas: AgenteFila[], claims: AppMetadataClaims | null):
     publicMeta: {
       nombre: fila.nombre,
       especialidad: fila.especialidad,
+      fotoUrl: urlPublicaFoto(fila.foto_path),
     },
     contacto: resolverSecreto(claims, fila.contacto),
   }));
