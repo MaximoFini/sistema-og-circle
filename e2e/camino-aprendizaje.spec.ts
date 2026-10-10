@@ -178,7 +178,7 @@ test.describe("Inicio (VGRP-88)", () => {
         "Formación: armá tu tienda",
         "Todos los videos y materiales",
         "Calculadora de costos",
-        "Agentes de compra en China",
+        "Agentes verificados de compra en China",
         "Hablá con otros importadores",
         "Profesionales al servicio",
         "Servicios financieros",
@@ -444,7 +444,7 @@ test.describe("Agentes: video explicativo (stage 3)", () => {
 
       await loginComo(page, created.email);
 
-      const seccion = page.getByRole("region", { name: "Agentes de compra en China" });
+      const seccion = page.getByRole("region", { name: "Agentes verificados de compra en China" });
       await expect(seccion).toBeVisible();
       await expect(seccion.getByText(titulo, { exact: true })).toHaveCount(0);
     } finally {

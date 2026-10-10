@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
+import { ContactoDirectorio } from "./ContactoDirectorio";
 import styles from "./inicio.module.css";
 
 interface ProfesionalRespuesta {
@@ -65,7 +66,9 @@ export function ProfesionalesGrid() {
           {prof.publicMeta.descripcion ? (
             <p className={styles.textoTarjeta}>{prof.publicMeta.descripcion}</p>
           ) : null}
-          {prof.contacto ? <p className={styles.contacto}>{prof.contacto}</p> : null}
+          {prof.contacto ? (
+            <ContactoDirectorio contacto={prof.contacto} nombre={prof.publicMeta.nombre} />
+          ) : null}
         </div>
       ))}
     </div>
