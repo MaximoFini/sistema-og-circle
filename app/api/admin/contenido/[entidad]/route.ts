@@ -20,10 +20,10 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
 import {
+  ArchivoInvalido,
   crearContenido,
   esEntidadValida,
   listarContenido,
-  StageCompleto,
   TAG_POR_ENTIDAD,
 } from "@/lib/data/admin/contenido";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -77,16 +77,16 @@ export async function POST(
     revalidateTag(TAG_POR_ENTIDAD[entidad]);
     return Response.json(out);
   } catch (e) {
-    // Publicar un video más con el stage completo: no es un error inesperado, no va a
-    // Sentry; no se creó nada.
-    if (e instanceof StageCompleto) {
-      return Response.json({ error: e.message }, { status: 409 });
-    }
     if (e instanceof z.ZodError) {
       return Response.json(
         { error: "Datos inválidos.", fieldErrors: z.flattenError(e).fieldErrors },
         { status: 400 },
       );
+    }
+    // VGRP-88: el archivo de un material no sirve (no se subió, está vacío, pasa el tope).
+    // El mensaje está escrito para que lo lea el admin.
+    if (e instanceof ArchivoInvalido) {
+      return Response.json({ error: e.message }, { status: 400 });
     }
     Sentry.captureException(e, { extra: { detalle: "crearContenido", entidad } });
     return Response.json({ error: "No se pudo crear el ítem." }, { status: 500 });

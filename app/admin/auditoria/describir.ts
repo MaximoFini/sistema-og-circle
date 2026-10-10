@@ -48,6 +48,7 @@ const OBJETOS: Record<string, string> = {
   agentes: "el agente",
   profesionales: "el profesional",
   servicios_financieros: "el servicio financiero",
+  materiales: "el material",
   cuentas_cobro: "la cuenta de cobro",
 };
 
@@ -64,6 +65,11 @@ const CAMPOS: Record<string, string> = {
   orden: "Orden",
   stage: "Etapa",
   provider_ref: "Video",
+  // VGRP-88 — materiales. Reemplazar el archivo cambia el path, el formato y el tamaño.
+  storage_path: "Archivo",
+  extension: "Formato",
+  tipo: "Tipo",
+  tamano_bytes: "Tamaño (bytes)",
   alias: "Alias",
   banco: "Banco",
   cbu_cvu: "CBU/CVU",
@@ -197,9 +203,15 @@ export function describirAccion(f: FilaAudit, ctx: ContextoAudit): Descripcion {
 
     case "reordenar_contenido": {
       const n = Array.isArray(f.valorNuevo) ? f.valorNuevo.length : 0;
+      // VGRP-88: se reordenan videos y materiales; cada uno con su sustantivo.
+      const esMaterial = f.entidad === "materiales";
+      const [singular, plural, titulo] = esMaterial
+        ? ["material", "materiales", "Reordenó los materiales"]
+        : ["video", "videos", "Reordenó los videos"];
       return {
-        titulo: "Reordenó los videos",
-        detalle: n === 0 ? [] : [n === 1 ? "1 video reordenado" : `${n} videos reordenados`],
+        titulo,
+        detalle:
+          n === 0 ? [] : [n === 1 ? `1 ${singular} reordenado` : `${n} ${plural} reordenados`],
       };
     }
 

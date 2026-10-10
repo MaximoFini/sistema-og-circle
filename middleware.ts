@@ -190,7 +190,10 @@ function isAdminArea(pathname: string): boolean {
 // Las rutas `/api/` de la calculadora no pasan por acá: las gatea
 // `requierePlan()` (lib/cotizador/server/guard.ts) con 401/403 JSON.
 // -----------------------------------------------------------------------------
-const RUTAS_POR_NIVEL = ["/dashboard", "/calculadora"] as const;
+//
+// VGRP-88: `/formacion` se suma con el mismo esquema (su variante `completo` lleva los
+// `embedUrl` de los videos de Stage 1/2).
+const RUTAS_POR_NIVEL = ["/dashboard", "/calculadora", "/formacion"] as const;
 
 function rutaPorNivel(pathname: string): (typeof RUTAS_POR_NIVEL)[number] | undefined {
   return RUTAS_POR_NIVEL.find((r) => pathname === r || pathname.startsWith(`${r}/`));

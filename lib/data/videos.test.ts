@@ -1,11 +1,12 @@
 // VGRP-29 — tests de integración de lib/data/videos.ts contra el proyecto real de
 // Supabase (mismo criterio que lib/data/admin/contenido.test.ts: no hay base separada,
 // ver docs/TESTING.md). Cada test crea sus propias filas y las borra al terminar.
+// La parte pura (armarGrilla, sin tope ni relleno) está en videos.unit.test.ts.
 
 import { afterEach, describe, expect, it } from "vitest";
 import { createTestAdminClient } from "../../test/helpers/db-client";
 import { videoProvider } from "../video/provider";
-import { armarGrilla, CANTIDAD_STAGE, obtenerVideosPorStage, TOTAL_VIDEOS } from "./videos";
+import { obtenerVideosPorStage } from "./videos";
 
 const admin = createTestAdminClient();
 
@@ -47,19 +48,6 @@ async function crearVideoTest(valores: {
   return data;
 }
 
-describe("TOTAL_VIDEOS / CANTIDAD_STAGE", () => {
-  it("es 8 + 3 = 11 (MODULOS.md §2, formato 'X / 11')", () => {
-    expect(CANTIDAD_STAGE[1]).toBe(8);
-    expect(CANTIDAD_STAGE[2]).toBe(3);
-    expect(TOTAL_VIDEOS).toBe(11);
-  });
-
-  it("stage 3 (explicativo de agentes) es 1 y NO cuenta para TOTAL_VIDEOS (VGRP-31)", () => {
-    expect(CANTIDAD_STAGE[3]).toBe(1);
-    expect(TOTAL_VIDEOS).toBe(11); // 8 + 3, no 8 + 3 + 1
-  });
-});
-
 describe("obtenerVideosPorStage", () => {
   it("una fila publicada con provider_ref queda 'disponible' con las URLs de VideoProvider", async () => {
     const video = await crearVideoTest({
@@ -73,12 +61,11 @@ describe("obtenerVideosPorStage", () => {
     const item = items.find((i) => i.id === video.id);
 
     expect(item).toBeDefined();
-    expect(item?.estado).toBe("disponible");
     expect(item?.embedUrl).toBe(videoProvider.urlEmbed("dQw4w9WgXcQ"));
     expect(item?.thumbnailUrl).toBe(videoProvider.urlThumbnail("dQw4w9WgXcQ"));
   });
 
-  it("US-3 — publicado=false CON provider_ref real no aparece en la grilla y nunca expone el provider_ref", async () => {
+  it("US-3 — publicado=false CON provider_ref real no aparece y su provider_ref nunca sale", async () => {
     const video = await crearVideoTest({
       stage: 2,
       titulo: "Test no publicado",
@@ -88,36 +75,12 @@ describe("obtenerVideosPorStage", () => {
 
     const items = await obtenerVideosPorStage(admin, 2);
 
-    // Un despublicado no ocupa casilla: ni siquiera figura como "Próximamente".
+    // VGRP-88: ya no hay tile "Próximamente" para un no publicado — directamente no está.
     expect(items.find((i) => i.id === video.id)).toBeUndefined();
-    // Ninguna URL generada contiene el provider_ref sensible — chequeo directo sobre
-    // toda la grilla, no sólo "es null".
     expect(JSON.stringify(items)).not.toContain("secreto-no-debe-salir");
   });
 
-  it("un despublicado no le quita el lugar a un publicado: con 3 despublicados primeros, el publicado entra igual", async () => {
-    // Antes de este cambio el stage 2 (3 casillas) se recortaba a las primeras 3 filas por
-    // `orden` y recién después se miraba `publicado`: tres despublicados adelante dejaban
-    // afuera al publicado.
-    await crearVideoTest({ stage: 2, titulo: "Borrador 1", orden: PRIMERO });
-    await crearVideoTest({ stage: 2, titulo: "Borrador 2", orden: PRIMERO + 1 });
-    await crearVideoTest({ stage: 2, titulo: "Borrador 3", orden: PRIMERO + 2 });
-    const publicado = await crearVideoTest({
-      stage: 2,
-      titulo: "Publicado",
-      provider_ref: "dQw4w9WgXcQ",
-      publicado: true,
-      orden: PRIMERO + 3,
-    });
-
-    const items = await obtenerVideosPorStage(admin, 2);
-
-    expect(items).toHaveLength(CANTIDAD_STAGE[2]);
-    expect(items[0]?.id).toBe(publicado.id);
-    expect(items[0]?.estado).toBe("disponible");
-  });
-
-  it("publicado=true pero sin provider_ref queda 'proximamente' (no hay nada que reproducir)", async () => {
+  it("publicado=true pero sin provider_ref no aparece (no hay nada que reproducir)", async () => {
     const video = await crearVideoTest({
       stage: 2,
       titulo: "Test publicado sin ref",
@@ -126,47 +89,48 @@ describe("obtenerVideosPorStage", () => {
     });
 
     const items = await obtenerVideosPorStage(admin, 2);
-    const item = items.find((i) => i.id === video.id);
 
-    expect(item?.estado).toBe("proximamente");
-    expect(item?.embedUrl).toBeNull();
-    expect(item?.thumbnailUrl).toBeNull();
+    expect(items.find((i) => i.id === video.id)).toBeUndefined();
   });
 
-  it("completa con tiles sintéticos hasta el tamaño fijo del stage", () => {
-    // Stage 2 = 3 tiles siempre, sin ninguna fila real. Se prueba la parte pura: contra la
-    // tabla compartida ya hay videos reales, así que no se puede asumir que esté vacía.
-    const items = armarGrilla([], 2);
-
-    expect(items).toHaveLength(CANTIDAD_STAGE[2]);
-    for (const item of items) {
-      expect(item.id).toBeNull();
-      expect(item.estado).toBe("proximamente");
-    }
-  });
-
-  it("no agrega sintéticos si ya hay exactamente el tamaño fijo de filas reales", async () => {
-    // Publicados (los despublicados ya no ocupan casilla).
-    await crearVideoTest({ stage: 2, titulo: "V1", publicado: true });
-    await crearVideoTest({ stage: 2, titulo: "V2", publicado: true });
-    await crearVideoTest({ stage: 2, titulo: "V3", publicado: true });
-
+  it("no hay tiles de relleno: todo ítem es una fila real", async () => {
     const items = await obtenerVideosPorStage(admin, 2);
 
-    expect(items).toHaveLength(CANTIDAD_STAGE[2]);
-    expect(items.every((i) => i.id !== null)).toBe(true);
+    expect(items.every((i) => typeof i.id === "string")).toBe(true);
+  });
+
+  it("sin tope: devuelve todos los publicados, no los primeros N", async () => {
+    const creados = [];
+    for (let i = 0; i < 16; i++) {
+      creados.push(
+        await crearVideoTest({
+          stage: 2,
+          titulo: `Sin tope ${i}`,
+          provider_ref: "dQw4w9WgXcQ",
+          publicado: true,
+          orden: PRIMERO + i,
+        }),
+      );
+    }
+
+    const items = await obtenerVideosPorStage(admin, 2);
+    const ids = new Set(items.map((i) => i.id));
+
+    expect(creados.every((v) => ids.has(v.id))).toBe(true);
   });
 
   it("respeta el orden ('orden' ascendente)", async () => {
     const b = await crearVideoTest({
       stage: 2,
       titulo: "Segundo",
+      provider_ref: "dQw4w9WgXcQ",
       publicado: true,
       orden: PRIMERO + 2,
     });
     const a = await crearVideoTest({
       stage: 2,
       titulo: "Primero",
+      provider_ref: "dQw4w9WgXcQ",
       publicado: true,
       orden: PRIMERO + 1,
     });
@@ -177,7 +141,7 @@ describe("obtenerVideosPorStage", () => {
     expect(propios).toEqual([a.id, b.id]);
   });
 
-  it("stage 3 (VGRP-31) usa el mismo mecanismo: 1 tile, disponible si publicado+provider_ref", async () => {
+  it("separa por stage: un video de stage 3 no aparece en stage 2", async () => {
     const video = await crearVideoTest({
       stage: 3,
       titulo: "Cómo usar el directorio de agentes",
@@ -185,18 +149,7 @@ describe("obtenerVideosPorStage", () => {
       publicado: true,
     });
 
-    const items = await obtenerVideosPorStage(admin, 3);
-
-    expect(items).toHaveLength(CANTIDAD_STAGE[3]);
-    expect(items[0]?.id).toBe(video.id);
-    expect(items[0]?.estado).toBe("disponible");
-  });
-
-  it("stage 3 sin filas reales se completa con 1 tile sintético 'próximamente'", () => {
-    const items = armarGrilla([], 3);
-
-    expect(items).toHaveLength(1);
-    expect(items[0]?.id).toBeNull();
-    expect(items[0]?.estado).toBe("proximamente");
+    expect((await obtenerVideosPorStage(admin, 3)).some((i) => i.id === video.id)).toBe(true);
+    expect((await obtenerVideosPorStage(admin, 2)).some((i) => i.id === video.id)).toBe(false);
   });
 });

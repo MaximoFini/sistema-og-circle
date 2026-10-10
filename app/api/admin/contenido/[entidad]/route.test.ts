@@ -11,15 +11,6 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-class StageCompletoMock extends Error {
-  constructor() {
-    super(
-      "El Stage 2 ya tiene sus 3 casillas ocupadas. Despublicá un video antes de publicar otro.",
-    );
-    this.name = "StageCompleto";
-  }
-}
-
 const mockRequireAdmin = vi.fn();
 const mockListarContenido = vi.fn();
 const mockCrearContenido = vi.fn();
@@ -28,13 +19,29 @@ const mockCreateServiceRoleClient = vi.fn();
 const mockRevalidateTag = vi.fn();
 const mockCaptureException = vi.fn();
 
-const ENTIDADES_REALES = ["agentes", "videos", "profesionales", "servicios_financieros"] as const;
+const ENTIDADES_REALES = [
+  "agentes",
+  "videos",
+  "profesionales",
+  "servicios_financieros",
+  "materiales",
+] as const;
 const TAG_POR_ENTIDAD: Record<(typeof ENTIDADES_REALES)[number], string> = {
   agentes: "grilla-agentes",
   videos: "grilla-videos",
   profesionales: "grilla-profesionales",
   servicios_financieros: "grilla-servicios",
+  materiales: "grilla-materiales",
 };
+
+// VGRP-88: el archivo de un material no sirve. La ruta lo reconoce con `instanceof`, así que
+// el mock del módulo tiene que exportar la MISMA clase que lanzan los tests.
+class ArchivoInvalidoMock extends Error {
+  constructor(mensaje = "El archivo supera el máximo de 50 MB.") {
+    super(mensaje);
+    this.name = "ArchivoInvalido";
+  }
+}
 
 vi.mock("@/lib/auth/admin", () => ({
   requireAdmin: () => mockRequireAdmin(),
@@ -44,7 +51,7 @@ vi.mock("@/lib/data/admin/contenido", () => ({
   esEntidadValida: (v: string): boolean => (ENTIDADES_REALES as readonly string[]).includes(v),
   listarContenido: (...args: unknown[]) => mockListarContenido(...args),
   crearContenido: (...args: unknown[]) => mockCrearContenido(...args),
-  StageCompleto: StageCompletoMock,
+  ArchivoInvalido: ArchivoInvalidoMock,
   TAG_POR_ENTIDAD,
 }));
 
@@ -244,13 +251,38 @@ describe("GET|POST /api/admin/contenido/[entidad]", () => {
       expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-agentes");
     });
 
-    it("stage completo (StageCompleto) -> 409 con el mensaje, no crea nada, no revalida y no lo manda a Sentry", async () => {
-      mockCrearContenido.mockRejectedValue(new StageCompletoMock());
+    // VGRP-88 — materiales: el archivo vive en Storage y la fila lo referencia.
+    it("materiales: happy path -> revalidateTag('grilla-materiales') y auditoría crear_contenido", async () => {
+      mockCrearContenido.mockResolvedValue({
+        resultado: { id: "m1", titulo: "Guía" },
+        valorAnterior: null,
+        valorNuevo: { id: "m1" },
+        entidadId: "m1",
+      });
 
-      const res = await callPost("videos", { stage: 2, titulo: "x", publicado: true });
-      expect(res.status).toBe(409);
-      expect((await res.json()).error).toMatch(/Stage 2 ya tiene sus 3 casillas/);
+      const res = await callPost("materiales", {
+        titulo: "Guía",
+        storage_path_pendiente: "pendientes/123e4567-e89b-12d3-a456-426614174000.pdf",
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockConAuditoria).toHaveBeenCalledWith(
+        { marker: "admin-client" },
+        expect.objectContaining({ accion: "crear_contenido", entidad: "materiales" }),
+        expect.any(Function),
+      );
+      expect(mockRevalidateTag).toHaveBeenCalledWith("grilla-materiales");
+    });
+
+    it("un archivo inválido (ArchivoInvalido) -> 400 con el mensaje para el admin, sin revalidar ni avisar a Sentry", async () => {
+      mockCrearContenido.mockRejectedValue(new ArchivoInvalidoMock("El archivo está vacío."));
+
+      const res = await callPost("materiales", { titulo: "Guía" });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "El archivo está vacío." });
       expect(mockRevalidateTag).not.toHaveBeenCalled();
+      // Es un error del pedido, no un bug: no ensucia Sentry.
       expect(mockCaptureException).not.toHaveBeenCalled();
     });
 
@@ -279,7 +311,9 @@ describe("GET|POST /api/admin/contenido/[entidad]", () => {
       const videosPath = path.resolve(__dirname, "../../../../../lib/data/videos.ts");
       const contenido = readFileSync(videosPath, "utf8");
 
-      expect(contenido).toContain('import { TAG_POR_ENTIDAD } from "./admin/contenido"');
+      expect(contenido).toContain(
+        'import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido"',
+      );
       expect(contenido).toContain("tags: [TAG_POR_ENTIDAD.videos]");
       // Nunca un string hardcodeado del tag real en este archivo — si
       // apareciera, sería la señal de que alguien lo desacopló del import.

@@ -421,10 +421,64 @@ describe("middleware", () => {
     });
   });
 
+  // VGRP-88 — /formacion: misma mecánica por nivel que /dashboard y /calculadora.
+  describe("formación por nivel (VGRP-88)", () => {
+    it.each([
+      ["nivel='ninguno'", conNivel("ninguno"), "/formacion/ninguno"],
+      ["sin claim de nivel", CON_SESION, "/formacion/ninguno"],
+      ["nivel='completo'", conNivel("completo"), "/formacion/completo"],
+      ["nivel='avanzado' (token viejo)", conNivel("avanzado"), "/formacion/completo"],
+    ])("sesión + %s: rewrite a la variante estática", async (_, sesion, esperada) => {
+      mockGetClaims.mockResolvedValue(sesion);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/formacion"));
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("location")).toBeNull();
+      const destino = res.headers.get("x-middleware-rewrite");
+      expect(new URL(destino as string).pathname).toBe(esperada);
+    });
+
+    // El "Continuar" de Inicio lleva a /formacion?video=<id>: el rewrite no puede comerse
+    // la query, o el deep link se pierde.
+    it("el rewrite conserva ?video= (deep link del Continuar de Inicio)", async () => {
+      mockGetClaims.mockResolvedValue(conNivel("completo"));
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/formacion?video=abc-123"));
+
+      const destino = new URL(res.headers.get("x-middleware-rewrite") as string);
+      expect(destino.pathname).toBe("/formacion/completo");
+      expect(destino.searchParams.get("video")).toBe("abc-123");
+    });
+
+    it("sin sesión: redirige a /login?next=/formacion (la capa de sesión corre antes)", async () => {
+      mockGetClaims.mockResolvedValue(SIN_SESION);
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/formacion"));
+
+      expect(res.status).toBe(307);
+      const location = new URL(res.headers.get("location") as string);
+      expect(location.pathname).toBe("/login");
+      expect(location.searchParams.get("next")).toBe("/formacion");
+    });
+
+    it("una ruta parecida (/formaciones) NO se reescribe por nivel", async () => {
+      mockGetClaims.mockResolvedValue(conNivel("completo"));
+      const { middleware } = await import("./middleware");
+
+      const res = await middleware(req("/formaciones"));
+
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+  });
+
   // VGRP-77 — la variante `completo` lleva los `embedUrl` de los videos: sin
   // plan, escribir la URL interna a mano no puede servirla.
   describe("variante completo pedida a mano (VGRP-77)", () => {
-    it.each(["/dashboard", "/calculadora"])(
+    it.each(["/dashboard", "/calculadora", "/formacion"])(
       "sin plan: %s/completo redirige a la ruta base",
       async (base) => {
         mockGetClaims.mockResolvedValue(conNivel("ninguno"));
@@ -437,7 +491,7 @@ describe("middleware", () => {
       },
     );
 
-    it.each(["/dashboard", "/calculadora"])(
+    it.each(["/dashboard", "/calculadora", "/formacion"])(
       "con plan: %s/completo pasa sin redirect",
       async (base) => {
         mockGetClaims.mockResolvedValue(conNivel("completo"));

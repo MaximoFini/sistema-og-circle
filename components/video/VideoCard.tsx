@@ -6,11 +6,10 @@
 // lib/video/provider.ts, nunca por este componente.
 //
 // Rediseño "camino de aprendizaje" (2026-09-13): el nodo circular a la izquierda
-// refleja el ESTADO DE LOS DATOS (completado/disponible/próximamente) — no hay ningún
-// bloqueo secuencial real entre pasos (todo "disponible" es accesible ya, sin importar
-// el orden), es sólo la lectura visual del progreso.
+// refleja el progreso (visto / por ver) — no hay ningún bloqueo secuencial real entre
+// pasos (todo video publicado es accesible ya, sin importar el orden).
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import type { VideoGridItem } from "@/lib/data/videos";
 import { CasillaVideo, type EstadoNodo } from "./CasillaVideo";
@@ -26,20 +25,33 @@ export function VideoCard({
   numero: number;
   esUltimo: boolean;
 }) {
-  const { vistos, marcarVisto } = useProgresoVideos();
+  const { vistos, marcarVisto, videoInicial } = useProgresoVideos();
   const [expandido, setExpandido] = useState(false);
+  const filaRef = useRef<HTMLDivElement>(null);
 
-  const disponible = video.estado === "disponible" && video.id !== null;
-  const visto = disponible && vistos.has(video.id as string);
+  // VGRP-88 — "Continuar" de Inicio (`/formacion?video=<id>`): el provider lee el id de la
+  // URL DESPUÉS de hidratar, así que esto reacciona al cambio en vez de leerlo en el primer
+  // render. Sin `embedUrl` (usuario sin plan) no se despliega nada: no hay qué reproducir.
+  // El scroll espera al frame siguiente para medir con el iframe ya montado.
+  const esElInicial = videoInicial !== null && video.id === videoInicial && video.embedUrl !== null;
+  useEffect(() => {
+    if (!esElInicial) return;
+    setExpandido(true);
+    const frame = requestAnimationFrame(() => {
+      filaRef.current?.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [esElInicial]);
 
-  const nodo: EstadoNodo = visto ? "completado" : disponible ? "actual" : "bloqueado";
+  const visto = vistos.has(video.id);
+  const nodo: EstadoNodo = visto ? "completado" : "actual";
 
-  const botonVisto = disponible ? (
+  const botonVisto = (
     <button
       type="button"
       className={styles.botonVisto}
       disabled={visto}
-      onClick={() => marcarVisto(video.id as string)}
+      onClick={() => marcarVisto(video.id)}
     >
       {visto ? (
         <>
@@ -50,20 +62,11 @@ export function VideoCard({
         "Marcar como visto"
       )}
     </button>
-  ) : null;
+  );
 
   return (
-    <CasillaVideo numero={numero} esUltimo={esUltimo} nodo={nodo} disponible={disponible}>
-      {!disponible ? (
-        // Tile sintético de relleno (video.id === null) usa "Próximamente" como único
-        // texto — mostrar además la etiqueta lo duplicaría en pantalla. Una fila real
-        // publicada pero sin link válido SÍ tiene un título propio y vale la pena
-        // mostrarlo junto al estado (ver lib/data/videos.ts, tileRelleno()).
-        <>
-          <p className={styles.tituloPaso}>{video.titulo}</p>
-          {video.id ? <span className={styles.etiquetaProximamente}>Próximamente</span> : null}
-        </>
-      ) : expandido && video.embedUrl ? (
+    <CasillaVideo filaRef={filaRef} numero={numero} esUltimo={esUltimo} nodo={nodo} disponible>
+      {expandido && video.embedUrl ? (
         <>
           <iframe
             className={styles.embed}

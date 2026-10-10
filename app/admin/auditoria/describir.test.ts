@@ -182,6 +182,105 @@ describe("describirAccion", () => {
     });
   });
 
+  // VGRP-88 — cada acción sobre un material tiene que leerse bien en /admin/auditoria.
+  describe("materiales", () => {
+    const MATERIAL = {
+      id: "m1",
+      titulo: "Checklist",
+      storage_path: "archivos/viejo.pdf",
+      extension: "pdf",
+      tipo: "pdf",
+      tamano_bytes: 1000,
+      publicado: true,
+    };
+
+    it("crear: 'Creó el material “…”'", () => {
+      const d = describirAccion(
+        fila({ accion: "crear_contenido", entidad: "materiales", valorNuevo: MATERIAL }),
+        ctx,
+      );
+      expect(d).toEqual({ titulo: "Creó el material “Checklist”", detalle: [] });
+    });
+
+    it("borrar: 'Borró el material “…”'", () => {
+      const d = describirAccion(
+        fila({ accion: "borrar_contenido", entidad: "materiales", valorAnterior: MATERIAL }),
+        ctx,
+      );
+      expect(d.titulo).toBe("Borró el material “Checklist”");
+    });
+
+    it("editar el título y ocultarlo: una línea por campo", () => {
+      const d = describirAccion(
+        fila({
+          accion: "editar_contenido",
+          entidad: "materiales",
+          valorAnterior: MATERIAL,
+          valorNuevo: { ...MATERIAL, titulo: "Checklist v2", publicado: false },
+        }),
+        ctx,
+      );
+      expect(d.titulo).toBe("Editó el material “Checklist v2”");
+      expect(d.detalle).toEqual(["Título: “Checklist” → “Checklist v2”", "Publicado: Sí → No"]);
+    });
+
+    it("reemplazar el archivo: muestra archivo, formato y tamaño con etiquetas legibles", () => {
+      const d = describirAccion(
+        fila({
+          accion: "editar_contenido",
+          entidad: "materiales",
+          valorAnterior: MATERIAL,
+          valorNuevo: {
+            ...MATERIAL,
+            storage_path: "archivos/nuevo.docx",
+            extension: "docx",
+            tipo: "word",
+            tamano_bytes: 2000,
+          },
+        }),
+        ctx,
+      );
+      expect(d.detalle).toEqual([
+        "Archivo: “archivos/viejo.pdf” → “archivos/nuevo.docx”",
+        "Formato: “pdf” → “docx”",
+        "Tipo: “pdf” → “word”",
+        "Tamaño (bytes): 1000 → 2000",
+      ]);
+    });
+
+    it("reordenar_contenido de materiales: habla de materiales, no de videos", () => {
+      const d = describirAccion(
+        fila({
+          accion: "reordenar_contenido",
+          entidad: "materiales",
+          entidadId: "lista",
+          valorNuevo: [
+            { id: "a", orden: 1 },
+            { id: "b", orden: 2 },
+            { id: "c", orden: 3 },
+          ],
+        }),
+        ctx,
+      );
+      expect(d).toEqual({
+        titulo: "Reordenó los materiales",
+        detalle: ["3 materiales reordenados"],
+      });
+    });
+
+    it("reordenar 1 solo material va en singular", () => {
+      const d = describirAccion(
+        fila({
+          accion: "reordenar_contenido",
+          entidad: "materiales",
+          valorNuevo: [{ id: "a", orden: 0 }],
+        }),
+        ctx,
+      );
+      expect(d.detalle).toEqual(["1 material reordenado"]);
+    });
+  });
+
   it("actualizar_config precios: monto formateado", () => {
     const d = describirAccion(
       fila({

@@ -8,7 +8,7 @@
 //   - `CasillaEditor` (el editor de videos del admin): el contenido es un botón que abre el
 //     panel de alta o edición.
 
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import styles from "./video.module.css";
 
 export type EstadoNodo = "completado" | "actual" | "bloqueado";
@@ -20,12 +20,15 @@ const CLASE_NODO: Record<EstadoNodo, string> = {
 };
 
 export function CasillaVideo({
+  filaRef,
   numero,
   esUltimo,
   nodo,
   disponible,
   children,
 }: {
+  /** Para que `VideoCard` pueda hacer scroll hasta la fila (`?video=<id>`). */
+  filaRef?: Ref<HTMLDivElement>;
   numero: number;
   esUltimo: boolean;
   /** Cómo se dibuja el nodo: ✓ (completado), número resaltado (actual) o número atenuado. */
@@ -37,7 +40,7 @@ export function CasillaVideo({
   const completado = nodo === "completado";
 
   return (
-    <div className={styles.fila} data-disponible={disponible}>
+    <div ref={filaRef} className={styles.fila} data-disponible={disponible}>
       <div className={styles.riel}>
         <div className={`${styles.nodo} ${CLASE_NODO[nodo]}`} aria-hidden="true">
           {completado ? "✓" : numero}

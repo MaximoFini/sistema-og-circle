@@ -19,7 +19,10 @@ const NINGUNO = findSeedUser("ninguno");
 const COMPLETO = findSeedUser("completo");
 
 const EMBED = /youtube(-nocookie)?\.com\/embed\//;
-const RUTAS = ["/dashboard", "/calculadora"] as const;
+// VGRP-88: /formacion se suma con el mismo esquema por nivel.
+const RUTAS = ["/dashboard", "/calculadora", "/formacion"] as const;
+// Un archivo de materiales nunca viaja al navegador: ni el path del bucket ni una URL firmada.
+const ARCHIVO_MATERIAL = /archivos\/[0-9a-f-]{36}\.|\/storage\/v1\/object\/sign\//;
 
 async function login(page: Page, email: string, password: string): Promise<void> {
   await page.goto("/login");
@@ -99,13 +102,36 @@ test.describe("plataforma bloqueada sin plan (VGRP-77)", () => {
     expect(llamadasCotizador).toEqual([]);
   });
 
-  test("ni el HTML ni el payload RSC traen URLs de embed ni contactos", async ({ page }) => {
+  // VGRP-88 — /formacion sin plan: la pantalla real borrosa, con los materiales listados
+  // pero sin poder descargarlos (US-6).
+  test("Formación: se ve bloqueada en /formacion, con los botones de descarga deshabilitados", async ({
+    page,
+  }) => {
+    await login(page, NINGUNO.email, NINGUNO.password);
+    await page.goto("/formacion");
+
+    await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toBeVisible();
+    const fondo = page.locator("[inert]");
+    await expect(fondo).toHaveCount(1);
+    // El fondo es `inert`: queda fuera del árbol de accesibilidad, así que getByRole no lo
+    // ve. Se busca por texto y por atributo.
+    await expect(fondo.getByText("Materiales adicionales", { exact: true })).toBeAttached();
+
+    for (const boton of await fondo.locator('button[aria-label^="Descargar "]').all()) {
+      await expect(boton).toBeDisabled();
+    }
+  });
+
+  test("ni el HTML ni el payload RSC traen URLs de embed, contactos ni archivos de materiales", async ({
+    page,
+  }) => {
     const contactos = await contactosReales();
     await login(page, NINGUNO.email, NINGUNO.password);
 
     for (const ruta of RUTAS) {
       for (const cuerpo of await cuerposCrudos(page, ruta)) {
         expect(cuerpo, `${ruta} trae una URL de embed`).not.toMatch(EMBED);
+        expect(cuerpo, `${ruta} trae un archivo de materiales`).not.toMatch(ARCHIVO_MATERIAL);
         for (const contacto of contactos) {
           expect(cuerpo.includes(contacto), `${ruta} trae un contacto`).toBe(false);
         }
@@ -150,7 +176,7 @@ test.describe("plataforma bloqueada sin plan (VGRP-77)", () => {
 });
 
 test.describe("con plan, todo igual que antes (VGRP-77)", () => {
-  test("Inicio y Calculadora sin blur ni tarjeta", async ({ page }) => {
+  test("Inicio, Calculadora y Formación sin blur ni tarjeta", async ({ page }) => {
     await login(page, COMPLETO.email, COMPLETO.password);
 
     for (const ruta of RUTAS) {
@@ -162,18 +188,22 @@ test.describe("con plan, todo igual que antes (VGRP-77)", () => {
 
   // Ancla del test anti-fuga: si hay videos publicados, con plan el embed SÍ
   // viaja. Sin esto, un regex roto (o un cambio de proveedor) dejaría el test
-  // de arriba en verde sin probar nada.
-  test("con videos publicados, el HTML de Inicio trae los embeds", async ({ page }) => {
+  // de arriba en verde sin probar nada. VGRP-88: los videos de formación viven en
+  // /formacion (Inicio solo muestra el resumen por stage, sin embeds).
+  test("con videos de formación publicados, el HTML de /formacion trae los embeds", async ({
+    page,
+  }) => {
     const { count, error } = await createTestAdminClient()
       .from("videos")
       .select("id", { count: "exact", head: true })
+      .in("stage", [1, 2])
       .eq("publicado", true)
       .not("provider_ref", "is", null);
     if (error) throw error;
-    test.skip(!count, "no hay videos publicados en la base");
+    test.skip(!count, "no hay videos de formación publicados en la base");
 
     await login(page, COMPLETO.email, COMPLETO.password);
-    const [html] = await cuerposCrudos(page, "/dashboard");
+    const [html] = await cuerposCrudos(page, "/formacion");
     expect(html).toMatch(EMBED);
   });
 });

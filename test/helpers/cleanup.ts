@@ -238,5 +238,28 @@ export async function cleanupContenidoDeTest(): Promise<{ filasBorradas: number 
     filasBorradas += ids.length;
   }
 
+  // VGRP-88 — materiales: mismo marcador en el título, pero cada fila tiene además su archivo
+  // en el bucket privado `materiales`, que no se va con el DELETE de la fila.
+  const { data: materiales, error: materialesError } = await admin
+    .from("materiales")
+    .select("id, storage_path")
+    .like("titulo", `${MARCADOR_CONTENIDO_TEST}%`);
+  if (materialesError) throw materialesError;
+  if (materiales && materiales.length > 0) {
+    const { error: storageError } = await admin.storage
+      .from("materiales")
+      .remove(materiales.map((m) => m.storage_path));
+    if (storageError) throw storageError;
+    const { error: deleteError } = await admin
+      .from("materiales")
+      .delete()
+      .in(
+        "id",
+        materiales.map((m) => m.id),
+      );
+    if (deleteError) throw deleteError;
+    filasBorradas += materiales.length;
+  }
+
   return { filasBorradas };
 }

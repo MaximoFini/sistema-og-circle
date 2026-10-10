@@ -1,0 +1,9 @@
+/* VGRP-88 — /formacion. El armazón (shell, encabezado, grilla de secciones, tarjetas de
+   vidrio) es el de Inicio: se importa `inicio.module.css` desde los componentes, no se
+   duplica. Acá sólo lo que es propio de esta pantalla. */
+
+/* Estado vacío de un stage sin videos publicados todavía. */
+.vacio {
+  composes: body from "../ui/type.module.css";
+  padding: 4px 0 8px;
+}

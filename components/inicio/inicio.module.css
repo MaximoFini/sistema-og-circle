@@ -80,7 +80,8 @@
   gap: 20px;
 }
 
-.columnaLateral {
+.columnaLateral,
+.columnaFormacion {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -106,8 +107,13 @@
     grid-column: span 7;
   }
 
-  /* Calculadora + Stage 2 acompañan al camino largo de Stage 1 (sticky,
-     acotado a .bentoPrincipal). */
+  /* VGRP-88: las dos tarjetas de formación (Stage 1 y 2) a la izquierda... */
+  .columnaFormacion {
+    grid-column: span 7;
+  }
+
+  /* ...y los accesos directos (formación completa + calculadora) a la derecha, sticky
+     (acotado a .bentoPrincipal). */
   .columnaLateral {
     grid-column: span 5;
     position: sticky;
@@ -130,6 +136,8 @@
   flex-direction: column;
   gap: 20px;
   padding: 24px;
+  /* VGRP-88: un link a #stage-2 no deja la tarjeta tapada por el header fijo. */
+  scroll-margin-top: calc(var(--header-height) + 16px);
 }
 
 @media (min-width: 640px) {

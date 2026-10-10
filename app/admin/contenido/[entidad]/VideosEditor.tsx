@@ -1,14 +1,15 @@
 "use client";
 
-// Editor de videos del admin (/admin/contenido/videos): réplica de las grillas del Inicio
-// (Stage 1 y Stage 2) pero editables.
-//   - Casilla vacía  -> abre el panel en modo "crear" (el video queda al final del stage).
+// Editor de videos del admin (/admin/contenido/videos): réplica de las grillas de
+// /formacion (Stage 1 y Stage 2) pero editables. No hay tope de videos por stage.
+//   - "+ Agregar video" (al final de cada stage) -> abre el panel en modo "crear" (el video
+//     queda al final del stage).
 //   - Casilla con video -> abre el panel en modo "editar".
 //   - Arrastrar reordena DENTRO del stage: cada stage tiene su propio DndContext, así que
 //     soltar un video en el otro stage no es posible por construcción.
-//   - Los despublicados no ocupan casilla: se listan aparte, debajo de cada grilla.
+//   - Los despublicados no aparecen en la grilla: se listan aparte, debajo de ella.
 //
-// La casilla se dibuja con `CasillaVideo`, la misma pieza que el Inicio, y los títulos de
+// La casilla se dibuja con `CasillaVideo`, la misma pieza que /formacion, y los títulos de
 // sección salen de `SECCIONES_FORMACION`: no pueden divergir de lo que ve el usuario.
 // Tras guardar, el estado se actualiza con la fila que devuelve la API (ver
 // videos-editor-estado.ts); no se usa `router.refresh()`.
@@ -21,7 +22,6 @@ import type { RenderCasilla } from "@/components/video/VideoGridReordenable";
 import videoStyles from "@/components/video/video.module.css";
 import type { VideoEditor, VideosParaEditor } from "@/lib/data/admin/contenido";
 import type { VideoGridItem } from "@/lib/data/videos";
-import { CANTIDAD_STAGE } from "@/lib/data/videos-config";
 import styles from "./videos-editor.module.css";
 import { aplicarGuardado, aplicarOrden } from "./videos-editor-estado";
 
@@ -39,52 +39,30 @@ const STAGES: Stage[] = [1, 2];
 
 type PanelAbierto = { modo: "crear"; stage: Stage } | { modo: "editar"; video: VideoEditor } | null;
 
-/** Un video del editor como el item que consume la grilla (mismo tipo que el Inicio). */
+/** Un video del editor como el item que consume la grilla (mismo tipo que /formacion). */
 function aItem(v: VideoEditor): VideoGridItem {
   return {
     id: v.id,
     titulo: v.titulo,
     descripcion: v.descripcion,
-    // Igual que el Inicio: "disponible" sólo con miniatura (publicado y con link válido).
-    estado: v.thumbnailUrl ? "disponible" : "proximamente",
     embedUrl: null,
     thumbnailUrl: v.thumbnailUrl,
   };
-}
-
-function itemsDeGrilla(stage: Stage, publicados: VideoEditor[]): VideoGridItem[] {
-  const relleno = Math.max(0, CANTIDAD_STAGE[stage] - publicados.length);
-  return [
-    ...publicados.map(aItem),
-    ...Array.from(
-      { length: relleno },
-      (): VideoGridItem => ({
-        id: null,
-        titulo: "Próximamente",
-        descripcion: null,
-        estado: "proximamente",
-        embedUrl: null,
-        thumbnailUrl: null,
-      }),
-    ),
-  ];
 }
 
 function CasillaEditor({
   video,
   numero,
   esUltimo,
-  stage,
   onAbrir,
 }: {
   video: VideoGridItem;
   numero: number;
   esUltimo: boolean;
-  stage: Stage;
   onAbrir: () => void;
 }) {
-  const vacia = video.id === null;
-  const disponible = video.estado === "disponible";
+  // Igual que /formacion: "disponible" sólo con miniatura (publicado y con link válido).
+  const disponible = video.thumbnailUrl !== null;
 
   return (
     <CasillaVideo
@@ -95,13 +73,9 @@ function CasillaEditor({
     >
       <button
         type="button"
-        className={`${styles.casillaBoton} ${vacia ? styles.casillaVacia : ""}`}
+        className={styles.casillaBoton}
         onClick={onAbrir}
-        aria-label={
-          vacia
-            ? `Agregar un video en la casilla ${numero} del Stage ${stage}`
-            : `Editar ${video.titulo}`
-        }
+        aria-label={`Editar ${video.titulo}`}
       >
         {disponible ? (
           <span className={styles.filaMedia}>
@@ -127,12 +101,8 @@ function CasillaEditor({
         ) : (
           <>
             <span className={styles.tituloPaso}>{video.titulo}</span>
-            {vacia ? (
-              <span className={styles.pista}>+ Agregar video</span>
-            ) : (
-              // Publicado pero sin link válido: igual que el Inicio, "Próximamente".
-              <span className={videoStyles.etiquetaProximamente}>Próximamente · Editar</span>
-            )}
+            {/* Publicado pero sin link válido: el usuario no lo ve; acá se marca para corregirlo. */}
+            <span className={videoStyles.etiquetaProximamente}>Sin link válido · Editar</span>
           </>
         )}
       </button>
@@ -172,7 +142,7 @@ export function VideosEditor({ inicial }: { inicial: VideosParaEditor }) {
       <div className={styles.secciones}>
         {STAGES.map((stage) => {
           const { publicados, despublicados } = estado[stage];
-          const items = itemsDeGrilla(stage, publicados);
+          const items = publicados.map(aItem);
           const porId = new Map(publicados.map((v) => [v.id, v]));
 
           const renderCasilla: RenderCasilla = (video, numero, esUltimo) => (
@@ -180,10 +150,9 @@ export function VideosEditor({ inicial }: { inicial: VideosParaEditor }) {
               video={video}
               numero={numero}
               esUltimo={esUltimo}
-              stage={stage}
               onAbrir={() => {
-                const existente = video.id ? porId.get(video.id) : undefined;
-                abrir(existente ? { modo: "editar", video: existente } : { modo: "crear", stage });
+                const existente = porId.get(video.id);
+                if (existente) abrir({ modo: "editar", video: existente });
               }}
             />
           );
@@ -200,9 +169,7 @@ export function VideosEditor({ inicial }: { inicial: VideosParaEditor }) {
                 fallback={
                   <div className={videoStyles.camino}>
                     {items.map((item, i) => (
-                      <div key={item.id ?? `relleno-${i}`}>
-                        {renderCasilla(item, i + 1, i === items.length - 1)}
-                      </div>
+                      <div key={item.id}>{renderCasilla(item, i + 1, i === items.length - 1)}</div>
                     ))}
                   </div>
                 }
@@ -214,6 +181,14 @@ export function VideosEditor({ inicial }: { inicial: VideosParaEditor }) {
                   alReordenar={(ids) => setEstado((actual) => aplicarOrden(actual, stage, ids))}
                 />
               </Suspense>
+
+              <button
+                type="button"
+                className={`${styles.casillaBoton} ${styles.casillaVacia}`}
+                onClick={() => abrir({ modo: "crear", stage })}
+              >
+                <span className={styles.pista}>+ Agregar video al Stage {stage}</span>
+              </button>
 
               {despublicados.length > 0 ? (
                 <div className={styles.despublicados}>

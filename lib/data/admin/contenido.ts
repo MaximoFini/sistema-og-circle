@@ -1,6 +1,6 @@
 // =============================================================================
 // VGRP-38 / Bloque 7 — Capa de datos del CRUD de contenido (agentes, videos,
-// profesionales, servicios_financieros).
+// profesionales, servicios_financieros). VGRP-88 suma `materiales`.
 //
 // Mismo patrón que lib/data/admin/usuarios.ts: el cliente se INYECTA (nunca se
 // crea acá), así estos helpers son testeables con createTestAdminClient() y no
@@ -13,28 +13,43 @@
 
 import "server-only";
 
+import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database, Json, Tables, TablesInsert, TablesUpdate } from "../../database.types";
 import { tieneFoto } from "../../fotos/constantes";
 import { borrarFoto } from "../../fotos/storage";
+import { borrarObjeto, moverAArchivos, verificarObjeto } from "../../materiales/storage";
+import {
+  EXTENSIONES,
+  type ExtensionMaterial,
+  extensionDe,
+  formatearTamano,
+  MAX_BYTES,
+  PATH_PENDIENTE_REGEX,
+} from "../../materiales/tipos";
 import { videoProvider } from "../../video/provider";
-import { CANTIDAD_STAGE } from "../videos-config";
 import type { ResultadoMutacion } from "./audit-log";
 
 type AdminClient = SupabaseClient<Database>;
 
-export const ENTIDADES = ["agentes", "videos", "profesionales", "servicios_financieros"] as const;
+export const ENTIDADES = [
+  "agentes",
+  "videos",
+  "profesionales",
+  "servicios_financieros",
+  "materiales",
+] as const;
 export type Entidad = (typeof ENTIDADES)[number];
 
 export function esEntidadValida(valor: string): valor is Entidad {
   return (ENTIDADES as readonly string[]).includes(valor);
 }
 
-/** El campo que representa "visible/vigente" difiere por entidad: `videos`
- *  usa `publicado`, el resto usa `activo`. Un solo lugar que lo sepa. */
+/** El campo que representa "visible/vigente" difiere por entidad: `videos` y
+ *  `materiales` usan `publicado`, el resto usa `activo`. Un solo lugar que lo sepa. */
 export function campoVigencia(entidad: Entidad): "activo" | "publicado" {
-  return entidad === "videos" ? "publicado" : "activo";
+  return entidad === "videos" || entidad === "materiales" ? "publicado" : "activo";
 }
 
 /**
@@ -48,6 +63,7 @@ export const TAG_POR_ENTIDAD: Record<Entidad, string> = {
   videos: "grilla-videos",
   profesionales: "grilla-profesionales",
   servicios_financieros: "grilla-servicios",
+  materiales: "grilla-materiales",
 };
 
 /**
@@ -60,30 +76,22 @@ export const TAG_POR_ENTIDAD: Record<Entidad, string> = {
  */
 export const REVALIDATE_CONTENIDO_SEGUNDOS = 3600;
 
+/**
+ * VGRP-88 — el archivo de un material no sirve (no se subió, está vacío o pasa el tope). Es un
+ * error del pedido, no del servidor: las rutas lo devuelven como 400 con este mensaje, que
+ * está escrito para que lo lea el admin.
+ */
+export class ArchivoInvalido extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "ArchivoInvalido";
+  }
+}
+
 export class ItemNoEncontrado extends Error {
   constructor(entidad: Entidad, id: string) {
     super(`No existe un ítem de "${entidad}" con id ${id}.`);
     this.name = "ItemNoEncontrado";
-  }
-}
-
-/**
- * El stage ya tiene todas sus casillas ocupadas por videos publicados
- * (`CANTIDAD_STAGE`). La grilla del Inicio muestra sólo las primeras N, así que
- * publicar uno más lo dejaría oculto: se rechaza (HTTP 409) en vez de aceptarlo.
- */
-export class StageCompleto extends Error {
-  readonly stage: 1 | 2 | 3;
-  readonly cupo: number;
-  constructor(stage: 1 | 2 | 3) {
-    const cupo = CANTIDAD_STAGE[stage];
-    super(
-      `El Stage ${stage} ya tiene sus ${cupo} casillas ocupadas. ` +
-        "Despublicá un video antes de publicar otro.",
-    );
-    this.name = "StageCompleto";
-    this.stage = stage;
-    this.cupo = cupo;
   }
 }
 
@@ -153,11 +161,27 @@ const servicioFinancieroSchema = z.object({
   activo: z.boolean(),
 });
 
+// VGRP-88 — materiales descargables de /formacion. El archivo no viaja en este body: el
+// admin lo sube antes, directo a Storage (POST /api/admin/contenido/materiales/subida), y
+// acá llega solo el path PENDIENTE que devolvió esa ruta. `tipo`, `extension`, `tamano_bytes`
+// y `storage_path` los deriva el servidor al guardar (ver `prepararArchivo`) — por eso no
+// están en el schema: nunca se aceptan del request.
+const materialSchema = z.object({
+  titulo: z.string().trim().min(1).max(200),
+  descripcion: z.string().trim().max(500).nullable().optional(),
+  publicado: z.boolean().optional(),
+  // Como en videos: al crear, si no viene, queda al final.
+  orden: z.number().int().optional(),
+  // Obligatorio al crear; al editar, presente = reemplazo del archivo.
+  storage_path_pendiente: z.string().regex(PATH_PENDIENTE_REGEX).optional(),
+});
+
 const SCHEMAS = {
   agentes: agenteSchema,
   videos: videoSchema,
   profesionales: profesionalSchema,
   servicios_financieros: servicioFinancieroSchema,
+  materiales: materialSchema,
 } as const satisfies Record<Entidad, z.ZodType>;
 
 // -----------------------------------------------------------------------------
@@ -215,7 +239,7 @@ export interface VideoEditor {
 }
 
 export interface GrillaEditor {
-  /** Las casillas ocupadas, por `orden`, hasta `CANTIDAD_STAGE[stage]` (misma regla que el Inicio). */
+  /** Los videos de la grilla, por `orden` (todos los publicados, sin tope). */
   publicados: VideoEditor[];
   /** Fuera de la grilla: no ocupan casilla. */
   despublicados: VideoEditor[];
@@ -230,9 +254,8 @@ type FilaVideoEditor = Pick<
 
 /**
  * Parte pura de `listarVideosParaEditor`: reparte filas (ya ordenadas por `orden`) en las
- * dos grillas. Los publicados se recortan al cupo del stage con la MISMA regla que la
- * lectura del usuario (`armarGrilla`), así el editor nunca muestra una casilla que el
- * usuario no ve. El Stage 3 no entra (fuera de este editor).
+ * dos grillas: publicados (todos, sin tope: es lo que ve el usuario en /formacion) y
+ * despublicados. El Stage 3 no entra (fuera de este editor).
  */
 export function armarVideosEditor(filasOrdenadas: FilaVideoEditor[]): VideosParaEditor {
   const resultado: VideosParaEditor = {
@@ -255,8 +278,8 @@ export function armarVideosEditor(filasOrdenadas: FilaVideoEditor[]): VideosPara
       thumbnailUrl: ref ? videoProvider.urlThumbnail(ref) : null,
     };
     const grilla = resultado[fila.stage];
-    if (!fila.publicado) grilla.despublicados.push(video);
-    else if (grilla.publicados.length < CANTIDAD_STAGE[fila.stage]) grilla.publicados.push(video);
+    if (fila.publicado) grilla.publicados.push(video);
+    else grilla.despublicados.push(video);
   }
   return resultado;
 }
@@ -293,39 +316,14 @@ export async function obtenerContenido<E extends Entidad>(
  * ya validó la forma real en runtime, este cast no le agrega ni le saca
  * seguridad a lo que ya se validó.
  */
-async function proximoOrdenVideo(admin: AdminClient): Promise<number> {
-  const { data, error } = await admin
-    .from("videos")
+async function proximoOrden(admin: AdminClient, entidad: "videos" | "materiales"): Promise<number> {
+  const { data, error } = await tabla(admin, entidad)
     .select("orden")
     .order("orden", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return (data?.orden ?? -1) + 1;
-}
-
-/**
- * Lanza `StageCompleto` si publicar un video más en `stage` superaría las casillas
- * del stage. `excluirId` saca de la cuenta al propio video cuando ya existe (no se
- * cuenta a sí mismo). No es atómico con la escritura posterior: dos admins
- * publicando a la vez en el último lugar podrían pasarse por uno; la lectura igual
- * muestra sólo las primeras N, así que no se rompe nada visible.
- */
-async function verificarCupoVideo(
-  admin: AdminClient,
-  stage: 1 | 2 | 3,
-  excluirId?: string,
-): Promise<void> {
-  let consulta = admin
-    .from("videos")
-    .select("id", { count: "exact", head: true })
-    .eq("stage", stage)
-    .eq("publicado", true);
-  if (excluirId) consulta = consulta.neq("id", excluirId);
-
-  const { count, error } = await consulta;
-  if (error) throw error;
-  if ((count ?? 0) >= CANTIDAD_STAGE[stage]) throw new StageCompleto(stage);
+  return ((data as { orden: number } | null)?.orden ?? -1) + 1;
 }
 
 /**
@@ -348,36 +346,38 @@ export function asignarOrden(ids: string[], ordenActual: number[]): Map<string, 
 }
 
 /**
- * Reordena los videos que recibe (todos, o los de un stage): `ids` es el orden
+ * Reordena los ítems que recibe (todos, o los de un stage de videos): `ids` es el orden
  * nuevo y cada uno toma un lugar de los que el grupo ya ocupaba (ver
  * `asignarOrden`). No hay unique sobre `orden`, así que los updates no chocan
  * entre sí; se validan los ids contra la base antes de escribir para no
  * reordenar a medias por un id inexistente. No es atómico entre filas (un
- * update por video), pero reescribir el mismo orden es idempotente: reintentar
+ * update por ítem), pero reescribir el mismo orden es idempotente: reintentar
  * converge.
+ *
+ * VGRP-88: sirve para `videos` y para `materiales` (ambos se reordenan arrastrando).
  */
-export async function reordenarVideos(
+export async function reordenarContenido(
   admin: AdminClient,
+  entidad: "videos" | "materiales",
   ids: string[],
 ): Promise<ResultadoMutacion<{ id: string; orden: number }[]>> {
-  const { data: anteriores, error: errorLectura } = await admin
-    .from("videos")
+  const { data, error: errorLectura } = await tabla(admin, entidad)
     .select("id, orden")
     .in("id", ids);
   if (errorLectura) throw errorLectura;
+  const anteriores = (data ?? []) as { id: string; orden: number }[];
 
-  const existentes = new Set((anteriores ?? []).map((v) => v.id));
+  const existentes = new Set(anteriores.map((v) => v.id));
   const faltante = ids.find((id) => !existentes.has(id));
-  if (faltante) throw new ItemNoEncontrado("videos", faltante);
+  if (faltante) throw new ItemNoEncontrado(entidad, faltante);
 
   const asignado = asignarOrden(
     ids,
-    (anteriores ?? []).map((v) => v.orden),
+    anteriores.map((v) => v.orden),
   );
   const resultados = await Promise.all(
     ids.map((id) =>
-      admin
-        .from("videos")
+      tabla(admin, entidad)
         .update({ orden: asignado.get(id) as number })
         .eq("id", id),
     ),
@@ -388,11 +388,193 @@ export async function reordenarVideos(
   const nuevo = ids.map((id) => ({ id, orden: asignado.get(id) as number }));
   return {
     resultado: nuevo,
-    valorAnterior: (anteriores ?? []) as unknown as Json,
+    valorAnterior: anteriores as unknown as Json,
     valorNuevo: nuevo as unknown as Json,
-    // Afecta a varios videos a la vez: el audit log necesita un entidad_id
-    // (text), así que apunta a la lista completa en vez de a un video.
+    // Afecta a varios ítems a la vez: el audit log necesita un entidad_id
+    // (text), así que apunta a la lista completa en vez de a uno solo.
     entidadId: "lista",
+  };
+}
+
+/** Los videos siguen siendo la API de siempre (la ruta `videos/orden` y sus tests). */
+export function reordenarVideos(admin: AdminClient, ids: string[]) {
+  return reordenarContenido(admin, "videos", ids);
+}
+
+// -----------------------------------------------------------------------------
+// VGRP-88 — materiales: el archivo vive en Storage y la fila lo referencia.
+// -----------------------------------------------------------------------------
+
+interface ArchivoGuardado {
+  /** `archivos/<uuid>.<ext>`, ya movido desde `pendientes/`. */
+  storagePath: string;
+  extension: ExtensionMaterial;
+  tipo: string;
+  tamanoBytes: number;
+}
+
+/**
+ * Convierte un archivo PENDIENTE (el que el admin subió directo a Storage) en uno guardado:
+ * lo verifica con la metadata REAL del objeto —no la que declaró el cliente— y lo mueve a
+ * `archivos/`. `tipo`, `extension` y `tamano_bytes` salen de acá, nunca del body del request.
+ *
+ * Un objeto que pasa el tope se borra: el bucket también lo limita (`file_size_limit`), esto
+ * es la segunda barrera por si ese límite cambia o se saltea.
+ */
+async function prepararArchivo(pathPendiente: string): Promise<ArchivoGuardado> {
+  // El schema ya lo validó con PATH_PENDIENTE_REGEX; se repite acá porque esta función es la
+  // que mueve objetos del bucket y no debería confiar en que su caller lo hizo.
+  if (!PATH_PENDIENTE_REGEX.test(pathPendiente)) {
+    throw new ArchivoInvalido("El archivo no es válido. Volvé a subirlo.");
+  }
+  const extension = extensionDe(pathPendiente);
+  if (!extension) throw new ArchivoInvalido("El tipo de archivo no es válido. Volvé a subirlo.");
+
+  const objeto = await verificarObjeto(pathPendiente);
+  if (!objeto) {
+    throw new ArchivoInvalido("No encontramos el archivo subido. Volvé a subirlo.");
+  }
+  if (objeto.tamanoBytes <= 0) {
+    await borrarObjeto(pathPendiente).catch(() => undefined);
+    throw new ArchivoInvalido("El archivo está vacío.");
+  }
+  if (objeto.tamanoBytes > MAX_BYTES) {
+    await borrarObjeto(pathPendiente).catch(() => undefined);
+    throw new ArchivoInvalido(`El archivo supera el máximo de ${formatearTamano(MAX_BYTES)}.`);
+  }
+
+  const storagePath = await moverAArchivos(pathPendiente);
+  return {
+    storagePath,
+    extension,
+    tipo: EXTENSIONES[extension].tipo,
+    tamanoBytes: objeto.tamanoBytes,
+  };
+}
+
+/** Borra un objeto sin romper la operación que ya salió bien: lo que queda es un huérfano en
+ *  `archivos/` que se ve en Sentry (design.md, "Open questions / risks"). */
+async function borrarObjetoBestEffort(path: string, contexto: string): Promise<void> {
+  try {
+    await borrarObjeto(path);
+  } catch (error) {
+    Sentry.captureException(error, {
+      level: "warning",
+      tags: { "materiales-huerfano": "true" },
+      extra: { path, contexto },
+    });
+  }
+}
+
+async function crearMaterial(admin: AdminClient, valores: unknown) {
+  const { storage_path_pendiente, ...datos } = SCHEMAS.materiales.parse(valores);
+  if (!storage_path_pendiente) {
+    throw new ArchivoInvalido("Falta el archivo del material.");
+  }
+
+  const archivo = await prepararArchivo(storage_path_pendiente);
+  try {
+    const orden = datos.orden ?? (await proximoOrden(admin, "materiales"));
+    const { data, error } = await admin
+      .from("materiales")
+      .insert({
+        ...datos,
+        orden,
+        storage_path: archivo.storagePath,
+        tipo: archivo.tipo,
+        extension: archivo.extension,
+        tamano_bytes: archivo.tamanoBytes,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
+    return {
+      resultado: data,
+      valorAnterior: null,
+      valorNuevo: data as unknown as Json,
+      entidadId: data.id,
+    };
+  } catch (error) {
+    // El archivo ya se movió: si la fila no se creó, no puede quedar suelto.
+    await borrarObjetoBestEffort(archivo.storagePath, "crearMaterial: falló el insert");
+    throw error;
+  }
+}
+
+async function actualizarMaterial(admin: AdminClient, id: string, valores: unknown) {
+  const { storage_path_pendiente, ...datos } = SCHEMAS.materiales.partial().parse(valores);
+
+  const { data: anterior, error: errorAnterior } = await admin
+    .from("materiales")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (errorAnterior) throw errorAnterior;
+  if (!anterior) throw new ItemNoEncontrado("materiales", id);
+
+  // Reemplazo del archivo: la fila conserva título, descripción, orden y publicado.
+  const archivo = storage_path_pendiente ? await prepararArchivo(storage_path_pendiente) : null;
+
+  try {
+    const { data, error } = await admin
+      .from("materiales")
+      .update({
+        ...datos,
+        ...(archivo && {
+          storage_path: archivo.storagePath,
+          tipo: archivo.tipo,
+          extension: archivo.extension,
+          tamano_bytes: archivo.tamanoBytes,
+        }),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    // Recién con la fila apuntando al archivo nuevo se borra el viejo: si algo falla antes,
+    // el material sigue intacto con su archivo de siempre.
+    if (archivo) {
+      await borrarObjetoBestEffort(anterior.storage_path, "actualizarMaterial: archivo viejo");
+    }
+
+    return {
+      resultado: data,
+      valorAnterior: anterior as unknown as Json,
+      valorNuevo: data as unknown as Json,
+      entidadId: id,
+    };
+  } catch (error) {
+    if (archivo) {
+      await borrarObjetoBestEffort(archivo.storagePath, "actualizarMaterial: falló el update");
+    }
+    throw error;
+  }
+}
+
+async function borrarMaterial(admin: AdminClient, id: string) {
+  const { data: anterior, error: errorAnterior } = await admin
+    .from("materiales")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (errorAnterior) throw errorAnterior;
+  if (!anterior) throw new ItemNoEncontrado("materiales", id);
+
+  // Primero la fila y después el archivo: nada referencia a un material (a diferencia de
+  // `videos`, que se soft-borra por el progreso guardado), y si falla el borrado del
+  // objeto la fila ya no existe, así que el usuario nunca ve un link roto.
+  const { error } = await admin.from("materiales").delete().eq("id", id);
+  if (error) throw error;
+  await borrarObjetoBestEffort(anterior.storage_path, "borrarMaterial");
+
+  return {
+    resultado: null,
+    valorAnterior: anterior as unknown as Json,
+    valorNuevo: null,
+    entidadId: id,
   };
 }
 
@@ -401,13 +583,13 @@ export async function crearContenido<E extends Entidad>(
   entidad: E,
   valores: unknown,
 ): Promise<ResultadoMutacion<Tables<E>>> {
+  if (entidad === "materiales") {
+    return crearMaterial(admin, valores) as unknown as Promise<ResultadoMutacion<Tables<E>>>;
+  }
   const datos = SCHEMAS[entidad].parse(valores) as TablesInsert<E>;
 
-  if (entidad === "videos") {
-    const video = datos as { stage: 1 | 2 | 3; publicado: boolean; orden?: number };
-    // Un video que nace publicado ocupa una casilla: tiene que haber lugar.
-    if (video.publicado) await verificarCupoVideo(admin, video.stage);
-    if (video.orden === undefined) video.orden = await proximoOrdenVideo(admin);
+  if (entidad === "videos" && (datos as { orden?: number }).orden === undefined) {
+    (datos as { orden?: number }).orden = await proximoOrden(admin, "videos");
   }
 
   const { data, error } = await tabla(admin, entidad).insert(datos).select().single();
@@ -427,6 +609,11 @@ export async function actualizarContenido<E extends Entidad>(
   id: string,
   valores: unknown,
 ): Promise<ResultadoMutacion<Tables<E>>> {
+  if (entidad === "materiales") {
+    return actualizarMaterial(admin, id, valores) as unknown as Promise<
+      ResultadoMutacion<Tables<E>>
+    >;
+  }
   const datos = SCHEMAS[entidad].partial().parse(valores) as TablesUpdate<E>;
 
   const { data: anterior, error: errorAnterior } = await tabla(admin, entidad)
@@ -437,20 +624,13 @@ export async function actualizarContenido<E extends Entidad>(
   if (!anterior) throw new ItemNoEncontrado(entidad, id);
 
   if (entidad === "videos") {
-    const previo = anterior as { stage: 1 | 2 | 3; publicado: boolean };
-    const cambios = datos as { stage?: 1 | 2 | 3; publicado?: boolean; orden?: number };
-    const stageFinal = cambios.stage ?? previo.stage;
+    const previo = anterior as { publicado: boolean };
+    const cambios = datos as { publicado?: boolean; orden?: number };
     const publicadoFinal = cambios.publicado ?? previo.publicado;
     const pasaAPublicado = publicadoFinal && !previo.publicado;
-    const cambiaDeStagePublicado = publicadoFinal && stageFinal !== previo.stage;
 
-    // Sólo se valida cuando el video PASA a ocupar una casilla. Editar el título de uno
-    // ya publicado nunca puede fallar por cupo, aunque el stage esté completo.
-    if (pasaAPublicado || cambiaDeStagePublicado) {
-      await verificarCupoVideo(admin, stageFinal, id);
-    }
     // Al volver a publicar, el video vuelve al final de su grilla (no a su lugar anterior).
-    if (pasaAPublicado) cambios.orden = await proximoOrdenVideo(admin);
+    if (pasaAPublicado) cambios.orden = await proximoOrden(admin, "videos");
   }
 
   const { data, error } = await tabla(admin, entidad).update(datos).eq("id", id).select().single();
@@ -469,7 +649,8 @@ export async function actualizarContenido<E extends Entidad>(
  * `profiles.progreso` referencia videos por id (PRD §4.1), y borrar la fila
  * rompería el progreso ya guardado de usuarios reales (requirements-vgrp38.md
  * US-5). El resto de las entidades no tiene ninguna referencia conocida desde
- * otro lado, así que un DELETE real es seguro.
+ * otro lado, así que un DELETE real es seguro. `materiales` además borra su
+ * archivo de Storage (VGRP-88, ver `borrarMaterial`).
  */
 export async function borrarContenido<E extends Entidad>(
   admin: AdminClient,
@@ -479,6 +660,7 @@ export async function borrarContenido<E extends Entidad>(
   if (entidad === "videos") {
     return actualizarContenido(admin, entidad, id, { publicado: false });
   }
+  if (entidad === "materiales") return borrarMaterial(admin, id);
 
   const { data: anterior, error: errorAnterior } = await tabla(admin, entidad)
     .select("*")

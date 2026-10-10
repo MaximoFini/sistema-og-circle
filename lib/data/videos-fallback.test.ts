@@ -22,8 +22,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { ordenMock, captureExceptionMock } = vi.hoisted(() => ({
-  ordenMock: vi.fn(),
+const { limiteMock, captureExceptionMock } = vi.hoisted(() => ({
+  limiteMock: vi.fn(),
   captureExceptionMock: vi.fn(),
 }));
 
@@ -49,31 +49,30 @@ vi.mock("@sentry/nextjs", () => ({
 // Mismo path relativo que usa lib/data/videos.ts (import { createServiceRoleClient }
 // from "../supabase/service-role") — este archivo vive en lib/data/ también, así que el
 // specifier resuelve exactamente al mismo módulo.
+// La cadena real de obtenerVideosPorStage es select → eq → eq → not → order → limit; el
+// `.limit(...)` final es lo que se awaitea, así que es el único paso con comportamiento.
 vi.mock("../supabase/service-role", () => ({
-  createServiceRoleClient: () => ({
-    from: () => ({
-      // select().eq(stage).eq(publicado).order().limit(): el `limit` final es lo que
-      // obtenerVideosPorStage espera (el mock conserva el nombre `ordenMock`).
-      select: () => ({
-        eq: () => ({
-          eq: () => ({
-            order: () => ({ limit: ordenMock }),
-          }),
-        }),
-      }),
-    }),
-  }),
+  createServiceRoleClient: () => {
+    const cadena = {
+      select: () => cadena,
+      eq: () => cadena,
+      not: () => cadena,
+      order: () => cadena,
+      limit: limiteMock,
+    };
+    return { from: () => cadena };
+  },
 }));
 
-const { obtenerVideosStage1, obtenerVideosStage2, CANTIDAD_STAGE } = await import("./videos");
+const { obtenerVideosStage1, obtenerVideosStage2 } = await import("./videos");
 
 beforeEach(() => {
-  ordenMock.mockReset();
+  limiteMock.mockReset();
   captureExceptionMock.mockReset();
   // "La base tira": el .limit(...) final de la query (awaited por
   // obtenerVideosPorStage) devuelve un error, tal como haría supabase-js real ante una
   // falla de conexión/credenciales.
-  ordenMock.mockResolvedValue({
+  limiteMock.mockResolvedValue({
     data: null,
     error: new Error("Falla de base simulada (VGRP-50)"),
   });
@@ -84,28 +83,12 @@ afterEach(() => {
 });
 
 describe("obtenerVideosStageConFallback — fail-open cuando la base no responde (VGRP-50)", () => {
-  it("stage 1: nunca propaga el error — devuelve exactamente 8 tiles de relleno, todos id:null/'proximamente'", async () => {
-    const items = await obtenerVideosStage1();
-
-    expect(items).toHaveLength(CANTIDAD_STAGE[1]);
-    for (const item of items) {
-      expect(item.id).toBeNull();
-      expect(item.estado).toBe("proximamente");
-      expect(item.embedUrl).toBeNull();
-      expect(item.thumbnailUrl).toBeNull();
-    }
+  it("stage 1: nunca propaga el error — devuelve la lista vacía (VGRP-88: ya no hay tiles de relleno)", async () => {
+    await expect(obtenerVideosStage1()).resolves.toEqual([]);
   });
 
-  it("stage 2: mismo mecanismo — 3 tiles de relleno", async () => {
-    const items = await obtenerVideosStage2();
-
-    expect(items).toHaveLength(CANTIDAD_STAGE[2]);
-    expect(items.every((i) => i.id === null && i.estado === "proximamente")).toBe(true);
-  });
-
-  it("un tile de relleno nunca es marcable como visto: id siempre null (VideoCard.tsx sólo habilita 'Marcar como visto' cuando estado==='disponible' && id!==null)", async () => {
-    const items = await obtenerVideosStage1();
-    expect(items.some((i) => i.id !== null)).toBe(false);
+  it("stage 2: mismo mecanismo — lista vacía", async () => {
+    await expect(obtenerVideosStage2()).resolves.toEqual([]);
   });
 
   it("reporta a Sentry con captureException y el tag 'videos-grilla-degradada'", async () => {
@@ -121,20 +104,29 @@ describe("obtenerVideosStageConFallback — fail-open cuando la base no responde
     await obtenerVideosStage1();
     await obtenerVideosStage1();
 
-    expect(ordenMock).toHaveBeenCalledTimes(2);
+    expect(limiteMock).toHaveBeenCalledTimes(2);
   });
 
   it("una vez que la base vuelve a responder, la siguiente llamada ya no cae al fallback (confirma que no quedó nada cacheado del fallo)", async () => {
     await obtenerVideosStage1(); // base caída: fallback
 
-    ordenMock.mockResolvedValue({ data: [], error: null }); // base recuperada
+    limiteMock.mockResolvedValue({
+      data: [
+        {
+          id: "v1",
+          titulo: "Uno",
+          descripcion: null,
+          provider_ref: "dQw4w9WgXcQ",
+          publicado: true,
+        },
+      ],
+      error: null,
+    }); // base recuperada
     const items = await obtenerVideosStage1();
 
-    // Con datos reales vacíos, obtenerVideosPorStage igual completa con tiles
-    // sintéticos hasta CANTIDAD_STAGE — la garantía acá es que efectivamente VOLVIÓ a
-    // llamar a la base (ordenMock invocado de nuevo), no que la forma del resultado
-    // cambie (con 0 filas reales, el resultado es indistinguible del fallback).
-    expect(items).toHaveLength(CANTIDAD_STAGE[1]);
-    expect(ordenMock).toHaveBeenCalledTimes(2);
+    // Distinguible del fallback: ahora hay una fila real. La garantía es que VOLVIÓ a
+    // llamar a la base (limiteMock invocado de nuevo) y devuelve lo que la base dice.
+    expect(items.map((i) => i.id)).toEqual(["v1"]);
+    expect(limiteMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -11,26 +11,22 @@ import "../test/helpers/load-env";
 // browser real de punta a punta. Reescrito para el editor de videos del admin
 // (specs/admin-videos-editor): ya no hay formularios separados de alta y edición.
 //
-// El admin toca una CASILLA VACÍA de la grilla de /admin/contenido/videos, completa
-// el panel y lo CREA; un usuario ve el título en Inicio; el admin toca esa casilla,
-// lo EDITA desde el mismo panel; y el usuario recarga y ve el cambio — sin ningún
-// deploy de por medio. VGRP-38 dispara revalidateTag(TAG_POR_ENTIDAD.videos) en cada
+// El admin toca "+ Agregar video" en la grilla de /admin/contenido/videos, completa
+// el panel y lo CREA; un usuario ve el título en /formacion (VGRP-88: los videos ya no
+// están en Inicio); el admin toca ese video, lo EDITA desde el mismo panel; y el usuario
+// recarga y ve el cambio — sin ningún deploy de por medio. VGRP-38 dispara revalidateTag(TAG_POR_ENTIDAD.videos) en cada
 // escritura sobre `videos`; VGRP-29 lee esa misma tabla cacheada con unstable_cache.
 //
 // Toda mutación (alta y edición) pasa por el panel real, no por un insert directo:
 // un insert directo no dispara revalidateTag() y el server podría seguir sirviendo la
 // grilla cacheada de una request anterior.
 //
-// Cupo: la grilla de Stage 2 tiene 3 casillas. La tabla `videos` es compartida con
-// contenido real, así que si ya hay 3 videos PUBLICADOS en Stage 2 no existe una casilla
-// vacía para tocar (el servidor tampoco deja publicar uno más). En ese caso el test se
-// saltea con el motivo a la vista, en lugar de fallar por una razón ajena a revalidateTag.
+// Sin tope de videos por stage (VGRP-88): el test no depende de cuántos videos reales haya.
 // =============================================================================
 
 const admin = createTestAdminClient();
 const PASSWORD = "test-password-1!";
 const STAGE = 2;
-const CUPO_STAGE_2 = 3;
 
 async function loginComo(
   page: import("@playwright/test").Page,
@@ -44,7 +40,7 @@ async function loginComo(
   await page.waitForURL("**/dashboard");
 }
 
-test("un admin crea (casilla vacía) y después edita un video desde /admin/contenido/videos, y el usuario lo ve en Inicio sin deploy (revalidateTag real)", async ({
+test("un admin crea (+ Agregar video) y después edita un video desde /admin/contenido/videos, y el usuario lo ve en /formacion sin deploy (revalidateTag real)", async ({
   page,
   browser,
 }) => {
@@ -52,19 +48,9 @@ test("un admin crea (casilla vacía) y después edita un video desde /admin/cont
   // local (que compila cada ruta la primera vez) tarda más que los 30s por defecto.
   test.setTimeout(90_000);
 
-  const { count: publicados, error: errorCupo } = await admin
-    .from("videos")
-    .select("id", { count: "exact", head: true })
-    .eq("stage", STAGE)
-    .eq("publicado", true);
-  expect(errorCupo).toBeNull();
-  test.skip(
-    (publicados ?? 0) >= CUPO_STAGE_2,
-    "El Stage 2 ya tiene todas sus casillas ocupadas por videos publicados: no hay una casilla vacía que tocar.",
-  );
-
-  const tituloOriginal = `Video revalidate ${randomUUID()}`;
-  const tituloNuevo = `Video revalidado ${randomUUID()}`;
+  // Prefijo "[test]": red de contención de test/helpers/cleanup.ts si la corrida se corta.
+  const tituloOriginal = `[test] Video revalidate ${randomUUID()}`;
+  const tituloNuevo = `[test] Video revalidado ${randomUUID()}`;
 
   // VGRP-59/60 (Bloque 13 — plan único): la policy de RLS de `videos`
   // (videos_select_con_acceso) exige nivel='completo'.
@@ -73,24 +59,23 @@ test("un admin crea (casilla vacía) y después edita un video desde /admin/cont
   const paginaAdmin = await contextoAdmin.newPage();
 
   try {
-    // 1) El admin crea el video tocando una casilla vacía de Stage 2 (mismo stage que
-    // renderiza InicioShell en "Formación: armá tu tienda").
+    // 1) El admin crea el video con "+ Agregar video" (Stage 2: la sección "Formación: armá
+    // tu tienda" de /formacion). VGRP-88: /formacion solo muestra videos publicados y con
+    // link, así que se carga el link en el panel.
     await loginComo(paginaAdmin, SEED_ADMIN_USER.email, SEED_ADMIN_USER.password);
     await paginaAdmin.goto("/admin/contenido/videos");
-    await paginaAdmin
-      .getByRole("button", { name: /Agregar un video en la casilla \d+ del Stage 2/ })
-      .first()
-      .click();
+    await paginaAdmin.getByRole("button", { name: "+ Agregar video al Stage 2" }).click();
 
     const panel = paginaAdmin.getByRole("dialog");
     await expect(panel).toBeVisible();
     await panel.getByLabel("Título").fill(tituloOriginal);
-    // "Publicado" arranca marcado al crear desde una casilla.
+    await panel.getByLabel(/Link del video/).fill("https://youtu.be/dQw4w9WgXcQ");
+    // "Publicado" arranca marcado al crear.
     await expect(panel.getByLabel("Publicado")).toBeChecked();
     await panel.getByRole("button", { name: "Agregar" }).click();
     await expect(panel).toBeHidden();
 
-    // La casilla ya muestra el video nuevo (el estado se actualiza con la respuesta de la API).
+    // La grilla ya muestra el video nuevo (el estado se actualiza con la respuesta de la API).
     await expect(
       paginaAdmin.getByRole("button", { name: `Editar ${tituloOriginal}` }),
     ).toBeVisible();
@@ -104,9 +89,22 @@ test("un admin crea (casilla vacía) y después edita un video desde /admin/cont
     expect(video?.stage).toBe(STAGE);
     expect(video?.publicado).toBe(true);
 
-    // 2) El usuario carga Inicio: el título ORIGINAL ya tiene que estar (el alta de arriba
-    // ya revalidó el tag) — ancla: si esto no aparece, el resto del test no prueba nada.
+    // Orden bien negativo para que quede primero en su stage (VGRP-88: ya no hay tope de
+    // videos, pero así el test no depende de cuántos videos reales haya). Va directo por
+    // service role (no por el reorden del panel, que reasignaría el orden de los videos
+    // reales) y ANTES de la primera lectura: el create ya invalidó el tag, así que esa
+    // primera lectura trae este orden.
+    const { error: ordenError } = await admin
+      .from("videos")
+      .update({ orden: -999999 })
+      .eq("id", video?.id as string);
+    expect(ordenError).toBeNull();
+
+    // 2) El usuario carga /formacion (VGRP-88: los videos ya no están en Inicio): el
+    // título ORIGINAL ya tiene que estar (el create de arriba ya revalidó el tag antes de
+    // este punto) — ancla: si esto no aparece, el resto del test no prueba nada real.
     await loginComo(page, usuario.email, PASSWORD);
+    await page.goto("/formacion");
     await expect(page.getByText(tituloOriginal)).toBeVisible();
 
     // 3) El admin edita el mismo video tocando su casilla.
@@ -117,14 +115,14 @@ test("un admin crea (casilla vacía) y después edita un video desde /admin/cont
     await expect(panel).toBeHidden();
     await expect(paginaAdmin.getByRole("button", { name: `Editar ${tituloNuevo}` })).toBeVisible();
 
-    // 4) El usuario, en su propia sesión, recarga Inicio: sin ningún deploy,
+    // 4) El usuario, en su propia sesión, recarga /formacion: sin ningún deploy,
     // revalidateTag ya invalidó la lectura cacheada.
     await page.reload();
     await expect(page.getByText(tituloNuevo)).toBeVisible();
     await expect(page.getByText(tituloOriginal)).toHaveCount(0);
 
-    // 5) El admin DESPUBLICA el video desde el panel: sale de la grilla (libera la casilla)
-    // y el usuario deja de verlo en Inicio.
+    // 5) El admin DESPUBLICA el video desde el panel: sale de la grilla
+    // y el usuario deja de verlo en /formacion.
     await paginaAdmin.getByRole("button", { name: `Editar ${tituloNuevo}` }).click();
     await panel.getByRole("button", { name: "Despublicar" }).click();
     await expect(panel).toBeHidden();

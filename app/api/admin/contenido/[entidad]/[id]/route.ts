@@ -20,11 +20,11 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
 import {
+  ArchivoInvalido,
   actualizarContenido,
   borrarContenido,
   esEntidadValida,
   ItemNoEncontrado,
-  StageCompleto,
   TAG_POR_ENTIDAD,
 } from "@/lib/data/admin/contenido";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -74,16 +74,15 @@ export async function PATCH(req: Request, { params }: Params): Promise<Response>
     if (e instanceof ItemNoEncontrado) {
       return Response.json({ error: "No encontrado." }, { status: 404 });
     }
-    // Publicar un video más con el stage completo: no es un error inesperado, no va a
-    // Sentry; no se cambió nada.
-    if (e instanceof StageCompleto) {
-      return Response.json({ error: e.message }, { status: 409 });
-    }
     if (e instanceof z.ZodError) {
       return Response.json(
         { error: "Datos inválidos.", fieldErrors: z.flattenError(e).fieldErrors },
         { status: 400 },
       );
+    }
+    // VGRP-88: el archivo de reemplazo de un material no sirve (ver POST de [entidad]).
+    if (e instanceof ArchivoInvalido) {
+      return Response.json({ error: e.message }, { status: 400 });
     }
     Sentry.captureException(e, { extra: { detalle: "actualizarContenido", entidad, id } });
     return Response.json({ error: "No se pudo actualizar el ítem." }, { status: 500 });

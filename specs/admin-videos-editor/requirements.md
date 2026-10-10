@@ -1,5 +1,11 @@
 # Requirements: Editor de videos del admin (réplica del Inicio)
 
+> **Actualización (VGRP-88):** la regla de cupo por stage (`CANTIDAD_STAGE`, `StageCompleto`, el 409
+> y las casillas vacías) quedó **sin efecto**. Los stages no tienen tope de videos: el editor muestra todos
+> los publicados y agrega uno nuevo con "+ Agregar video" al final de cada stage; republicar un video lo
+> manda al final. Se conserva el resto del diseño (editor sobre la grilla, un `DndContext` por stage,
+> despublicados aparte). Ver `specs/formacion-materiales/`.
+
 **Status:** Approved (2026-10-08)
 **Last updated:** 2026-10-08 (v2: los despublicados dejan de ocupar casilla; videos de prueba ya eliminados)
 

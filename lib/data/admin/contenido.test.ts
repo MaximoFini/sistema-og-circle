@@ -4,7 +4,6 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { createTestAdminClient } from "../../../test/helpers/db-client";
-import { CANTIDAD_STAGE } from "../videos-config";
 import {
   actualizarContenido,
   armarVideosEditor,
@@ -15,7 +14,6 @@ import {
   ItemNoEncontrado,
   listarContenido,
   listarVideosParaEditor,
-  StageCompleto,
 } from "./contenido";
 
 const admin = createTestAdminClient();
@@ -170,44 +168,8 @@ describe("borrarContenido", () => {
   });
 });
 
-describe("videos: cupo por stage y volver a publicar al final", () => {
+describe("videos: sin tope por stage y volver a publicar al final", () => {
   const STAGE = 2;
-  const CUPO = CANTIDAD_STAGE[STAGE];
-
-  async function publicadosEnStage(): Promise<number> {
-    const { count, error } = await admin
-      .from("videos")
-      .select("id", { count: "exact", head: true })
-      .eq("stage", STAGE)
-      .eq("publicado", true);
-    if (error) throw error;
-    return count ?? 0;
-  }
-
-  /** Deja el stage completo: la tabla es compartida, así que completa sólo lo que falta
-   *  (con inserts directos, que no pasan por la regla de cupo) y lo limpia al terminar. */
-  async function llenarStage(): Promise<string[]> {
-    const faltan = Math.max(0, CUPO - (await publicadosEnStage()));
-    const ids: string[] = [];
-    for (let i = 0; i < faltan; i++) {
-      const { data, error } = await admin
-        .from("videos")
-        .insert({
-          stage: STAGE,
-          titulo: `Relleno cupo ${i}`,
-          descripcion: null,
-          provider_ref: null,
-          publicado: true,
-          orden: 900 + i,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      idsCreados.push({ entidad: "videos", id: data.id });
-      ids.push(data.id);
-    }
-    return ids;
-  }
 
   async function crearTest(publicado: boolean, titulo: string) {
     const creado = await crearContenido(admin, "videos", { stage: STAGE, titulo, publicado });
@@ -215,81 +177,22 @@ describe("videos: cupo por stage y volver a publicar al final", () => {
     return creado;
   }
 
-  it("con el stage completo, crear un video publicado tira StageCompleto y no escribe nada", async () => {
-    await llenarStage();
-    const titulo = `Rechazado ${crypto.randomUUID()}`;
-
-    await expect(
-      crearContenido(admin, "videos", { stage: STAGE, titulo, publicado: true }),
-    ).rejects.toThrow(StageCompleto);
-
-    const { data } = await admin.from("videos").select("id").eq("titulo", titulo);
-    expect(data).toHaveLength(0);
+  it("crear un video publicado nunca se rechaza por la cantidad que ya hay en el stage", async () => {
+    const creado = await crearTest(true, "Publicado sin tope");
+    expect(creado.resultado.publicado).toBe(true);
   });
 
-  it("con el stage completo, crear un video SIN publicar sí se puede (no ocupa casilla)", async () => {
-    await llenarStage();
-    const creado = await crearTest(false, "Borrador con stage lleno");
-    expect(creado.resultado.publicado).toBe(false);
-  });
-
-  it("con el stage completo, publicar un despublicado tira StageCompleto y no lo cambia", async () => {
+  it("publicar un despublicado nunca se rechaza por la cantidad que ya hay en el stage", async () => {
     const borrador = await crearTest(false, "Borrador a publicar");
-    await llenarStage();
 
-    await expect(
-      actualizarContenido(admin, "videos", borrador.entidadId as string, { publicado: true }),
-    ).rejects.toThrow(StageCompleto);
-
-    const { data } = await admin
-      .from("videos")
-      .select("publicado")
-      .eq("id", borrador.entidadId as string)
-      .single();
-    expect(data?.publicado).toBe(false);
-  });
-
-  it("editar un video YA publicado nunca falla por cupo, aunque el stage esté completo", async () => {
-    const ids = await llenarStage();
-    const publicado =
-      ids.length > 0
-        ? ids[0]
-        : ((
-            await admin
-              .from("videos")
-              .select("id")
-              .eq("stage", STAGE)
-              .eq("publicado", true)
-              .limit(1)
-              .single()
-          ).data?.id as string);
-
-    const editado = await actualizarContenido(admin, "videos", publicado, {
-      titulo: "Título editado",
-    });
-    expect(editado.resultado.titulo).toBe("Título editado");
-    expect(editado.resultado.publicado).toBe(true);
-  });
-
-  it("despublicar libera la casilla: después se puede publicar otro", async ({ skip }) => {
-    const ids = await llenarStage();
-    const aLiberar = ids[0];
-    // Sin relleno propio (el stage ya estaba completo con videos reales) no se toca nada
-    // ajeno: la prueba se limita a lo que este test creó.
-    if (!aLiberar) skip("el stage ya está completo con videos reales: no se modifican");
-    const otro = await crearTest(false, "Entra cuando se libera");
-
-    await actualizarContenido(admin, "videos", aLiberar, { publicado: false });
-    const publicado = await actualizarContenido(admin, "videos", otro.entidadId as string, {
+    const publicado = await actualizarContenido(admin, "videos", borrador.entidadId as string, {
       publicado: true,
     });
 
     expect(publicado.resultado.publicado).toBe(true);
   });
 
-  it("al volver a publicar, el video queda AL FINAL (orden mayor que todos los del stage)", async ({
-    skip,
-  }) => {
+  it("al volver a publicar, el video queda AL FINAL (orden mayor que todos los del stage)", async () => {
     const borrador = await crearTest(false, "Vuelve al final");
     // Su orden original es el próximo disponible; se mueve más atrás para comprobar
     // que republicar lo REASIGNA al final y no conserva el lugar anterior.
@@ -297,7 +200,6 @@ describe("videos: cupo por stage y volver a publicar al final", () => {
       .from("videos")
       .update({ orden: -500 })
       .eq("id", borrador.entidadId as string);
-    if ((await publicadosEnStage()) >= CUPO) skip("el stage está completo: no hay lugar");
 
     const publicado = await actualizarContenido(admin, "videos", borrador.entidadId as string, {
       publicado: true,
@@ -340,14 +242,11 @@ describe("armarVideosEditor (parte pura)", () => {
     expect(r[2].despublicados.map((v) => v.id)).toEqual(["id-2"]);
   });
 
-  it("recorta los publicados al cupo del stage (misma regla que el Inicio) y deja pasar los despublicados", () => {
-    const filas = Array.from({ length: CANTIDAD_STAGE[2] + 2 }, (_, i) => fila(i, { stage: 2 }));
+  it("sin tope: muestra todos los publicados del stage y deja pasar los despublicados", () => {
+    const filas = Array.from({ length: 16 }, (_, i) => fila(i, { stage: 2 }));
     const r = armarVideosEditor([...filas, fila(99, { stage: 2, publicado: false })]);
 
-    expect(r[2].publicados).toHaveLength(CANTIDAD_STAGE[2]);
-    expect(r[2].publicados.map((v) => v.id)).toEqual(
-      filas.slice(0, CANTIDAD_STAGE[2]).map((v) => v.id),
-    );
+    expect(r[2].publicados.map((v) => v.id)).toEqual(filas.map((v) => v.id));
     expect(r[2].despublicados.map((v) => v.id)).toEqual(["id-99"]);
   });
 

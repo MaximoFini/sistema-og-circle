@@ -1,0 +1,102 @@
+/* VGRP-88 — admin de materiales: subidor con progreso e indicador de espacio. El resto del
+   form usa las clases de admin.module.css. */
+
+.subidor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inputOculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.filaAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.archivo {
+  composes: body from "../../../../components/ui/type.module.css";
+  --t-color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  composes: footnote from "../../../../components/ui/type.module.css";
+}
+
+.progreso {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.barra {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+}
+
+.barra::-webkit-progress-bar {
+  background: var(--fill);
+}
+
+.barra::-webkit-progress-value {
+  border-radius: var(--radius-pill);
+  background: var(--accent-fill);
+}
+
+.barra::-moz-progress-bar {
+  border-radius: var(--radius-pill);
+  background: var(--accent-fill);
+}
+
+/* ---- Indicador de espacio (listado) ---- */
+
+.espacio {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+
+.espacioTexto {
+  composes: footnote from "../../../../components/ui/type.module.css";
+}
+
+.espacioAdvertencia {
+  composes: footnote from "../../../../components/ui/type.module.css";
+  --t-color: var(--danger);
+  font-weight: 600;
+}
+
+.espacioBarra {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+}
+
+.espacioLleno {
+  height: 100%;
+  width: var(--p, 0%);
+  border-radius: inherit;
+  background: var(--accent-fill);
+}
+
+.espacioLlenoAdvertencia {
+  composes: espacioLleno;
+  background: var(--danger);
+}
