@@ -8,28 +8,25 @@ import "../test/helpers/load-env";
 
 // =============================================================================
 // VGRP-50 — cierre del Bloque 7: el circuito completo de revalidateTag, con
-// browser real de punta a punta.
+// browser real de punta a punta. Reescrito para el editor de videos del admin
+// (specs/admin-videos-editor): ya no hay formularios separados de alta y edición.
 //
-// VGRP-38 dispara revalidateTag(TAG_POR_ENTIDAD.videos) en cada escritura sobre
-// `videos` desde el panel de admin (app/api/admin/contenido/videos[/:id]/route.ts);
-// VGRP-29 lee esa misma tabla cacheada con unstable_cache + ese tag
-// (lib/data/videos.ts). Este es el único punto de la suite que ejercita las DOS
-// puntas juntas contra un servidor real: un admin CREA un video desde el panel,
-// un usuario ve el título en Inicio, el admin lo EDITA desde el panel, y el
-// usuario recarga y ve el cambio — sin ningún deploy de por medio.
+// El admin toca "+ Agregar video" en la grilla de /admin/contenido/videos, completa
+// el panel y lo CREA; un usuario ve el título en /formacion (VGRP-88: los videos ya no
+// están en Inicio); el admin toca ese video, lo EDITA desde el mismo panel; y el usuario
+// recarga y ve el cambio — sin ningún deploy de por medio. VGRP-38 dispara revalidateTag(TAG_POR_ENTIDAD.videos) en cada
+// escritura sobre `videos`; VGRP-29 lee esa misma tabla cacheada con unstable_cache.
 //
-// A propósito el video se crea (no sólo se edita) a través del panel real, no con
-// un insert directo por service role: un insert directo no dispara
-// revalidateTag(), así que si el proceso del server ya tenía la grilla de stage 2
-// cacheada de una request anterior (muy posible en una suite E2E secuencial),
-// esa fila nueva podría no aparecer todavía — lo cual rompería el test por una
-// razón que no tiene nada que ver con la garantía que se quiere probar. Pasando
-// TODA mutación (alta y edición) por el panel, cada paso deja el caché
-// consistente antes de que el usuario navegue.
+// Toda mutación (alta y edición) pasa por el panel real, no por un insert directo:
+// un insert directo no dispara revalidateTag() y el server podría seguir sirviendo la
+// grilla cacheada de una request anterior.
+//
+// Sin tope de videos por stage (VGRP-88): el test no depende de cuántos videos reales haya.
 // =============================================================================
 
 const admin = createTestAdminClient();
 const PASSWORD = "test-password-1!";
+const STAGE = 2;
 
 async function loginComo(
   page: import("@playwright/test").Page,
@@ -43,48 +40,54 @@ async function loginComo(
   await page.waitForURL("**/dashboard");
 }
 
-test("un admin crea y después edita un video desde /admin/contenido, y el usuario lo ve en /formacion sin deploy (revalidateTag real)", async ({
+test("un admin crea (+ Agregar video) y después edita un video desde /admin/contenido/videos, y el usuario lo ve en /formacion sin deploy (revalidateTag real)", async ({
   page,
   browser,
 }) => {
-  // Dos logins completos (admin + usuario) y cuatro navegaciones: contra el dev
-  // server local (que compila cada ruta la primera vez) tarda ~40s, más que los
-  // 30s por defecto. Contra el build de CI sobra margen.
-  test.setTimeout(60_000);
+  // Dos logins completos (admin + usuario) y varias navegaciones: contra el dev server
+  // local (que compila cada ruta la primera vez) tarda más que los 30s por defecto.
+  test.setTimeout(90_000);
 
   // Prefijo "[test]": red de contención de test/helpers/cleanup.ts si la corrida se corta.
   const tituloOriginal = `[test] Video revalidate ${randomUUID()}`;
   const tituloNuevo = `[test] Video revalidado ${randomUUID()}`;
 
   // VGRP-59/60 (Bloque 13 — plan único): la policy de RLS de `videos`
-  // (videos_select_con_acceso) ahora exige nivel='completo' — antes
-  // 'principiante' ya alcanzaba.
+  // (videos_select_con_acceso) exige nivel='completo'.
   const usuario = await createAuthenticatedUser("completo");
   const contextoAdmin = await browser.newContext();
   const paginaAdmin = await contextoAdmin.newPage();
 
   try {
-    // 1) El admin crea el video desde el panel real (stage 2 — la sección "Formación: armá
+    // 1) El admin crea el video con "+ Agregar video" (Stage 2: la sección "Formación: armá
     // tu tienda" de /formacion). VGRP-88: /formacion solo muestra videos publicados y con
-    // link, así que se cargan los dos desde el form.
+    // link, así que se carga el link en el panel.
     await loginComo(paginaAdmin, SEED_ADMIN_USER.email, SEED_ADMIN_USER.password);
-    await paginaAdmin.goto("/admin/contenido/videos/nuevo");
-    await paginaAdmin.getByLabel("Stage").selectOption("2");
-    await paginaAdmin.getByLabel("Título").fill(tituloOriginal);
-    await paginaAdmin.getByLabel(/Link del video/).fill("https://youtu.be/dQw4w9WgXcQ");
-    await paginaAdmin.getByLabel("Publicado").check();
-    await paginaAdmin.getByRole("button", { name: "Crear" }).click();
-    await paginaAdmin.waitForURL("**/admin/contenido/videos");
+    await paginaAdmin.goto("/admin/contenido/videos");
+    await paginaAdmin.getByRole("button", { name: "+ Agregar video al Stage 2" }).click();
+
+    const panel = paginaAdmin.getByRole("dialog");
+    await expect(panel).toBeVisible();
+    await panel.getByLabel("Título").fill(tituloOriginal);
+    await panel.getByLabel(/Link del video/).fill("https://youtu.be/dQw4w9WgXcQ");
+    // "Publicado" arranca marcado al crear.
+    await expect(panel.getByLabel("Publicado")).toBeChecked();
+    await panel.getByRole("button", { name: "Agregar" }).click();
+    await expect(panel).toBeHidden();
+
+    // La grilla ya muestra el video nuevo (el estado se actualiza con la respuesta de la API).
+    await expect(
+      paginaAdmin.getByRole("button", { name: `Editar ${tituloOriginal}` }),
+    ).toBeVisible();
 
     const { data: video, error: buscarError } = await admin
       .from("videos")
-      .select("id")
+      .select("id, publicado, stage")
       .eq("titulo", tituloOriginal)
-      .eq("stage", 2)
       .single();
     expect(buscarError).toBeNull();
-    const videoId = video?.id as string;
-    expect(videoId).toBeTruthy();
+    expect(video?.stage).toBe(STAGE);
+    expect(video?.publicado).toBe(true);
 
     // Orden bien negativo para que quede primero en su stage (VGRP-88: ya no hay tope de
     // videos, pero así el test no depende de cuántos videos reales haya). Va directo por
@@ -94,7 +97,7 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     const { error: ordenError } = await admin
       .from("videos")
       .update({ orden: -999999 })
-      .eq("id", videoId);
+      .eq("id", video?.id as string);
     expect(ordenError).toBeNull();
 
     // 2) El usuario carga /formacion (VGRP-88: los videos ya no están en Inicio): el
@@ -104,17 +107,29 @@ test("un admin crea y después edita un video desde /admin/contenido, y el usuar
     await page.goto("/formacion");
     await expect(page.getByText(tituloOriginal)).toBeVisible();
 
-    // 3) El admin edita el mismo video.
-    await paginaAdmin.goto(`/admin/contenido/videos/${videoId}`);
-    await paginaAdmin.getByLabel("Título").fill(tituloNuevo);
-    await paginaAdmin.getByRole("button", { name: "Guardar cambios" }).click();
-    await paginaAdmin.waitForURL("**/admin/contenido/videos");
+    // 3) El admin edita el mismo video tocando su casilla.
+    await paginaAdmin.getByRole("button", { name: `Editar ${tituloOriginal}` }).click();
+    await expect(panel).toBeVisible();
+    await panel.getByLabel("Título").fill(tituloNuevo);
+    await panel.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(panel).toBeHidden();
+    await expect(paginaAdmin.getByRole("button", { name: `Editar ${tituloNuevo}` })).toBeVisible();
 
     // 4) El usuario, en su propia sesión, recarga /formacion: sin ningún deploy,
     // revalidateTag ya invalidó la lectura cacheada.
     await page.reload();
     await expect(page.getByText(tituloNuevo)).toBeVisible();
     await expect(page.getByText(tituloOriginal)).toHaveCount(0);
+
+    // 5) El admin DESPUBLICA el video desde el panel: sale de la grilla
+    // y el usuario deja de verlo en /formacion.
+    await paginaAdmin.getByRole("button", { name: `Editar ${tituloNuevo}` }).click();
+    await panel.getByRole("button", { name: "Despublicar" }).click();
+    await expect(panel).toBeHidden();
+    await expect(paginaAdmin.getByText(/Despublicados \(\d+\)/)).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText(tituloNuevo)).toHaveCount(0);
   } finally {
     await contextoAdmin.close();
     await admin.from("videos").delete().eq("titulo", tituloNuevo);

@@ -24,7 +24,7 @@ import { unstable_cache } from "next/cache";
 import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { videoProvider } from "../video/provider";
-import { TAG_POR_ENTIDAD } from "./admin/contenido";
+import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -46,6 +46,8 @@ export interface VideoGridItem {
  * Núcleo testable (cliente inyectado, mismo patrón que lib/data/admin/contenido.ts).
  * Sólo devuelve filas `publicado=true` con `provider_ref` válido — es el único punto con
  * esa decisión, para que un test de integración pueda verificarla directamente (US-3).
+ *
+ * Un video despublicado no aparece: el filtro `publicado = true` va en la consulta.
  */
 export async function obtenerVideosPorStage(
   admin: AdminClient,
@@ -100,7 +102,7 @@ export function armarGrilla(filasOrdenadas: FilaVideo[]): VideoGridItem[] {
 const obtenerVideosPorStageCached = unstable_cache(
   (stage: 1 | 2 | 3) => obtenerVideosPorStage(createServiceRoleClient(), stage),
   ["videos-por-stage"],
-  { tags: [TAG_POR_ENTIDAD.videos] },
+  { tags: [TAG_POR_ENTIDAD.videos], revalidate: REVALIDATE_CONTENIDO_SEGUNDOS },
 );
 
 /**

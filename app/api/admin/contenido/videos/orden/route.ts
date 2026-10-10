@@ -8,11 +8,15 @@
 // se interpreta como el id de un video.
 // =============================================================================
 
+import { requireAdmin } from "@/lib/auth/admin";
 import { reordenar } from "../../reordenar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export function PUT(req: Request): Promise<Response> {
-  return reordenar(req, "videos");
+export async function PUT(req: Request): Promise<Response> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  return reordenar(req, "videos", guard.actorId);
 }

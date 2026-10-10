@@ -311,7 +311,9 @@ describe("GET|POST /api/admin/contenido/[entidad]", () => {
       const videosPath = path.resolve(__dirname, "../../../../../lib/data/videos.ts");
       const contenido = readFileSync(videosPath, "utf8");
 
-      expect(contenido).toContain('import { TAG_POR_ENTIDAD } from "./admin/contenido"');
+      expect(contenido).toContain(
+        'import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido"',
+      );
       expect(contenido).toContain("tags: [TAG_POR_ENTIDAD.videos]");
       // Nunca un string hardcodeado del tag real en este archivo — si
       // apareciera, sería la señal de que alguien lo desacopló del import.

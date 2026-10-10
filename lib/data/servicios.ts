@@ -17,7 +17,7 @@ import { unstable_cache } from "next/cache";
 import type { AppMetadataClaims } from "../auth/claims";
 import type { Database } from "../database.types";
 import { createServiceRoleClient } from "../supabase/service-role";
-import { TAG_POR_ENTIDAD } from "./admin/contenido";
+import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido";
 import { leerConFallback } from "./cache-fallback";
 import { resolverSecreto } from "./secretos";
 
@@ -53,7 +53,7 @@ async function obtenerFilasServicios(admin: AdminClient): Promise<ServicioFila[]
 const obtenerFilasServiciosCached = unstable_cache(
   () => obtenerFilasServicios(createServiceRoleClient()),
   ["servicios-financieros-filas"],
-  { tags: [TAG_POR_ENTIDAD.servicios_financieros] },
+  { tags: [TAG_POR_ENTIDAD.servicios_financieros], revalidate: REVALIDATE_CONTENIDO_SEGUNDOS },
 );
 
 function resolverServicios(

@@ -3,8 +3,10 @@
 // (`PUT /api/admin/contenido/materiales/orden`). Cada route.ts es una línea que lo llama con su
 // entidad; el contrato HTTP es el mismo:
 //
-//   sin sesión ............................ 401
-//   rol != admin .......................... 404 (sin ejecutar lógica)
+// El guard (`requireAdmin()`: sin sesión 401, rol != admin 404) lo llama cada route.ts ANTES
+// de invocar este handler — test/structural/admin-surface.test.ts exige que esté a la vista en
+// cada ruta de app/api/admin/. Acá, ya autenticado el admin:
+//
 //   body inválido / ids repetidos ......... 400 (no toca la base)
 //   algún id no existe .................... 404 (no reordena nada)
 //   ok .................................... 200 { orden } + audit log + revalidateTag
@@ -14,7 +16,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth/admin";
 import { conAuditoria } from "@/lib/data/admin/audit-log";
 import { ItemNoEncontrado, reordenarContenido, TAG_POR_ENTIDAD } from "@/lib/data/admin/contenido";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -27,10 +28,11 @@ const bodySchema = z.object({
     .refine((ids) => new Set(ids).size === ids.length, "ids repetidos"),
 });
 
-export async function reordenar(req: Request, entidad: "videos" | "materiales"): Promise<Response> {
-  const guard = await requireAdmin();
-  if (!guard.ok) return guard.response;
-
+export async function reordenar(
+  req: Request,
+  entidad: "videos" | "materiales",
+  actorId: string,
+): Promise<Response> {
   const body = bodySchema.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return Response.json({ error: "Datos inválidos." }, { status: 400 });
@@ -40,7 +42,7 @@ export async function reordenar(req: Request, entidad: "videos" | "materiales"):
   try {
     const orden = await conAuditoria(
       admin,
-      { actorId: guard.actorId, accion: "reordenar_contenido", entidad },
+      { actorId, accion: "reordenar_contenido", entidad },
       () => reordenarContenido(admin, entidad, body.data.ids),
     );
     revalidateTag(TAG_POR_ENTIDAD[entidad]);

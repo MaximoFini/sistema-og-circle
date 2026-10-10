@@ -1,5 +1,5 @@
-// VGRP-88 — handler compartido de reorden (videos y materiales), mockeado: el contrato HTTP
-// es el de siempre y ahora se prueba para las dos entidades.
+// VGRP-88 — reorden de videos y materiales a través de SU route.ts (guard + handler compartido),
+// mockeado: el contrato HTTP es el de siempre y se prueba para las dos entidades.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -61,7 +61,9 @@ beforeEach(() => {
 
 describe.each(["videos", "materiales"] as const)("reordenar(%s)", (entidad) => {
   const llamar = async (body: unknown) =>
-    (await import("./reordenar")).reordenar(put(body), entidad);
+    entidad === "videos"
+      ? (await import("./videos/orden/route")).PUT(put(body))
+      : (await import("./materiales/orden/route")).PUT(put(body));
 
   it("sin sesión -> 401, no toca nada", async () => {
     mockRequireAdmin.mockResolvedValue({

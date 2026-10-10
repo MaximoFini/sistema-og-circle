@@ -64,12 +64,18 @@ export class UsuarioNoEncontrado extends Error {
 export const ORDENES_USUARIOS = ["recientes", "antiguos", "alfabetico"] as const;
 export type OrdenUsuarios = (typeof ORDENES_USUARIOS)[number];
 
+// Cuentas de prueba (`profiles.es_prueba`): sin valor se OCULTAN; `mostrar` trae
+// todas y `solo` trae únicamente las de prueba.
+export const PRUEBAS_USUARIOS = ["mostrar", "solo"] as const;
+export type PruebasUsuarios = (typeof PRUEBAS_USUARIOS)[number];
+
 export const filtrosUsuariosSchema = z.object({
   q: z.string().trim().min(1).max(200).optional(),
   nivel: z.enum(NIVELES).optional(),
   rol: z.enum(Constants.public.Enums.rol_usuario).optional(),
   terminos: z.enum(["si", "no"]).optional(),
   origen: z.enum(ORIGENES).optional(),
+  pruebas: z.enum(PRUEBAS_USUARIOS).optional(),
   desde: z.iso.datetime().optional(),
   hasta: z.iso.datetime().optional(),
   orden: z.enum(ORDENES_USUARIOS).default("recientes"),
@@ -99,12 +105,13 @@ export interface ListarUsuariosResultado {
  * email, nombre o teléfono resuelta EN LA BASE (US-3: la búsqueda no filtra en
  * cliente, no expone filas que no matchean). Filtros opcionales por `nivel`,
  * `rol`, términos aceptados, origen del registro (VGRP-76) y rango de alta.
+ * Las cuentas de prueba (`es_prueba`) se ocultan salvo que `pruebas` pida verlas.
  */
 export async function listarUsuarios(
   admin: AdminClient,
   filtros: FiltrosUsuarios,
 ): Promise<ListarUsuariosResultado> {
-  const { q, nivel, rol, terminos, origen, desde, hasta, orden, limit, cursor } =
+  const { q, nivel, rol, terminos, origen, pruebas, desde, hasta, orden, limit, cursor } =
     filtrosUsuariosSchema.parse(filtros);
 
   const alfabetico = orden === "alfabetico";
@@ -126,6 +133,7 @@ export async function listarUsuarios(
   if (terminos === "si") query = query.not("terminos_aceptados_at", "is", null);
   if (terminos === "no") query = query.is("terminos_aceptados_at", null);
   if (origen) query = query.eq("origen_registro", origen);
+  if (pruebas !== "mostrar") query = query.eq("es_prueba", pruebas === "solo");
   if (desde) query = query.gte("created_at", desde);
   if (hasta) query = query.lte("created_at", hasta);
 

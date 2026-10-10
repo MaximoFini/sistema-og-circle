@@ -7,6 +7,7 @@ import {
   type Entidad,
   esEntidadValida,
   listarContenido,
+  listarVideosParaEditor,
 } from "@/lib/data/admin/contenido";
 import type { Tables } from "@/lib/database.types";
 import { EXTENSIONES, type ExtensionMaterial, formatearTamano } from "@/lib/materiales/tipos";
@@ -15,14 +16,14 @@ import styles from "../../admin.module.css";
 import { estadoEspacio } from "./espacio";
 import { ListadoReordenable } from "./ListadoReordenableLazy";
 import materialesStyles from "./materiales-admin.module.css";
+import { VideosEditor } from "./VideosEditor";
 
 // VGRP-38 — listado de una entidad de contenido. Server Component: lectura
 // directa por service role (bypassa RLS; la barrera de autorización es el rol
 // de la capa de ruta — middleware + layout), mismo criterio que
 // app/admin/usuarios/page.tsx.
 //
-// VGRP-88: videos y materiales se reordenan arrastrando (ListadoReordenable); materiales
-// suma el indicador de espacio usado de Storage (plan Free, 1 GB).
+// VGRP-88: los materiales se reordenan arrastrando (ListadoReordenable) y suman el indicador de espacio usado de Storage (plan Free, 1 GB).
 
 export const dynamic = "force-dynamic";
 
@@ -34,15 +35,14 @@ const TITULO: Record<string, string> = {
   materiales: "Materiales adicionales",
 };
 
-function subtitulo(entidad: string, item: Record<string, unknown>): string {
-  if (entidad === "videos") return `Stage ${item.stage}`;
+function subtitulo(_entidad: string, item: Record<string, unknown>): string {
   if ("especialidad" in item) return String(item.especialidad ?? "");
   if ("rubro" in item) return String(item.rubro ?? "");
   return "";
 }
 
 function tituloItem(entidad: string, item: Record<string, unknown>): string {
-  if (entidad === "videos" || entidad === "servicios_financieros") return String(item.titulo ?? "");
+  if (entidad === "servicios_financieros") return String(item.titulo ?? "");
   return String(item.nombre ?? "");
 }
 
@@ -86,11 +86,28 @@ function IndicadorEspacio({ materiales }: { materiales: Tables<"materiales">[] }
   );
 }
 
+// Los videos no usan el listado genérico: se editan sobre una réplica de las grillas de
+// /formacion (ver VideosEditor).
+async function ResultadosVideos() {
+  const admin = createServiceRoleClient();
+  const videos = await listarVideosParaEditor(admin);
+
+  return (
+    <>
+      <p className={styles.lede}>
+        Así lo ve el usuario en Formación. Tocá un video para editarlo, agregá uno al final de cada
+        stage y arrastrá los videos de un mismo stage para cambiar su orden.
+      </p>
+      <VideosEditor inicial={videos} />
+    </>
+  );
+}
+
 async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
   const admin = createServiceRoleClient();
   const items = await listarContenido(admin, entidad);
   const campo = campoVigencia(entidad);
-  const reordenable = entidad === "videos" || entidad === "materiales";
+  const reordenable = entidad === "materiales";
 
   return (
     <>
@@ -114,16 +131,6 @@ async function ResultadosContenido({ entidad }: { entidad: Entidad }) {
 
       {items.length === 0 ? (
         <p className={styles.vacio}>Todavía no hay ítems cargados.</p>
-      ) : entidad === "videos" ? (
-        <ListadoReordenable
-          entidad="videos"
-          inicial={(items as Tables<"videos">[]).map((v) => ({
-            id: v.id,
-            titulo: v.titulo,
-            subtitulo: `Stage ${v.stage}`,
-            publicado: v.publicado,
-          }))}
-        />
       ) : entidad === "materiales" ? (
         <ListadoReordenable
           entidad="materiales"
@@ -175,7 +182,7 @@ export default async function ContenidoListaPage({
       <h1 className={styles.h1}>{TITULO[entidad]}</h1>
 
       <Suspense fallback={<p className={styles.vacio}>Cargando contenido…</p>}>
-        <ResultadosContenido entidad={entidad} />
+        {entidad === "videos" ? <ResultadosVideos /> : <ResultadosContenido entidad={entidad} />}
       </Suspense>
     </div>
   );

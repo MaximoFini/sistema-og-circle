@@ -77,7 +77,33 @@ describe("GET /api/agentes — integración real (VGRP-49)", () => {
     expect(item?.publicMeta).toEqual({
       nombre: agente.nombre,
       especialidad: agente.especialidad,
+      fotoUrl: null,
     });
+    expect(JSON.stringify(body)).not.toContain("contacto-real-secreto-de-test");
+  });
+
+  it("sesión sin plan: la foto SÍ llega (es pública) y el contacto sigue bloqueado", async () => {
+    const agente = await crearAgente();
+    const path = `agentes/${agente.id}/${randomUUID()}.webp`;
+    await admin.from("agentes").update({ foto_path: path }).eq("id", agente.id);
+    mockGetVerifiedClaims.mockResolvedValue({
+      sub: "u1",
+      app_metadata: { nivel: "ninguno", rol: "user" },
+    });
+
+    const body = await (await GET()).json();
+    const item = (
+      body.agentes as Array<{
+        id: string;
+        contacto: string | null;
+        publicMeta: { fotoUrl: string | null };
+      }>
+    ).find((a) => a.id === agente.id);
+
+    expect(item?.publicMeta.fotoUrl).toMatch(
+      new RegExp(`/storage/v1/object/public/fotos-directorio/${path}$`),
+    );
+    expect(item?.contacto).toBeNull();
     expect(JSON.stringify(body)).not.toContain("contacto-real-secreto-de-test");
     expect(body.nivelActual).toBe("ninguno");
   });

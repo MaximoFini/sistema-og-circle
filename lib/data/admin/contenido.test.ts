@@ -6,12 +6,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createTestAdminClient } from "../../../test/helpers/db-client";
 import {
   actualizarContenido,
+  armarVideosEditor,
   borrarContenido,
   crearContenido,
   ENTIDADES,
   esEntidadValida,
   ItemNoEncontrado,
   listarContenido,
+  listarVideosParaEditor,
 } from "./contenido";
 
 const admin = createTestAdminClient();
@@ -112,11 +114,13 @@ describe("videos: provider_ref", () => {
 
 describe("borrarContenido", () => {
   it("videos: SIEMPRE soft-delete (publicado=false), nunca borra la fila", async () => {
+    // Se crea sin publicar a propósito: publicar uno nuevo depende del cupo del stage, y
+    // la tabla compartida puede tener videos reales. El soft-delete se comporta igual.
     const creado = await crearContenido(admin, "videos", {
       stage: 1,
       titulo: "Video de test",
       orden: 999,
-      publicado: true,
+      publicado: false,
       // Link de Compartir con `?si=`: se guarda sólo el id.
       provider_ref: "https://youtu.be/dQw4w9WgXcQ?si=gy8t0Yy0cOIeXEeQ",
     });
@@ -161,5 +165,126 @@ describe("borrarContenido", () => {
     await expect(
       borrarContenido(admin, "profesionales", "00000000-0000-0000-0000-000000000000"),
     ).rejects.toThrow(ItemNoEncontrado);
+  });
+});
+
+describe("videos: sin tope por stage y volver a publicar al final", () => {
+  const STAGE = 2;
+
+  async function crearTest(publicado: boolean, titulo: string) {
+    const creado = await crearContenido(admin, "videos", { stage: STAGE, titulo, publicado });
+    idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
+    return creado;
+  }
+
+  it("crear un video publicado nunca se rechaza por la cantidad que ya hay en el stage", async () => {
+    const creado = await crearTest(true, "Publicado sin tope");
+    expect(creado.resultado.publicado).toBe(true);
+  });
+
+  it("publicar un despublicado nunca se rechaza por la cantidad que ya hay en el stage", async () => {
+    const borrador = await crearTest(false, "Borrador a publicar");
+
+    const publicado = await actualizarContenido(admin, "videos", borrador.entidadId as string, {
+      publicado: true,
+    });
+
+    expect(publicado.resultado.publicado).toBe(true);
+  });
+
+  it("al volver a publicar, el video queda AL FINAL (orden mayor que todos los del stage)", async () => {
+    const borrador = await crearTest(false, "Vuelve al final");
+    // Su orden original es el próximo disponible; se mueve más atrás para comprobar
+    // que republicar lo REASIGNA al final y no conserva el lugar anterior.
+    await admin
+      .from("videos")
+      .update({ orden: -500 })
+      .eq("id", borrador.entidadId as string);
+
+    const publicado = await actualizarContenido(admin, "videos", borrador.entidadId as string, {
+      publicado: true,
+    });
+
+    const { data } = await admin.from("videos").select("orden").eq("stage", STAGE);
+    const maximo = Math.max(...(data ?? []).map((v) => v.orden));
+    expect(publicado.resultado.orden).toBe(maximo);
+    expect(publicado.resultado.orden).toBeGreaterThan(-500);
+  });
+});
+
+describe("armarVideosEditor (parte pura)", () => {
+  function fila(
+    n: number,
+    extra: { stage?: 1 | 2 | 3; publicado?: boolean; provider_ref?: string | null } = {},
+  ) {
+    return {
+      id: `id-${n}`,
+      stage: extra.stage ?? 1,
+      titulo: `Video ${n}`,
+      descripcion: null,
+      provider_ref: extra.provider_ref ?? null,
+      publicado: extra.publicado ?? true,
+      orden: n,
+    };
+  }
+
+  it("reparte por stage y separa publicados de despublicados, conservando el orden", () => {
+    const r = armarVideosEditor([
+      fila(1, { stage: 1 }),
+      fila(2, { stage: 2, publicado: false }),
+      fila(3, { stage: 1, publicado: false }),
+      fila(4, { stage: 2 }),
+    ]);
+
+    expect(r[1].publicados.map((v) => v.id)).toEqual(["id-1"]);
+    expect(r[1].despublicados.map((v) => v.id)).toEqual(["id-3"]);
+    expect(r[2].publicados.map((v) => v.id)).toEqual(["id-4"]);
+    expect(r[2].despublicados.map((v) => v.id)).toEqual(["id-2"]);
+  });
+
+  it("sin tope: muestra todos los publicados del stage y deja pasar los despublicados", () => {
+    const filas = Array.from({ length: 16 }, (_, i) => fila(i, { stage: 2 }));
+    const r = armarVideosEditor([...filas, fila(99, { stage: 2, publicado: false })]);
+
+    expect(r[2].publicados.map((v) => v.id)).toEqual(filas.map((v) => v.id));
+    expect(r[2].despublicados.map((v) => v.id)).toEqual(["id-99"]);
+  });
+
+  it("ignora el Stage 3 (fuera de este editor)", () => {
+    const r = armarVideosEditor([fila(1, { stage: 3 })]);
+
+    expect(r[1].publicados).toHaveLength(0);
+    expect(r[2].publicados).toHaveLength(0);
+    expect(Object.keys(r)).toEqual(["1", "2"]);
+  });
+
+  it("la miniatura sólo existe si está publicado y el link es válido", () => {
+    const r = armarVideosEditor([
+      fila(1, { provider_ref: "dQw4w9WgXcQ" }),
+      fila(2, { provider_ref: null }),
+      fila(3, { provider_ref: "dQw4w9WgXcQ", publicado: false }),
+    ]);
+
+    expect(r[1].publicados[0]?.thumbnailUrl).toContain("dQw4w9WgXcQ");
+    expect(r[1].publicados[1]?.thumbnailUrl).toBeNull();
+    expect(r[1].despublicados[0]?.thumbnailUrl).toBeNull();
+    // Al admin sí se le entrega el id para poder editarlo.
+    expect(r[1].despublicados[0]?.providerRef).toBe("dQw4w9WgXcQ");
+  });
+});
+
+describe("listarVideosParaEditor", () => {
+  it("un video despublicado aparece en `despublicados`, no en `publicados`", async () => {
+    const creado = await crearContenido(admin, "videos", {
+      stage: 2,
+      titulo: `Borrador editor ${crypto.randomUUID()}`,
+      publicado: false,
+    });
+    idsCreados.push({ entidad: "videos", id: creado.entidadId as string });
+
+    const r = await listarVideosParaEditor(admin);
+
+    expect(r[2].despublicados.some((v) => v.id === creado.entidadId)).toBe(true);
+    expect(r[2].publicados.some((v) => v.id === creado.entidadId)).toBe(false);
   });
 });

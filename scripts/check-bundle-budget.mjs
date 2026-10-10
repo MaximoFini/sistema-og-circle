@@ -34,6 +34,12 @@ const BUDGET_OVERRIDES_KB = {
   // con la tarjeta de desbloqueo (next/link). Los paneles pesados ya se cargan
   // en diferido.
   "/calculadora/[variante]": 205,
+  // Alta y edición de contenido (VGRP-88): el feature de foto de perfil ya las dejó en 200 kB
+  // exactos (docs/RENDIMIENTO.md, feat/foto-perfil-directorio) y el form de materiales suma
+  // 1 kB (el wrapper `dynamic()` de MaterialFormLazy; el form y el subidor viajan en un chunk
+  // aparte que solo baja con la entidad `materiales`). 201 kB medido.
+  "/admin/contenido/[entidad]/nuevo": 202,
+  "/admin/contenido/[entidad]/[id]": 202,
 };
 
 const ROUTE_LINE = /^[┌├└│]\s*(?:[○●ƒ]\s+)?(\S+)\s+([\d.]+\s?(?:B|kB|MB))\s+([\d.]+\s?(?:B|kB|MB))/;

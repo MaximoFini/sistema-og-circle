@@ -17,6 +17,8 @@ import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database, Json, Tables, TablesInsert, TablesUpdate } from "../../database.types";
+import { tieneFoto } from "../../fotos/constantes";
+import { borrarFoto } from "../../fotos/storage";
 import { borrarObjeto, moverAArchivos, verificarObjeto } from "../../materiales/storage";
 import {
   EXTENSIONES,
@@ -65,6 +67,16 @@ export const TAG_POR_ENTIDAD: Record<Entidad, string> = {
 };
 
 /**
+ * Vencimiento de RESPALDO (segundos) de las lecturas cacheadas de contenido. El
+ * mecanismo principal sigue siendo `revalidateTag` (cada escritura desde el panel de
+ * admin invalida al instante). Sin este piso, un cambio hecho por fuera del panel (un
+ * borrado directo en la base, un insert de un test) quedaba servido para siempre:
+ * el caché de datos de Vercel sobrevive a los deploys. Con él, como mucho una hora.
+ * Mismo criterio que `lib/config` (`revalidate: 3600`).
+ */
+export const REVALIDATE_CONTENIDO_SEGUNDOS = 3600;
+
+/**
  * VGRP-88 — el archivo de un material no sirve (no se subió, está vacío o pasa el tope). Es un
  * error del pedido, no del servidor: las rutas lo devuelven como 400 con este mensaje, que
  * está escrito para que lo lea el admin.
@@ -85,6 +97,10 @@ export class ItemNoEncontrado extends Error {
 
 // -----------------------------------------------------------------------------
 // Schemas de Zod — uno por entidad, porque los campos no coinciden entre sí.
+//
+// `foto_path` (agentes/profesionales) NO está en ningún schema a propósito: Zod
+// descarta las claves desconocidas, así que un POST/PATCH genérico no puede
+// escribirlo. La única vía es PUT|DELETE .../[id]/foto (lib/fotos/mutaciones.ts).
 // -----------------------------------------------------------------------------
 
 const agenteSchema = z.object({
@@ -184,7 +200,7 @@ const SCHEMAS = {
  * helper es el único punto del archivo con un cast a `any` — todo lo que
  * entra o sale de acá sigue tipado por las firmas públicas de abajo.
  */
-function tabla(admin: AdminClient, entidad: Entidad) {
+export function tabla(admin: AdminClient, entidad: Entidad) {
   return (admin as unknown as SupabaseClient).from(entidad);
 }
 
@@ -202,6 +218,82 @@ export async function listarContenido<E extends Entidad>(
     .limit(500);
   if (error) throw error;
   return (data ?? []) as Tables<E>[];
+}
+
+// -----------------------------------------------------------------------------
+// Editor de videos (/admin/contenido/videos) — réplica de las grillas del Inicio.
+// -----------------------------------------------------------------------------
+
+/** Un video tal como lo necesita el editor del admin (a diferencia del Inicio, acá el
+ *  `provider_ref` SÍ viaja: el admin puede verlo y editarlo). */
+export interface VideoEditor {
+  id: string;
+  stage: 1 | 2 | 3;
+  titulo: string;
+  descripcion: string | null;
+  providerRef: string | null;
+  publicado: boolean;
+  orden: number;
+  /** Miniatura ya resuelta: sólo si está publicado y su link es válido, igual que el Inicio. */
+  thumbnailUrl: string | null;
+}
+
+export interface GrillaEditor {
+  /** Los videos de la grilla, por `orden` (todos los publicados, sin tope). */
+  publicados: VideoEditor[];
+  /** Fuera de la grilla: no ocupan casilla. */
+  despublicados: VideoEditor[];
+}
+
+export type VideosParaEditor = Record<1 | 2, GrillaEditor>;
+
+type FilaVideoEditor = Pick<
+  Tables<"videos">,
+  "id" | "stage" | "titulo" | "descripcion" | "provider_ref" | "publicado" | "orden"
+>;
+
+/**
+ * Parte pura de `listarVideosParaEditor`: reparte filas (ya ordenadas por `orden`) en las
+ * dos grillas: publicados (todos, sin tope: es lo que ve el usuario en /formacion) y
+ * despublicados. El Stage 3 no entra (fuera de este editor).
+ */
+export function armarVideosEditor(filasOrdenadas: FilaVideoEditor[]): VideosParaEditor {
+  const resultado: VideosParaEditor = {
+    1: { publicados: [], despublicados: [] },
+    2: { publicados: [], despublicados: [] },
+  };
+
+  for (const fila of filasOrdenadas) {
+    if (fila.stage !== 1 && fila.stage !== 2) continue;
+    const ref =
+      fila.publicado && fila.provider_ref ? videoProvider.parsearRef(fila.provider_ref) : null;
+    const video: VideoEditor = {
+      id: fila.id,
+      stage: fila.stage,
+      titulo: fila.titulo,
+      descripcion: fila.descripcion,
+      providerRef: fila.provider_ref,
+      publicado: fila.publicado,
+      orden: fila.orden,
+      thumbnailUrl: ref ? videoProvider.urlThumbnail(ref) : null,
+    };
+    const grilla = resultado[fila.stage];
+    if (fila.publicado) grilla.publicados.push(video);
+    else grilla.despublicados.push(video);
+  }
+  return resultado;
+}
+
+export async function listarVideosParaEditor(admin: AdminClient): Promise<VideosParaEditor> {
+  const { data, error } = await admin
+    .from("videos")
+    .select("id, stage, titulo, descripcion, provider_ref, publicado, orden")
+    .in("stage", [1, 2])
+    .order("orden", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(500);
+  if (error) throw error;
+  return armarVideosEditor((data ?? []) as FilaVideoEditor[]);
 }
 
 export async function obtenerContenido<E extends Entidad>(
@@ -531,6 +623,16 @@ export async function actualizarContenido<E extends Entidad>(
   if (errorAnterior) throw errorAnterior;
   if (!anterior) throw new ItemNoEncontrado(entidad, id);
 
+  if (entidad === "videos") {
+    const previo = anterior as { publicado: boolean };
+    const cambios = datos as { publicado?: boolean; orden?: number };
+    const publicadoFinal = cambios.publicado ?? previo.publicado;
+    const pasaAPublicado = publicadoFinal && !previo.publicado;
+
+    // Al volver a publicar, el video vuelve al final de su grilla (no a su lugar anterior).
+    if (pasaAPublicado) cambios.orden = await proximoOrden(admin, "videos");
+  }
+
   const { data, error } = await tabla(admin, entidad).update(datos).eq("id", id).select().single();
   if (error) throw error;
 
@@ -569,6 +671,12 @@ export async function borrarContenido<E extends Entidad>(
 
   const { error } = await tabla(admin, entidad).delete().eq("id", id);
   if (error) throw error;
+
+  // Foto de perfil: después del DELETE (si el objeto no se puede borrar queda
+  // huérfano en Storage y va a Sentry, pero la fila ya no existe — nunca al revés).
+  if (tieneFoto(entidad)) {
+    await borrarFoto(admin, (anterior as { foto_path: string | null }).foto_path);
+  }
 
   return {
     resultado: null,

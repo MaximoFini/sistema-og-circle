@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import type { VideoGridItem } from "@/lib/data/videos";
+import { CasillaVideo, type EstadoNodo } from "./CasillaVideo";
 import { useProgresoVideos } from "./ProgresoVideosProvider";
 import styles from "./video.module.css";
 
@@ -43,6 +44,7 @@ export function VideoCard({
   }, [esElInicial]);
 
   const visto = vistos.has(video.id);
+  const nodo: EstadoNodo = visto ? "completado" : "actual";
 
   const botonVisto = (
     <button
@@ -63,68 +65,54 @@ export function VideoCard({
   );
 
   return (
-    <div ref={filaRef} className={styles.fila}>
-      <div className={styles.riel}>
-        <div
-          className={`${styles.nodo} ${visto ? styles.nodoCompletado : styles.nodoActual}`}
-          aria-hidden="true"
-        >
-          {visto ? "✓" : numero}
-        </div>
-        {esUltimo ? null : (
-          <div className={visto ? `${styles.linea} ${styles.lineaLlena}` : styles.linea} />
-        )}
-      </div>
-
-      <div className={styles.contenido}>
-        {expandido && video.embedUrl ? (
-          <>
-            <iframe
-              className={styles.embed}
-              src={video.embedUrl}
-              title={video.titulo}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+    <CasillaVideo filaRef={filaRef} numero={numero} esUltimo={esUltimo} nodo={nodo} disponible>
+      {expandido && video.embedUrl ? (
+        <>
+          <iframe
+            className={styles.embed}
+            src={video.embedUrl}
+            title={video.titulo}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+          <p className={styles.tituloPaso}>{video.titulo}</p>
+          {botonVisto}
+        </>
+      ) : (
+        <div className={styles.filaMedia}>
+          <button
+            type="button"
+            className={styles.thumbBtn}
+            onClick={() => setExpandido(true)}
+            aria-label={`Reproducir ${video.titulo}`}
+          >
+            {video.thumbnailUrl ? (
+              // <img> nativo a propósito: thumbnail externo de YouTube, no un
+              // asset local que next/image pueda optimizar/servir desde este
+              // dominio. width/height = el tamaño pintado (.thumbBtn en
+              // video.module.css, 112×63) — evita CLS. loading="lazy" +
+              // decoding="async": son ~12 imágenes de terceros por carga de
+              // Inicio, ninguna crítica para el primer render (VGRP-56 punto 6).
+              <img
+                className={styles.thumbnailChica}
+                src={video.thumbnailUrl}
+                alt=""
+                width={112}
+                height={63}
+                loading="lazy"
+                decoding="async"
+              />
+            ) : null}
+            <span className={styles.play}>
+              <Icon name="play" size={14} />
+            </span>
+          </button>
+          <div className={styles.textoPaso}>
             <p className={styles.tituloPaso}>{video.titulo}</p>
             {botonVisto}
-          </>
-        ) : (
-          <div className={styles.filaMedia}>
-            <button
-              type="button"
-              className={styles.thumbBtn}
-              onClick={() => setExpandido(true)}
-              aria-label={`Reproducir ${video.titulo}`}
-            >
-              {video.thumbnailUrl ? (
-                // <img> nativo a propósito: thumbnail externo de YouTube, no un
-                // asset local que next/image pueda optimizar/servir desde este
-                // dominio. width/height = el tamaño pintado (.thumbBtn en
-                // video.module.css, 112×63) — evita CLS. loading="lazy" +
-                // decoding="async": son ~12 imágenes de terceros por carga de
-                // Inicio, ninguna crítica para el primer render (VGRP-56 punto 6).
-                <img
-                  className={styles.thumbnailChica}
-                  src={video.thumbnailUrl}
-                  alt=""
-                  width={112}
-                  height={63}
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : null}
-              <span className={styles.play}>
-                <Icon name="play" size={14} />
-              </span>
-            </button>
-            <div className={styles.textoPaso}>
-              <p className={styles.tituloPaso}>{video.titulo}</p>
-              {botonVisto}
-            </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </CasillaVideo>
   );
 }

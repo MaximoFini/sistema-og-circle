@@ -7,11 +7,15 @@
 // interpreta como el id de un material.
 // =============================================================================
 
+import { requireAdmin } from "@/lib/auth/admin";
 import { reordenar } from "../../reordenar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export function PUT(req: Request): Promise<Response> {
-  return reordenar(req, "materiales");
+export async function PUT(req: Request): Promise<Response> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  return reordenar(req, "materiales", guard.actorId);
 }

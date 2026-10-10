@@ -17,8 +17,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import type { AppMetadataClaims } from "../auth/claims";
 import type { Database } from "../database.types";
+import { urlPublicaFoto } from "../fotos/storage";
 import { createServiceRoleClient } from "../supabase/service-role";
-import { TAG_POR_ENTIDAD } from "./admin/contenido";
+import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido";
 import { leerConFallback } from "./cache-fallback";
 import { resolverSecreto } from "./secretos";
 
@@ -30,6 +31,8 @@ export interface ProfesionalPublico {
     nombre: string;
     rubro: string;
     descripcion: string | null;
+    /** Foto de perfil (pública, no gateada). null = sin foto → iniciales. */
+    fotoUrl: string | null;
   };
   contacto: string | null;
 }
@@ -39,6 +42,7 @@ interface ProfesionalFila {
   nombre: string;
   rubro: string;
   descripcion: string | null;
+  foto_path: string | null;
   /** CRUDO — sólo se cachea esto, nunca el resultado ya filtrado por sesión. */
   contacto: string | null;
 }
@@ -46,7 +50,7 @@ interface ProfesionalFila {
 async function obtenerFilasProfesionales(admin: AdminClient): Promise<ProfesionalFila[]> {
   const { data, error } = await admin
     .from("profesionales")
-    .select("id, nombre, rubro, descripcion, contacto")
+    .select("id, nombre, rubro, descripcion, foto_path, contacto")
     .eq("activo", true)
     .order("orden", { ascending: true });
   if (error) throw error;
@@ -56,7 +60,7 @@ async function obtenerFilasProfesionales(admin: AdminClient): Promise<Profesiona
 const obtenerFilasProfesionalesCached = unstable_cache(
   () => obtenerFilasProfesionales(createServiceRoleClient()),
   ["profesionales-filas"],
-  { tags: [TAG_POR_ENTIDAD.profesionales] },
+  { tags: [TAG_POR_ENTIDAD.profesionales], revalidate: REVALIDATE_CONTENIDO_SEGUNDOS },
 );
 
 function resolverProfesionales(
@@ -69,6 +73,7 @@ function resolverProfesionales(
       nombre: fila.nombre,
       rubro: fila.rubro,
       descripcion: fila.descripcion,
+      fotoUrl: urlPublicaFoto(fila.foto_path),
     },
     contacto: resolverSecreto(claims, fila.contacto),
   }));
