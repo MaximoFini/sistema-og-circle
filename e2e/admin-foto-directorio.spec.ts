@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import sharp from "sharp";
 import { FOTO_BUCKET } from "../lib/fotos/constantes";
 import { createAuthenticatedUser } from "../test/helpers/auth";
@@ -30,6 +30,20 @@ async function loginComo(page: Page, email: string, password: string): Promise<v
   await page.waitForURL("**/dashboard");
 }
 
+// `goto` espera el `load`, no la hidratación: en CI el archivo puede llegar a un
+// <input type="file"> que todavía no tiene el onChange de React y se pierde (el
+// editor nunca abre). Se reintenta hasta que la UI reaccione.
+async function elegirArchivo(
+  input: Locator,
+  archivo: { name: string; mimeType: string; buffer: Buffer },
+  reacciona: () => Promise<void>,
+): Promise<void> {
+  await expect(async () => {
+    await input.setInputFiles(archivo);
+    await reacciona();
+  }).toPass({ timeout: 20_000 });
+}
+
 async function jpeg(ancho: number, alto: number): Promise<Buffer> {
   return sharp({
     create: { width: ancho, height: alto, channels: 3, background: { r: 30, g: 110, b: 220 } },
@@ -56,12 +70,14 @@ test("un admin carga, encuadra y quita la foto de un agente, y el usuario la ve 
     const inputFoto = paginaAdmin.getByLabel("Elegir foto de perfil");
 
     // 1) Archivos inválidos: se rechazan en el cliente, sin abrir el editor.
-    await inputFoto.setInputFiles({
-      name: "foto.jpg",
-      mimeType: "image/jpeg",
-      buffer: Buffer.from("no soy una imagen"),
-    });
-    await expect(paginaAdmin.getByText("Formato no permitido. Usá JPG, PNG o WebP.")).toBeVisible();
+    await elegirArchivo(
+      inputFoto,
+      { name: "foto.jpg", mimeType: "image/jpeg", buffer: Buffer.from("no soy una imagen") },
+      () =>
+        expect(paginaAdmin.getByText("Formato no permitido. Usá JPG, PNG o WebP.")).toBeVisible({
+          timeout: 2_000,
+        }),
+    );
 
     await inputFoto.setInputFiles({
       name: "chica.jpg",
@@ -114,11 +130,11 @@ test("un admin carga, encuadra y quita la foto de un agente, y el usuario la ve 
 
     // 5) Cancelar el editor conserva la foto guardada.
     await paginaAdmin.goto(`/admin/contenido/agentes/${agenteId}`);
-    await paginaAdmin.getByLabel("Elegir foto de perfil").setInputFiles({
-      name: "otra.jpg",
-      mimeType: "image/jpeg",
-      buffer: await jpeg(700, 700),
-    });
+    await elegirArchivo(
+      paginaAdmin.getByLabel("Elegir foto de perfil"),
+      { name: "otra.jpg", mimeType: "image/jpeg", buffer: await jpeg(700, 700) },
+      () => expect(editor).toBeVisible({ timeout: 2_000 }),
+    );
     await editor.getByRole("button", { name: "Cancelar" }).click();
     await expect(editor).toBeHidden();
     await expect(paginaAdmin.getByRole("button", { name: "Quitar foto" })).toBeVisible();
