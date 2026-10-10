@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
+import { ContactoDirectorio } from "./ContactoDirectorio";
 import styles from "./inicio.module.css";
 
 interface AgenteRespuesta {
@@ -71,7 +72,9 @@ export function AgentesGrid() {
             </span>
           </span>
           <ContenidoBloqueado bloqueado={agente.contacto === null}>
-            <p className={styles.contacto}>{agente.contacto}</p>
+            {agente.contacto !== null ? (
+              <ContactoDirectorio contacto={agente.contacto} nombre={agente.publicMeta.nombre} />
+            ) : null}
           </ContenidoBloqueado>
         </div>
       ))}

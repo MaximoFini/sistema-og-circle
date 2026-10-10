@@ -331,6 +331,21 @@
   overflow-wrap: anywhere;
 }
 
+/* Contacto + botón de WhatsApp, al pie de la tarjeta: con `margin-top: auto` los botones
+   quedan alineados entre tarjetas de la misma fila aunque las descripciones midan distinto. */
+.contactoBloque {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+}
+
+/* Link con look de botón primario compacto (mismo criterio que .ctaBanner). */
+.ctaWhatsapp {
+  composes: button primary small from "../ui/Button.module.css";
+  align-self: flex-start;
+}
+
 .estado {
   margin: 0;
   font-size: var(--fs-callout);
