@@ -148,7 +148,9 @@ test("un admin carga, encuadra y quita la foto de un agente, y el usuario la ve 
       .last();
     await expect(tarjetaSinFoto.locator("img")).toHaveCount(0);
   } finally {
-    await contextoAdmin.close();
+    // Si el test venció por timeout, close() tira "Test ended" y esa excepción
+    // reemplazaría al error original (el paso donde se trabó) en el reporte.
+    await contextoAdmin.close().catch(() => {});
     if (agenteId) {
       const { data } = await admin.storage.from(FOTO_BUCKET).list(`agentes/${agenteId}`);
       const paths = (data ?? []).map((o) => `agentes/${agenteId}/${o.name}`);

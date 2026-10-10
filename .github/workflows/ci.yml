@@ -82,6 +82,16 @@ jobs:
         if: ${{ env.SUPABASE_SERVICE_ROLE_KEY != '' }}
         run: pnpm test:e2e
 
+      # Traces de Playwright (trace: "on-first-retry") para diagnosticar un E2E
+      # que falla sólo en CI: sin esto, lo único que queda es el log.
+      - name: Subir resultados de Playwright
+        if: ${{ failure() && env.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 7
+
       # Corre siempre (incluso si el E2E falla) como red de seguridad además
       # del globalTeardown de Playwright: "nada queda residual" es un
       # criterio de aceptación del ticket, no algo opcional.
