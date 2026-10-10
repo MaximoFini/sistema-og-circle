@@ -45,6 +45,22 @@ const GLOSARIO = {
 
 export type Concepto = keyof typeof GLOSARIO;
 
+// Ayuda puntual junto a un renglón: la misma definición del glosario, sin
+// obligar a abrirlo. Sólo CSS (hover y foco), sin estado ni JS propio.
+export function InfoTip({ termino }: { termino: Concepto }) {
+  const [titulo, definicion] = GLOSARIO[termino];
+  return (
+    <button
+      type="button"
+      className={styles.tip}
+      data-tip={definicion}
+      aria-label={`${titulo}: ${definicion}`}
+    >
+      i
+    </button>
+  );
+}
+
 export function Conceptos({ terminos }: { terminos: readonly Concepto[] }) {
   return (
     <details className={styles.conceptos}>

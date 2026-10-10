@@ -84,24 +84,27 @@ export function MarketingAnalysis({ producto, ncm, resumenCostos }: MarketingAna
           Análisis de comercialización (IA)
         </h2>
         <p className={styles.subtitulo}>
-          Estrategia de marketing y precio sugerido para el mercado argentino, en base al costo
-          real.
+          Marketing y precio sugerido para Argentina, según tu costo real. Opcional.
         </p>
       </div>
 
-      <div className={styles.campo}>
-        <label className={styles.label} htmlFor={`${id}-contexto`}>
-          Contexto adicional (opcional)
-        </label>
-        <textarea
-          id={`${id}-contexto`}
-          className={styles.textarea}
-          rows={2}
-          value={contexto}
-          onChange={(e) => setContexto(e.target.value)}
-          placeholder="Ej: apuntamos a e-commerce, competencia con producto local, temporada alta…"
-        />
-      </div>
+      {/* Opcional: cerrado de entrada; el texto cargado se conserva al plegarlo. */}
+      <details className={styles.contextoOpcional}>
+        <summary className={styles.contextoResumen}>Agregar contexto (opcional)</summary>
+        <div className={styles.campo}>
+          <label className={styles.label} htmlFor={`${id}-contexto`}>
+            Contexto adicional
+          </label>
+          <textarea
+            id={`${id}-contexto`}
+            className={styles.textarea}
+            rows={2}
+            value={contexto}
+            onChange={(e) => setContexto(e.target.value)}
+            placeholder="Ej: apuntamos a e-commerce, competencia con producto local, temporada alta…"
+          />
+        </div>
+      </details>
 
       <Button fullWidth onClick={run} loading={loading} disabled={!producto}>
         Generar análisis de marketing

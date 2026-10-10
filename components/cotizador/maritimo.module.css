@@ -159,6 +159,21 @@
 /* Encabezado de sub-bloque (ex .mar-section)                           */
 /* ------------------------------------------------------------------ */
 
+/* Desglose completo plegado (<details> nativo). */
+.detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detalleResumen {
+  composes: resumenPlegable from "./cotizador.module.css";
+}
+
+.detalle[open] > .detalleResumen {
+  margin-bottom: 8px;
+}
+
 .seccion {
   composes: cardTitle from "../ui/type.module.css";
   --t-size: var(--fs-subhead);
@@ -271,6 +286,11 @@
   .totalBox {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+/* El costo real va justo debajo de los datos de la carga. */
+.meta + .totalBox {
+  margin: 16px 0;
 }
 
 .totalBoxClave {

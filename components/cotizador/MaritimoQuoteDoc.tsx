@@ -23,6 +23,7 @@ import {
   type Puerto,
 } from "@/lib/cotizador/tarifasMaritimo";
 import type { FiscalMaritimo, ResultadoAmbas } from "@/lib/cotizador/types";
+import { WHATSAPP_VEGROUP_LEGIBLE } from "@/lib/cotizador/whatsappVegroup";
 import styles from "./MaritimoQuoteDoc.module.css";
 import { notaFlete } from "./notaFlete";
 
@@ -240,7 +241,8 @@ export function MaritimoQuoteDoc({ refNumber, fecha, datos, res }: MaritimoQuote
         </table>
 
         <div className={styles.firma}>
-          <strong>OG Circle</strong> — Asesoramiento integral en comercio exterior.
+          <strong>OG Circle</strong> — Asesoramiento integral en comercio exterior · WhatsApp{" "}
+          {WHATSAPP_VEGROUP_LEGIBLE}
         </div>
         <div className={styles.disclaimer}>
           El presente presupuesto es estimado. El flete y el tipo de cambio son los del día de

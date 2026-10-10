@@ -1,10 +1,14 @@
 "use client";
 
 // VGRP-57 — ex vegroup@b550803 src/components/RouteBreakdown.jsx, en Liquid
-// Glass. Mismo contenido, mismas líneas y mismo orden que el original; cambia
-// el cómo se ve (ver specs/bloque-12-calculadoras/design-vgrp57.md → "UI: port
-// a Liquid Glass"). Lo carga CotizadorCourier con next/dynamic.
+// Glass. Mismo contenido y mismos números que el original; cambia el cómo se
+// ve (ver specs/bloque-12-calculadoras/design-vgrp57.md → "UI: port a Liquid
+// Glass"). Lo carga CotizadorCourier con next/dynamic.
 //
+// - Siempre visible: el costo real (protagonista), por unidad y por kg, lo que
+//   se paga al proveedor y en destino, el total, y el costo en cada depósito.
+// - El desglose de todos los conceptos va en un <details> cerrado: es un dato
+//   de consulta (y sale completo en el PDF), no lo primero que se necesita.
 // - El desglose es una <table> (concepto como <th scope="row">, monto USD a la
 //   derecha) partida en <tbody> por grupo, como los rótulos del original.
 // - No recuperable vs recuperable: el original lo marcaba sólo con fondo rojo
@@ -14,9 +18,9 @@
 // - Sin `routeId`, las 3 rutas son un radio group (antes, divs clickeables).
 
 import { useId, useState } from "react";
-import { fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
+import { costoRealPesos, costoRealPorKg, fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
 import type { ClaveEtiqueta, GastosDestino, ResultadoRutas, RutaId } from "@/lib/cotizador/types";
-import { Conceptos } from "./Conceptos";
+import { type Concepto, Conceptos, InfoTip } from "./Conceptos";
 import styles from "./RouteBreakdown.module.css";
 
 // Mismo orden de líneas que la planilla madre (B17–B26 y B30). El FOB se
@@ -37,6 +41,14 @@ const DESTINO_ORDER: (keyof GastosDestino)[] = [
 ];
 const GREEN_ORDER: "iva"[] = ["iva"];
 
+// Renglones del desglose que tienen definición en el glosario.
+const AYUDA_LINEA: Partial<Record<ClaveEtiqueta, Concepto>> = {
+  derechos: "die",
+  estadistica: "te",
+  iva: "iva",
+  volumetrico: "volumetrico",
+};
+
 export interface RouteBreakdownProps {
   /** Lo que devuelve calcAllRoutes(): las 3 rutas y la más conveniente. */
   data: ResultadoRutas;
@@ -56,27 +68,31 @@ function Linea({
   monto: number;
   tipo: "noRecuperable" | "recuperable";
 }) {
+  const ayuda = AYUDA_LINEA[clave];
   return (
     <tr className={styles[tipo]}>
       <th scope="row" className={styles.concepto}>
         <span className={styles.punto} aria-hidden="true" />
         {LABELS[clave]}
+        {ayuda && <InfoTip termino={ayuda} />}
       </th>
       <td className={styles.monto}>{fmtUSD(monto)}</td>
     </tr>
   );
 }
 
-// Resumen de la cotización. Con `routeId` muestra el desglose del depósito
-// elegido (y las otras rutas como referencia); sin él, las 3 rutas clickeables.
+// Resumen de la cotización. Con `routeId` muestra el resumen del depósito
+// elegido (y el costo en los otros como comparación); sin él, las 3 rutas
+// clickeables.
 export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
   const { results, mejorRuta } = data;
   const [active, setActive] = useState<RutaId>(routeId || mejorRuta);
   const current = results.find((r) => r.route === (routeId || active)) || results[0];
-  const otras = results.filter((r) => r.route !== current.route);
   const id = useId();
   const tituloId = `${id}-titulo`;
   const desgloseId = `${id}-desglose`;
+  const destinoConIva = current.totalGastosDestino + current.recuperable.iva;
+  const pesosCostoReal = costoRealPesos(current);
 
   return (
     <section className={styles.card} aria-labelledby={tituloId}>
@@ -88,11 +104,9 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
           {routeId ? `Resumen — depósito ${current.label}` : "Costo por ruta"}
         </h2>
         <p className={styles.subtitulo}>
-          Costo real puesto acá: lo que le pagás al proveedor (FOB) más lo que pagás en destino (sin
-          IVA recuperable).
           {routeId
-            ? ` Tiempo estimado ${current.tiempoEstimado}.`
-            : " La ruta más conveniente aparece destacada."}
+            ? `Tiempo estimado ${current.tiempoEstimado}.`
+            : "La ruta más conveniente aparece destacada."}
         </p>
       </div>
 
@@ -131,105 +145,30 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
         </fieldset>
       )}
 
-      {/* Desglose detallado */}
       <div className={styles.detalle}>
-        <h3 className={styles.desgloseTitulo} id={desgloseId}>
-          Desglose — {current.label}{" "}
-          <span className={styles.desgloseTiempo}>· tiempo estimado {current.tiempoEstimado}</span>
-        </h3>
-        <ul className={styles.leyenda}>
-          <li className={styles.noRecuperable}>
-            <span className={styles.punto} aria-hidden="true" />
-            No recuperable (costo real)
-          </li>
-          <li className={styles.recuperable}>
-            <span className={styles.punto} aria-hidden="true" />
-            Recuperable (crédito fiscal)
-          </li>
-        </ul>
-
-        <table className={styles.desglose} aria-labelledby={desgloseId}>
-          <thead className={styles.srOnly}>
-            <tr>
-              <th scope="col">Concepto</th>
-              <th scope="col">USD</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className={styles.referencia}>
-              <th scope="row" className={styles.concepto}>
-                {LABELS.cif}
-              </th>
-              <td className={styles.monto}>{fmtUSD(current.cif)}</td>
-            </tr>
-          </tbody>
-
-          <tbody>
-            <tr>
-              <th scope="rowgroup" colSpan={2} className={styles.grupo}>
-                Lo que le pagás a tu proveedor
-              </th>
-            </tr>
-            <Linea clave="fob" monto={current.fob} tipo="noRecuperable" />
-          </tbody>
-
-          <tbody>
-            <tr>
-              <th scope="rowgroup" colSpan={2} className={styles.grupo}>
-                Lo que pagás en destino (gastos de importación)
-              </th>
-            </tr>
-            {DESTINO_ORDER.map((k) => (
-              <Linea key={k} clave={k} monto={current.noRecuperable[k]} tipo="noRecuperable" />
-            ))}
-            <tr className={styles.subtotal}>
-              <th scope="row" className={styles.concepto}>
-                Subtotal gastos en destino
-              </th>
-              <td className={`${styles.monto} ${styles.montoNoRecuperable}`}>
-                {fmtUSD(current.totalGastosDestino)}
-              </td>
-            </tr>
-          </tbody>
-
-          <tbody>
-            <tr className={styles.subtotal}>
-              <th scope="row" className={styles.concepto}>
-                Total no recuperable (proveedor + destino)
-              </th>
-              <td className={`${styles.monto} ${styles.montoNoRecuperable}`}>
-                {fmtUSD(current.totalNoRecuperable)}
-              </td>
-            </tr>
-          </tbody>
-
-          <tbody>
-            {GREEN_ORDER.map((k) => (
-              <Linea key={k} clave={k} monto={current.recuperable[k]} tipo="recuperable" />
-            ))}
-            <tr className={styles.subtotal}>
-              <th scope="row" className={styles.concepto}>
-                Total recuperable
-              </th>
-              <td className={`${styles.monto} ${styles.montoRecuperable}`}>
-                {fmtUSD(current.totalRecuperable)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {current.volumen > 0 && (
-          <p className={styles.aviso} role="note">
-            Peso volumétrico ({current.pesoVolumetrico.toFixed(1)} kg) supera al real: se cobran{" "}
-            {current.volumen.toFixed(1)} kg de exceso volumétrico.
-          </p>
-        )}
-
         <div className={styles.totales}>
+          <dl className={styles.principal}>
+            <div className={styles.total}>
+              <dt className={styles.totalClave}>Costo real puesto acá (sin IVA recuperable)</dt>
+              <dd className={styles.totalDestacado}>{fmtUSD(current.costoRealEfectivo)}</dd>
+              {pesosCostoReal != null && (
+                <dd className={styles.totalNota}>{fmtARS(pesosCostoReal)} en pesos</dd>
+              )}
+            </div>
+            <div className={styles.total}>
+              <dt className={styles.totalClave}>Costo real por unidad</dt>
+              <dd className={styles.totalAcento}>{fmtUSD(current.costoPorUnidad)}</dd>
+            </div>
+            <div className={styles.total}>
+              <dt className={styles.totalClave}>Costo real por kg</dt>
+              <dd className={styles.totalValor}>{fmtUSD(costoRealPorKg(current))}</dd>
+            </div>
+          </dl>
+
           <dl className={styles.totalesPago}>
             <div className={styles.total}>
               <dt className={styles.totalClave}>Lo que pagás a tu proveedor</dt>
-              <dd className={styles.totalDestacado}>{fmtUSD(current.fob)}</dd>
+              <dd className={styles.totalValor}>{fmtUSD(current.fob)}</dd>
               {current.proveedorPesos != null && (
                 <dd className={styles.totalNota}>
                   {fmtARS(current.proveedorPesos)} (CCL ${current.dolarCCL})
@@ -241,73 +180,160 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
               <dd className={styles.destino}>
                 <dl className={styles.destinoPar}>
                   <div className={styles.total}>
-                    <dt className={styles.totalClave}>Con IVA</dt>
-                    <dd className={styles.totalAcento}>
-                      {fmtUSD(current.totalGastosDestino + current.recuperable.iva)}
-                    </dd>
+                    <dt className={styles.totalClave}>Sin IVA</dt>
+                    <dd className={styles.totalValor}>{fmtUSD(current.totalGastosDestino)}</dd>
                   </div>
                   <div className={styles.total}>
-                    <dt className={styles.totalClave}>Sin IVA</dt>
-                    <dd className={styles.totalAcento}>{fmtUSD(current.totalGastosDestino)}</dd>
+                    <dt className={styles.totalClave}>Con IVA</dt>
+                    <dd className={styles.totalValor}>{fmtUSD(destinoConIva)}</dd>
                   </div>
                 </dl>
               </dd>
               {current.destinoPesos != null && (
                 <dd className={styles.totalNota}>
-                  {fmtARS(current.destinoPesos + (current.ivaPesos || 0))} con IVA ·{" "}
-                  {fmtARS(current.destinoPesos)} sin IVA (BNA ${current.dolarBN})
+                  {fmtARS(current.destinoPesos)} sin IVA ·{" "}
+                  {fmtARS(current.destinoPesos + (current.ivaPesos || 0))} con IVA (BNA $
+                  {current.dolarBN})
+                </dd>
+              )}
+            </div>
+            <div className={styles.total}>
+              <dt className={styles.totalClave}>Total USD</dt>
+              <dd className={styles.totalValor}>{fmtUSD(current.totalUSD)}</dd>
+              {current.totalPesos != null && (
+                <dd className={styles.totalNota}>
+                  {fmtARS(current.totalPesos)} en pesos
+                  {/* `> 0` y no `a && b`: con un dólar en 0, React imprimía un "0" suelto (B12-02). */}
+                  {Number(current.dolarCCL) > 0 &&
+                    Number(current.dolarBN) > 0 &&
+                    current.dolarCCL !== current.dolarBN &&
+                    ` · FOB × CCL $${current.dolarCCL} + destino × BNA $${current.dolarBN}`}
                 </dd>
               )}
             </div>
           </dl>
-
-          <dl className={styles.totalesResumen}>
-            <div className={styles.total}>
-              <dt className={styles.totalClave}>Total USD</dt>
-              <dd className={styles.totalDestacado}>{fmtUSD(current.totalUSD)}</dd>
-            </div>
-            {current.totalPesos != null && (
-              <div className={styles.total}>
-                <dt className={styles.totalClave}>Total en pesos</dt>
-                <dd className={styles.totalValor}>{fmtARS(current.totalPesos)}</dd>
-                {/* `> 0` y no `a && b`: con un dólar en 0, React imprimía un "0" suelto (B12-02). */}
-                {Number(current.dolarCCL) > 0 &&
-                  Number(current.dolarBN) > 0 &&
-                  current.dolarCCL !== current.dolarBN && (
-                    <dd className={styles.totalNota}>
-                      FOB × CCL ${current.dolarCCL} + destino × BNA ${current.dolarBN}
-                    </dd>
-                  )}
-              </div>
-            )}
-            <div className={styles.total}>
-              <dt className={styles.totalClave}>Costo por kg</dt>
-              <dd className={styles.totalValor}>{fmtUSD(current.costoPorKg)}</dd>
-            </div>
-            <div className={styles.total}>
-              <dt className={styles.totalClave}>
-                Costo real puesto acá — proveedor + destino (sin IVA)
-              </dt>
-              <dd className={styles.totalAcento}>{fmtUSD(current.costoRealEfectivo)}</dd>
-            </div>
-            <div className={styles.total}>
-              <dt className={styles.totalClave}>Costo por unidad</dt>
-              <dd className={styles.totalAcento}>{fmtUSD(current.costoPorUnidad)}</dd>
-            </div>
-          </dl>
         </div>
 
-        {routeId && otras.length > 0 && (
-          <p className={styles.otras}>
-            Referencia otras rutas:{" "}
-            {otras.map((r, i) => (
-              <span key={r.route}>
-                {i > 0 && " · "}
-                {r.label} {fmtUSD(r.costoRealEfectivo)} ({r.tiempoEstimado})
-              </span>
-            ))}
+        {current.volumen > 0 && (
+          <p className={styles.aviso} role="note">
+            Peso volumétrico ({current.pesoVolumetrico.toFixed(1)} kg) supera al real: se cobran{" "}
+            {current.volumen.toFixed(1)} kg de exceso volumétrico.
           </p>
         )}
+
+        {routeId && (
+          <table className={styles.comparador} aria-label="Costo real en cada depósito">
+            <thead className={styles.srOnly}>
+              <tr>
+                <th scope="col">Depósito</th>
+                <th scope="col">Costo real</th>
+                <th scope="col">Tiempo estimado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((r) => (
+                <tr
+                  key={r.route}
+                  className={r.route === current.route ? styles.filaElegida : undefined}
+                >
+                  <th scope="row" className={styles.concepto}>
+                    {r.label}
+                    {r.route === current.route && <span className={styles.badge}>Elegido</span>}
+                  </th>
+                  <td className={styles.monto}>{fmtUSD(r.costoRealEfectivo)}</td>
+                  <td className={styles.tiempo}>{r.tiempoEstimado}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <details className={styles.desgloseDetalle}>
+          <summary className={styles.desgloseResumen} id={desgloseId}>
+            Ver el desglose completo de {current.label}
+          </summary>
+          <ul className={styles.leyenda}>
+            <li className={styles.noRecuperable}>
+              <span className={styles.punto} aria-hidden="true" />
+              No recuperable (costo real)
+            </li>
+            <li className={styles.recuperable}>
+              <span className={styles.punto} aria-hidden="true" />
+              Recuperable (crédito fiscal)
+            </li>
+          </ul>
+
+          <table className={styles.desglose} aria-labelledby={desgloseId}>
+            <thead className={styles.srOnly}>
+              <tr>
+                <th scope="col">Concepto</th>
+                <th scope="col">USD</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className={styles.referencia}>
+                <th scope="row" className={styles.concepto}>
+                  {LABELS.cif}
+                  <InfoTip termino="cif" />
+                </th>
+                <td className={styles.monto}>{fmtUSD(current.cif)}</td>
+              </tr>
+            </tbody>
+
+            <tbody>
+              <tr>
+                <th scope="rowgroup" colSpan={2} className={styles.grupo}>
+                  Lo que le pagás a tu proveedor
+                </th>
+              </tr>
+              <Linea clave="fob" monto={current.fob} tipo="noRecuperable" />
+            </tbody>
+
+            <tbody>
+              <tr>
+                <th scope="rowgroup" colSpan={2} className={styles.grupo}>
+                  Lo que pagás en destino (gastos de importación)
+                </th>
+              </tr>
+              {DESTINO_ORDER.map((k) => (
+                <Linea key={k} clave={k} monto={current.noRecuperable[k]} tipo="noRecuperable" />
+              ))}
+              <tr className={styles.subtotal}>
+                <th scope="row" className={styles.concepto}>
+                  Subtotal gastos en destino
+                </th>
+                <td className={`${styles.monto} ${styles.montoNoRecuperable}`}>
+                  {fmtUSD(current.totalGastosDestino)}
+                </td>
+              </tr>
+            </tbody>
+
+            <tbody>
+              <tr className={styles.subtotal}>
+                <th scope="row" className={styles.concepto}>
+                  Total no recuperable (proveedor + destino)
+                </th>
+                <td className={`${styles.monto} ${styles.montoNoRecuperable}`}>
+                  {fmtUSD(current.totalNoRecuperable)}
+                </td>
+              </tr>
+            </tbody>
+
+            <tbody>
+              {GREEN_ORDER.map((k) => (
+                <Linea key={k} clave={k} monto={current.recuperable[k]} tipo="recuperable" />
+              ))}
+              <tr className={styles.subtotal}>
+                <th scope="row" className={styles.concepto}>
+                  Total recuperable
+                </th>
+                <td className={`${styles.monto} ${styles.montoRecuperable}`}>
+                  {fmtUSD(current.totalRecuperable)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </details>
 
         <Conceptos terminos={["cif", "die", "te", "iva", "recuperable", "volumetrico"]} />
       </div>

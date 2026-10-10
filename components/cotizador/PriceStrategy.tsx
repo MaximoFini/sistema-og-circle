@@ -157,6 +157,12 @@ const TONO_TEXTO: Record<Aviso["tono"], string> = {
   dato: "Dato",
 };
 
+// Qué aviso va primero: el que más le puede costar plata al usuario.
+const PRIORIDAD_TONO: Record<Aviso["tono"], number> = { riesgo: 0, ojo: 1, dato: 2 };
+
+/** Canales que se ven de entrada (los más baratos); el resto, en "Comparar". */
+const CANALES_VISIBLES = 3;
+
 /* ================================================================== */
 
 // Estrategia de venta posterior al cálculo de importación: a partir del
@@ -174,6 +180,7 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
   const [unidades, setUnidades] = useState(ESTADO_INICIAL.unidades);
 
   const [avanzado, setAvanzado] = useState(false);
+  const [verTodosCanales, setVerTodosCanales] = useState(false);
   const [ivaRecuperable, setIvaRecuperable] = useState(ESTADO_INICIAL.ivaRecuperable);
   const [mix, setMix] = useState(ESTADO_INICIAL.mix);
   const [planes, setPlanes] = useState(ESTADO_INICIAL.planes);
@@ -254,6 +261,42 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
     () => evaluarEstrategia(estado),
     [estado],
   );
+
+  // El canal elegido siempre se ve, aunque no esté entre los más baratos.
+  const canalesVisibles = verTodosCanales
+    ? ranking
+    : ranking.filter((f, i) => i < CANALES_VISIBLES || f.k === canalKey);
+
+  // Un solo aviso de entrada (el más relevante); el resto, plegado.
+  const avisosOrdenados = [...avisos].sort(
+    (a, b) => PRIORIDAD_TONO[a.tono] - PRIORIDAD_TONO[b.tono],
+  );
+  const [avisoPrincipal, ...avisosExtra] = avisosOrdenados;
+
+  function renderAviso(a: Aviso) {
+    return (
+      <li key={a.id} className={cx(styles.aviso, styles[`tono_${a.tono}`])}>
+        <span className={styles.avisoPunto} aria-hidden="true" />
+        <div className={styles.avisoCuerpo}>
+          <p className={styles.avisoTitulo}>
+            <span className={styles.srOnly}>{TONO_TEXTO[a.tono]}: </span>
+            {a.titulo}
+          </p>
+          <p className={styles.avisoTexto}>{a.cuerpo}</p>
+          {a.accion && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => aplicar(a)}
+              className={styles.avisoAccion}
+            >
+              {a.accion.texto}
+            </Button>
+          )}
+        </div>
+      </li>
+    );
+  }
 
   function aplicar(a: Aviso) {
     if (!a.accion) return;
@@ -495,30 +538,21 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
             </dl>
           )}
 
-          {avisos.length > 0 && (
+          {avisoPrincipal && (
             <ul className={styles.avisos}>
-              {avisos.map((a) => (
-                <li key={a.id} className={cx(styles.aviso, styles[`tono_${a.tono}`])}>
-                  <span className={styles.avisoPunto} aria-hidden="true" />
-                  <div className={styles.avisoCuerpo}>
-                    <p className={styles.avisoTitulo}>
-                      <span className={styles.srOnly}>{TONO_TEXTO[a.tono]}: </span>
-                      {a.titulo}
-                    </p>
-                    <p className={styles.avisoTexto}>{a.cuerpo}</p>
-                    {a.accion && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => aplicar(a)}
-                        className={styles.avisoAccion}
-                      >
-                        {a.accion.texto}
-                      </Button>
-                    )}
-                  </div>
+              {renderAviso(avisoPrincipal)}
+              {avisosExtra.length > 0 && (
+                <li className={styles.masAvisos}>
+                  <details>
+                    <summary className={styles.resumen}>
+                      {avisosExtra.length === 1
+                        ? "Ver 1 aviso más"
+                        : `Ver ${avisosExtra.length} avisos más`}
+                    </summary>
+                    <ul className={styles.avisos}>{avisosExtra.map(renderAviso)}</ul>
+                  </details>
                 </li>
-              ))}
+              )}
             </ul>
           )}
 
@@ -527,7 +561,7 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
               Precio necesario en cada canal para ganar {num(margen)}%
             </legend>
             <div className={styles.ranking}>
-              {ranking.map((f) => {
+              {canalesVisibles.map((f) => {
                 const c = CANALES[f.k];
                 const activo = f.k === canalKey;
                 return (
@@ -566,6 +600,17 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
                 );
               })}
             </div>
+            {ranking.length > CANALES_VISIBLES && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.compararCanales}
+                aria-expanded={verTodosCanales}
+                onClick={() => setVerTodosCanales(!verTodosCanales)}
+              >
+                {verTodosCanales ? "Ver menos canales" : `Comparar los ${ranking.length} canales`}
+              </Button>
+            )}
           </fieldset>
 
           {sel.imposible ? (
@@ -578,147 +623,150 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
             </div>
           ) : (
             <>
-              <table className={styles.tabla}>
-                <caption className={styles.seccion}>
-                  Detalle en {canal.nombre} · {canal.variante}
-                </caption>
-                <tbody>
-                  <Renglon concepto="Precio de venta" monto={sel.precio} fuerte />
-                  {ri && (
+              <details className={styles.plegable}>
+                <summary className={styles.resumen}>
+                  Ver el detalle en {canal.nombre} · {canal.variante}
+                </summary>
+                <table className={styles.tabla}>
+                  <tbody>
+                    <Renglon concepto="Precio de venta" monto={sel.precio} fuerte />
+                    {ri && (
+                      <Renglon
+                        concepto="IVA dentro del precio"
+                        detalle="21%"
+                        monto={sel.ivaDebito}
+                        resta
+                        borde
+                      />
+                    )}
                     <Renglon
-                      concepto="IVA dentro del precio"
-                      detalle="21%"
-                      monto={sel.ivaDebito}
+                      concepto={`Comisión ${canal.nombre}`}
+                      detalle={`${sel.comision}%`}
+                      monto={sel.comisionCanal}
                       resta
                       borde
                     />
-                  )}
-                  <Renglon
-                    concepto={`Comisión ${canal.nombre}`}
-                    detalle={`${sel.comision}%`}
-                    monto={sel.comisionCanal}
-                    resta
-                    borde
-                  />
-                  {sel.fijo > 0 && (
-                    <Renglon
-                      concepto="Costo fijo por unidad"
-                      detalle="venta menor a $33.000"
-                      monto={sel.fijo}
-                      resta
-                    />
-                  )}
-                  {sel.arancelPago > 0 && (
-                    <Renglon
-                      concepto="Costo de cobrar"
-                      detalle={`promedio ${pct(sel.p.arancel, 2)}`}
-                      monto={sel.arancelPago}
-                      resta
-                    />
-                  )}
-                  {!ri && sel.ivaCargos > 0 && (
-                    <Renglon concepto="IVA sobre esos cargos" monto={sel.ivaCargos} resta />
-                  )}
-                  {sel.iibb > 0 && (
-                    <Renglon
-                      concepto="Ingresos brutos"
-                      detalle={`${num(iibb)}%`}
-                      monto={sel.iibb}
-                      resta
-                    />
-                  )}
-                  {sel.retComoCosto > 0 && (
-                    <Renglon
-                      concepto="Retenciones que no recuperás"
-                      monto={sel.retComoCosto}
-                      resta
-                    />
-                  )}
-                  {sel.finan > 0 && (
-                    <Renglon
-                      concepto="Plata parada hasta cobrar"
-                      detalle={`${sel.p.dias.toFixed(0)} días`}
-                      monto={sel.finan}
-                      resta
-                    />
-                  )}
-                  {sel.envio > 0 && <Renglon concepto="Envío" monto={sel.envio} resta />}
-                  <Renglon
-                    concepto="Costo del producto"
-                    detalle={ri && ivaRecuperable ? "neto de IVA" : null}
-                    monto={sel.costoProd}
-                    resta
-                    borde
-                  />
-                  {sel.otros > 0 && <Renglon concepto="Packaging" monto={sel.otros} resta />}
-                  <Renglon
-                    concepto={ri ? "Antes de Ganancias" : "Te queda"}
-                    monto={sel.ganancia}
-                    fuerte
-                    borde
-                  />
-                  {ri && (
-                    <>
+                    {sel.fijo > 0 && (
                       <Renglon
-                        concepto="Impuesto a las Ganancias"
-                        detalle="35%"
-                        monto={sel.gan35}
+                        concepto="Costo fijo por unidad"
+                        detalle="venta menor a $33.000"
+                        monto={sel.fijo}
                         resta
                       />
-                      <Renglon concepto="Te queda" monto={sel.gananciaFinal} fuerte borde />
-                    </>
-                  )}
-                  {entrada.retencionesRecuperables && sel.retTotal > 0 && (
+                    )}
+                    {sel.arancelPago > 0 && (
+                      <Renglon
+                        concepto="Costo de cobrar"
+                        detalle={`promedio ${pct(sel.p.arancel, 2)}`}
+                        monto={sel.arancelPago}
+                        resta
+                      />
+                    )}
+                    {!ri && sel.ivaCargos > 0 && (
+                      <Renglon concepto="IVA sobre esos cargos" monto={sel.ivaCargos} resta />
+                    )}
+                    {sel.iibb > 0 && (
+                      <Renglon
+                        concepto="Ingresos brutos"
+                        detalle={`${num(iibb)}%`}
+                        monto={sel.iibb}
+                        resta
+                      />
+                    )}
+                    {sel.retComoCosto > 0 && (
+                      <Renglon
+                        concepto="Retenciones que no recuperás"
+                        monto={sel.retComoCosto}
+                        resta
+                      />
+                    )}
+                    {sel.finan > 0 && (
+                      <Renglon
+                        concepto="Plata parada hasta cobrar"
+                        detalle={`${sel.p.dias.toFixed(0)} días`}
+                        monto={sel.finan}
+                        resta
+                      />
+                    )}
+                    {sel.envio > 0 && <Renglon concepto="Envío" monto={sel.envio} resta />}
                     <Renglon
-                      tenue
+                      concepto="Costo del producto"
+                      detalle={ri && ivaRecuperable ? "neto de IVA" : null}
+                      monto={sel.costoProd}
+                      resta
                       borde
-                      concepto="Retenciones a recuperar"
-                      detalle="no es costo, es plata trabada"
-                      monto={sel.retTotal}
                     />
-                  )}
-                </tbody>
-              </table>
+                    {sel.otros > 0 && <Renglon concepto="Packaging" monto={sel.otros} resta />}
+                    <Renglon
+                      concepto={ri ? "Antes de Ganancias" : "Te queda"}
+                      monto={sel.ganancia}
+                      fuerte
+                      borde
+                    />
+                    {ri && (
+                      <>
+                        <Renglon
+                          concepto="Impuesto a las Ganancias"
+                          detalle="35%"
+                          monto={sel.gan35}
+                          resta
+                        />
+                        <Renglon concepto="Te queda" monto={sel.gananciaFinal} fuerte borde />
+                      </>
+                    )}
+                    {entrada.retencionesRecuperables && sel.retTotal > 0 && (
+                      <Renglon
+                        tenue
+                        borde
+                        concepto="Retenciones a recuperar"
+                        detalle="no es costo, es plata trabada"
+                        monto={sel.retTotal}
+                      />
+                    )}
+                  </tbody>
+                </table>
+              </details>
 
-              <table className={styles.tabla}>
-                <caption className={styles.seccion}>
-                  A ese precio, según cómo te pague el cliente
-                </caption>
-                <thead className={styles.srOnly}>
-                  <tr>
-                    <th scope="col">Medio de pago</th>
-                    <th scope="col">Ganancia y margen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sel.porMedio.map((m) => {
-                    const malo = m.ganancia <= 0;
-                    return (
-                      <tr key={m.k} className={styles.medio}>
-                        <th scope="row" className={styles.concepto}>
-                          {m.n}
-                          <span className={styles.medioPeso}>
-                            {(m.w * 100).toFixed(0)}% de tus ventas
-                          </span>
-                        </th>
-                        <td className={cx(styles.medioMontos, malo && styles.medioMalo)}>
-                          <span className={styles.medioGanancia}>{money(m.ganancia)}</span>
-                          <span className={styles.medioMargen}>{pct(m.margen)}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <details className={styles.plegable}>
+                <summary className={styles.resumen}>
+                  Ver la ganancia según cómo te pague el cliente
+                </summary>
+                <table className={styles.tabla}>
+                  <thead className={styles.srOnly}>
+                    <tr>
+                      <th scope="col">Medio de pago</th>
+                      <th scope="col">Ganancia y margen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sel.porMedio.map((m) => {
+                      const malo = m.ganancia <= 0;
+                      return (
+                        <tr key={m.k} className={styles.medio}>
+                          <th scope="row" className={styles.concepto}>
+                            {m.n}
+                            <span className={styles.medioPeso}>
+                              {(m.w * 100).toFixed(0)}% de tus ventas
+                            </span>
+                          </th>
+                          <td className={cx(styles.medioMontos, malo && styles.medioMalo)}>
+                            <span className={styles.medioGanancia}>{money(m.ganancia)}</span>
+                            <span className={styles.medioMargen}>{pct(m.margen)}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </details>
             </>
           )}
         </div>
       </div>
 
       <p className={styles.pie}>
-        Los valores por defecto son de referencia 2026. Mercado Libre ajusta comisiones por
-        categoría y por provincia: el número exacto de tu publicación está en Costos de venta dentro
-        de tu cuenta, y podés cargarlo en ajustes avanzados. No están incluidos publicidad,
+        Valores de referencia 2026. El número exacto de tu publicación en Mercado Libre está en
+        Costos de venta de tu cuenta (podés cargarlo en ajustes avanzados). No incluye publicidad,
         devoluciones ni almacenamiento.
       </p>
     </section>

@@ -32,6 +32,7 @@ import type {
   ResultadoMaritimo,
 } from "@/lib/cotizador/types";
 import { textoResumenMaritimo } from "@/lib/cotizador/whatsappMaritimo";
+import { linkWhatsappVegroup } from "@/lib/cotizador/whatsappVegroup";
 import { Conceptos } from "./Conceptos";
 import cotizadorStyles from "./cotizador.module.css";
 import styles from "./maritimo.module.css";
@@ -46,8 +47,6 @@ export interface MaritimoResultadoProps {
   refNumber: string;
   /** VGRP-69: para el texto de "Enviar por WhatsApp". */
   producto: string;
-  /** `links.whatsapp` de la config. */
-  whatsappContacto: string;
 }
 
 export function MaritimoResultado({
@@ -58,7 +57,6 @@ export function MaritimoResultado({
   setFleteFull,
   refNumber,
   producto,
-  whatsappContacto,
 }: MaritimoResultadoProps) {
   const [ver, setVer] = useState<"consolidado" | "full">("consolidado");
   const { consolidado, full, contenedor, fullEsEstimado } = res;
@@ -167,9 +165,9 @@ export function MaritimoResultado({
           </Button>
           <a
             className={cotizadorStyles.linkWhatsapp}
-            href={`https://wa.me/?text=${encodeURIComponent(
-              textoResumenMaritimo({ refNumber, producto, fiscal, puerto, res, whatsappContacto }),
-            )}`}
+            href={linkWhatsappVegroup(
+              textoResumenMaritimo({ refNumber, producto, fiscal, puerto, res }),
+            )}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -260,92 +258,6 @@ function Desglose({
         {puerto && <Meta k="Tránsito" v={`${puerto.transito} días`} hint={puerto.label} />}
       </div>
 
-      <div className={styles.seccion}>
-        <span>Despacho de importación</span>
-      </div>
-      <table className={styles.tabla}>
-        <thead>
-          <tr>
-            <th className={styles.encabezadoCol}>Concepto</th>
-            <th className={`${styles.encabezadoCol} ${styles.centro}`}>Alícuota</th>
-            <th className={`${styles.encabezadoCol} ${styles.der}`}>Monto USD</th>
-            <th className={`${styles.encabezadoCol} ${styles.der}`}>Monto $</th>
-          </tr>
-        </thead>
-        <tbody>
-          <Fila label="Valor FOB" nota="Mercadería" usd={d.fob} tc={tc} />
-          <Fila
-            label="Flete internacional"
-            nota={`${fmtPct(r.fleteDeclaradoPct, 0)} del pagado`}
-            usd={d.flete}
-            tc={tc}
-          />
-          <Fila label="Seguro" nota="1% s/FOB + flete" usd={d.seguro} tc={tc} />
-          <Fila label="Valor CIF" nota="Base imponible" usd={d.cif} tc={tc} strong />
-
-          <Fila label="Derechos" pct={d.pct.derechos} usd={d.derechos} tc={tc} />
-          <Fila label="Estadística" pct={d.pct.estadistica} usd={d.estadistica} tc={tc} />
-          <Fila label="Base IVA" usd={d.baseIva} tc={tc} strong />
-          <Fila label="I.V.A." pct={d.pct.iva} usd={d.iva} tc={tc} verde />
-          <Fila
-            label="I.V.A. adicional"
-            pct={d.pct.ivaAdicional}
-            usd={d.ivaAdicional}
-            tc={tc}
-            verde
-          />
-          <Fila label="Ganancias" pct={d.pct.ganancias} usd={d.ganancias} tc={tc} verde />
-          <Fila label="Ingresos brutos" pct={d.pct.iibb} usd={d.iibb} tc={tc} verde />
-          <Fila label="Arancel SIM" usd={d.arancelSim} tc={tc} />
-          <Fila label="Total gravámenes" usd={d.totalGravamenes} tc={tc} total />
-        </tbody>
-      </table>
-
-      <div className={styles.seccion}>
-        <span>Gastos operativos</span>
-        <span className={styles.seccionNota}>
-          los siete fijos suman {fmtUSD(SUMA_FIJOS)} en toda importación
-        </span>
-      </div>
-      <table className={styles.tabla}>
-        <tbody>
-          {op.lineas.map((l) => (
-            <Fila
-              key={l.key}
-              label={l.label}
-              nota={l.key === "flete" ? notaFlete(r.fleteEsOverride, m.wm) : l.iva ? "con IVA" : ""}
-              usd={l.usd}
-              tc={tc}
-            />
-          ))}
-          <Fila
-            label={`I.V.A. ${op.ivaPct}%`}
-            nota="ítem único · factura A"
-            usd={op.ivaGastos}
-            tc={tc}
-            verde
-          />
-          <Fila label="Total gastos operativos" usd={op.total} tc={tc} total />
-        </tbody>
-      </table>
-
-      <div className={styles.seccion}>
-        <span>Totales</span>
-      </div>
-      <table className={styles.tabla}>
-        <tbody>
-          <Fila label="Total a pagar" nota="el día del despacho" usd={t.aPagar} tc={tc} strong />
-          <Fila
-            label="IVA y percepciones recuperables"
-            nota="crédito fiscal y pagos a cuenta"
-            usd={-t.recuperable}
-            tc={tc}
-            verde
-          />
-          <Fila label="Total costos" nota="con esto se pone precio" usd={t.costos} tc={tc} total />
-        </tbody>
-      </table>
-
       <div className={styles.totalBox}>
         <div>
           <div className={styles.totalBoxClave}>Costo real (sin IVA)</div>
@@ -363,6 +275,105 @@ function Desglose({
           <div className={styles.totalBoxNota}>{r.unidades} unidad(es)</div>
         </div>
       </div>
+
+      {/* El detalle línea por línea es de consulta (y sale completo en el PDF). */}
+      <details className={styles.detalle}>
+        <summary className={styles.detalleResumen}>Ver el desglose completo</summary>
+
+        <div className={styles.seccion}>
+          <span>Despacho de importación</span>
+        </div>
+        <table className={styles.tabla}>
+          <thead>
+            <tr>
+              <th className={styles.encabezadoCol}>Concepto</th>
+              <th className={`${styles.encabezadoCol} ${styles.centro}`}>Alícuota</th>
+              <th className={`${styles.encabezadoCol} ${styles.der}`}>Monto USD</th>
+              <th className={`${styles.encabezadoCol} ${styles.der}`}>Monto $</th>
+            </tr>
+          </thead>
+          <tbody>
+            <Fila label="Valor FOB" nota="Mercadería" usd={d.fob} tc={tc} />
+            <Fila
+              label="Flete internacional"
+              nota={`${fmtPct(r.fleteDeclaradoPct, 0)} del pagado`}
+              usd={d.flete}
+              tc={tc}
+            />
+            <Fila label="Seguro" nota="1% s/FOB + flete" usd={d.seguro} tc={tc} />
+            <Fila label="Valor CIF" nota="Base imponible" usd={d.cif} tc={tc} strong />
+
+            <Fila label="Derechos" pct={d.pct.derechos} usd={d.derechos} tc={tc} />
+            <Fila label="Estadística" pct={d.pct.estadistica} usd={d.estadistica} tc={tc} />
+            <Fila label="Base IVA" usd={d.baseIva} tc={tc} strong />
+            <Fila label="I.V.A." pct={d.pct.iva} usd={d.iva} tc={tc} verde />
+            <Fila
+              label="I.V.A. adicional"
+              pct={d.pct.ivaAdicional}
+              usd={d.ivaAdicional}
+              tc={tc}
+              verde
+            />
+            <Fila label="Ganancias" pct={d.pct.ganancias} usd={d.ganancias} tc={tc} verde />
+            <Fila label="Ingresos brutos" pct={d.pct.iibb} usd={d.iibb} tc={tc} verde />
+            <Fila label="Arancel SIM" usd={d.arancelSim} tc={tc} />
+            <Fila label="Total gravámenes" usd={d.totalGravamenes} tc={tc} total />
+          </tbody>
+        </table>
+
+        <div className={styles.seccion}>
+          <span>Gastos operativos</span>
+          <span className={styles.seccionNota}>
+            los siete fijos suman {fmtUSD(SUMA_FIJOS)} en toda importación
+          </span>
+        </div>
+        <table className={styles.tabla}>
+          <tbody>
+            {op.lineas.map((l) => (
+              <Fila
+                key={l.key}
+                label={l.label}
+                nota={
+                  l.key === "flete" ? notaFlete(r.fleteEsOverride, m.wm) : l.iva ? "con IVA" : ""
+                }
+                usd={l.usd}
+                tc={tc}
+              />
+            ))}
+            <Fila
+              label={`I.V.A. ${op.ivaPct}%`}
+              nota="ítem único · factura A"
+              usd={op.ivaGastos}
+              tc={tc}
+              verde
+            />
+            <Fila label="Total gastos operativos" usd={op.total} tc={tc} total />
+          </tbody>
+        </table>
+
+        <div className={styles.seccion}>
+          <span>Totales</span>
+        </div>
+        <table className={styles.tabla}>
+          <tbody>
+            <Fila label="Total a pagar" nota="el día del despacho" usd={t.aPagar} tc={tc} strong />
+            <Fila
+              label="IVA y percepciones recuperables"
+              nota="crédito fiscal y pagos a cuenta"
+              usd={-t.recuperable}
+              tc={tc}
+              verde
+            />
+            <Fila
+              label="Total costos"
+              nota="con esto se pone precio"
+              usd={t.costos}
+              tc={tc}
+              total
+            />
+          </tbody>
+        </table>
+      </details>
     </>
   );
 }

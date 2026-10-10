@@ -29,17 +29,26 @@ async function login(page: Page, email: string, password: string): Promise<void>
   await page.waitForURL("**/dashboard");
 }
 
-/** Texto del mensaje de un link `wa.me/?text=…`, ya decodificado. */
+/**
+ * Texto del mensaje de un link `wa.me/<número de VEGROUP>?text=…`, ya
+ * decodificado. El número va en el link, no en el texto.
+ */
 async function textoWhatsapp(link: Locator): Promise<string> {
   const href = await link.getAttribute("href");
-  expect(href).toMatch(/^https:\/\/wa\.me\/\?text=/);
+  expect(href).toMatch(/^https:\/\/wa\.me\/5491176392303\?text=/);
   return new URL(href ?? "").searchParams.get("text") ?? "";
 }
 
-/** TC BNA: el automático puede no llegar (dolarapi caído); si quedó vacío, se carga a mano. */
+/**
+ * TC BNA: si el automático llegó, la calculadora lo muestra como dato con un
+ * botón "Editar" (los campos no están en pantalla). Si dolarapi falló, aparecen
+ * los campos vacíos y se cargan a mano.
+ */
 async function completarDolar(page: Page): Promise<void> {
   const dolar = page.getByLabel(/^TC BNA \(destino\)/);
-  await expect(dolar).not.toHaveAttribute("placeholder", "Cargando…", { timeout: 15_000 });
+  const editar = page.getByRole("button", { name: "Editar" });
+  await expect(dolar.or(editar)).toBeVisible({ timeout: 15_000 });
+  if (await editar.isVisible()) return;
   if ((await dolar.inputValue()) === "") await dolar.fill("1000");
 }
 
@@ -81,11 +90,8 @@ test.describe("calculadora embebida (VGRP-57)", () => {
     await page.getByLabel("Ancho", { exact: true }).fill("30");
     await page.getByLabel("Alto", { exact: true }).fill("20");
 
-    // TC BNA: el automático puede no llegar (dolarapi caído). Se espera a que
-    // la carga termine (valor o aviso de falla) y, si quedó vacío, se llena.
-    const dolar = page.getByLabel(/^TC BNA \(destino\)/);
-    await expect(dolar).not.toHaveAttribute("placeholder", "Cargando…", { timeout: 15_000 });
-    if ((await dolar.inputValue()) === "") await dolar.fill("1000");
+    // TC BNA: el automático puede no llegar (dolarapi caído).
+    await completarDolar(page);
 
     await page.getByRole("radio", { name: /^Miami/ }).check();
 
@@ -101,10 +107,11 @@ test.describe("calculadora embebida (VGRP-57)", () => {
     const totalUsd = resultado.getByRole("definition").first();
     await expect(totalUsd).toHaveText(/US\$\s?[\d.,]+/);
 
-    // VGRP-69: el WhatsApp habla como OG Circle y el contacto sale de la config.
+    // El WhatsApp le llega a VEGROUP: dice qué servicio se cotizó y el total.
     const texto = await textoWhatsapp(resultado.getByRole("link", { name: "Enviar por WhatsApp" }));
-    expect(texto).toMatch(/^\*OG Circle — Cotización OG-\d{8}-\d{4}\*/);
-    expect(texto).toContain("Courier Integral Todo Incluido");
+    expect(texto).toMatch(/\*Cotización N° OG-\d{8}-\d{4}\*/);
+    expect(texto).toContain("Servicio: Courier integral (todo incluido");
+    expect(texto).toMatch(/Total a pagar: US\$/);
     expect(texto).not.toMatch(/vegroup|7639/i);
 
     expect(requestsIa, "courier integral no debería llamar a la IA").toEqual([]);
@@ -166,14 +173,21 @@ test.describe("calculadora embebida (VGRP-57)", () => {
     await expect(resultado.getByText("Peso volumétrico", { exact: true })).toBeVisible();
 
     const texto = await textoWhatsapp(resultado.getByRole("link", { name: "Enviar por WhatsApp" }));
-    expect(texto).toContain("*OG Circle — Cotización OG-");
-    expect(texto).toContain(`Posición NCM: ${sim}`);
+    expect(texto).toContain("*Cotización N° OG-");
+    expect(texto).toContain("Servicio: Courier comercial (régimen general");
+    expect(texto).toContain(`(NCM): ${sim}`);
     expect(texto).toContain("Producto: auriculares bluetooth");
+    expect(texto).toContain("Costo real puesto en Argentina (sin IVA recuperable): US$");
+    expect(texto).toContain("Total a pagar (con IVA): US$");
     expect(texto).not.toMatch(/vegroup|7639/i);
 
-    // La hoja imprimible (oculta en pantalla) ya no dice VEGROUP.
+    // La hoja imprimible (oculta en pantalla): mismo servicio y mismos números
+    // que el mensaje, con el contacto de VEGROUP en el pie.
     const hoja = page.locator("[data-quote-doc]");
     await expect(hoja).toContainText("OG Circle");
+    await expect(hoja).toContainText("Courier comercial");
+    await expect(hoja).toContainText("COSTO REAL PUESTO ACÁ");
+    await expect(hoja).toContainText("+54 9 11 7639-2303");
     await expect(hoja).not.toContainText(/vegroup/i);
   });
 
@@ -266,13 +280,14 @@ test.describe("cotizador marítimo embebido (VGRP-58)", () => {
     await expect(page.getByRole("button", { name: /^Marítimo full/ })).toBeVisible();
     await expect(page.getByText(/US\$\s?[\d.,]+/).first()).toBeVisible();
 
-    // VGRP-69: "Enviar por WhatsApp" del resultado, con las dos opciones. El
-    // link al despachante (wa.me/<número>) es otro y sigue aparte.
+    // "Enviar por WhatsApp" del resultado (le llega a VEGROUP), con las dos
+    // opciones. El link al despachante (wa.me/<otro número>) sigue aparte.
     const texto = await textoWhatsapp(page.getByRole("link", { name: "Enviar por WhatsApp" }));
-    expect(texto).toMatch(/^\*OG Circle — Cotización marítima MAR-\d{6}\*/);
-    expect(texto).toContain("Carga: 8,501 m³");
-    expect(texto).toContain("*Consolidado (LCL):*");
-    expect(texto).toMatch(/\*Full \(FCL, .+\):\*.*\(estimado\)/);
+    expect(texto).toMatch(/\*Cotización N° MAR-\d{6}\*/);
+    expect(texto).toContain("Servicio: Importación marítima");
+    expect(texto).toContain("Volumen: 8,501 m³");
+    expect(texto).toContain("*Consolidado (LCL): costo real");
+    expect(texto).toMatch(/\*Full \(FCL, .+\): costo real.*\(estimado:/);
     expect(texto).not.toMatch(/vegroup/i);
 
     expect(requestsIa, "cotizar marítimo sin producto no debería llamar a la IA").toEqual([]);

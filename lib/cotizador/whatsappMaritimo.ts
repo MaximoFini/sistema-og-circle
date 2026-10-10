@@ -1,8 +1,10 @@
-// VGRP-69 — texto de "Enviar por WhatsApp" del resultado marítimo, mismo
-// criterio que el del courier (CotizadorCourier → whatsappText): los mismos
-// números que se ven en pantalla, sin número de destino (el usuario elige a
-// quién mandarlo). No es el mensaje al despachante (MaritimoResultado →
-// textoWhatsapp), que pide la tarifa del full y queda como estaba.
+// Texto de "Enviar por WhatsApp" del resultado marítimo, mismo criterio que el
+// del courier (whatsappCourier.ts): lo recibe VEGROUP (whatsappVegroup.ts), así
+// que dice de entrada qué se cotizó (servicio, producto, ruta, carga) y después
+// los mismos números que ve el usuario en pantalla: costo real (sin IVA) y
+// total a pagar de las dos opciones. No es el mensaje al despachante
+// (MaritimoResultado → textoWhatsapp), que pide la tarifa del full y queda
+// como estaba.
 //
 // Función pura, sin React: se testea sola (whatsappMaritimo.test.ts).
 
@@ -15,8 +17,6 @@ export interface DatosResumenMaritimo {
   fiscal: FiscalMaritimo;
   puerto: Puerto | undefined;
   res: ResultadoAmbas;
-  /** `links.whatsapp` de la config. */
-  whatsappContacto: string;
 }
 
 export function textoResumenMaritimo({
@@ -25,24 +25,36 @@ export function textoResumenMaritimo({
   fiscal,
   puerto,
   res,
-  whatsappContacto,
 }: DatosResumenMaritimo): string {
   const { consolidado: c, full: f, contenedor, fullEsEstimado } = res;
   const cantidad = contenedor.cantidad > 1 ? `${contenedor.cantidad} × ` : "";
   return [
-    `*OG Circle — Cotización marítima ${refNumber}*`,
-    producto.trim() ? `Producto: ${producto.trim()}` : null,
-    fiscal.sim ? `Posición SIM: ${fiscal.sim}` : null,
-    `Carga: ${fmtNum(c.medidas.m3, 3)} m³ · ${fmtNum(c.medidas.kg, 0)} kg${
-      puerto ? ` · ${puerto.label} → Buenos Aires` : ""
+    "Hola! Les paso una cotización de importación marítima que hice en la calculadora de OG Circle.",
+    `*Cotización N° ${refNumber}*`,
+    "",
+    "*QUÉ SE COTIZÓ*",
+    "• Servicio: Importación marítima (consolidado LCL y contenedor completo FCL)",
+    producto.trim() ? `• Producto: ${producto.trim()}` : null,
+    fiscal.sim
+      ? `• Posición arancelaria (SIM): ${fiscal.sim} — DIE ${fiscal.die}% · TE ${fiscal.te}% · IVA ${fiscal.iva}%`
+      : null,
+    puerto
+      ? `• Ruta: ${puerto.label} (${puerto.pais}) → Buenos Aires · tránsito estimado ${puerto.transito} días`
+      : null,
+    "",
+    "*LA CARGA*",
+    `• Volumen: ${fmtNum(c.medidas.m3, 3)} m³ · Peso: ${fmtNum(c.medidas.kg, 0)} kg`,
+    `• Valor de la mercadería (FOB): ${fmtUSD(c.despacho.fob)} · Unidades: ${c.unidades}`,
+    "",
+    "*RESULTADO*",
+    `• *Consolidado (LCL): costo real ${fmtUSD(c.totales.costos)}* (sin IVA) · total a pagar ${fmtUSD(c.totales.aPagar)}`,
+    `   Por unidad: ${fmtUSD(c.totales.costoPorUnidad)}`,
+    `• *Full (FCL, ${cantidad}${contenedor.label}): costo real ${fmtUSD(f.totales.costos)}* (sin IVA) · total a pagar ${fmtUSD(f.totales.aPagar)}${
+      fullEsEstimado ? " (estimado: la tarifa firme del flete se cotiza aparte)" : ""
     }`,
+    `   Por unidad: ${fmtUSD(f.totales.costoPorUnidad)}`,
     "",
-    `*Consolidado (LCL):* ${fmtUSD(c.totales.costos)} costo real · ${fmtUSD(c.totales.aPagar)} a pagar`,
-    `*Full (FCL, ${cantidad}${contenedor.label}):* ${fmtUSD(f.totales.costos)} costo real · ${fmtUSD(
-      f.totales.aPagar,
-    )} a pagar${fullEsEstimado ? " (estimado)" : ""}`,
-    "",
-    `OG Circle · ${whatsappContacto}`,
+    "Quedo atento/a para avanzar con este envío. ¡Gracias!",
   ]
     .filter((l) => l !== null)
     .join("\n");
