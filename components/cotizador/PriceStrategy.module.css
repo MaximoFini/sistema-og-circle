@@ -474,6 +474,41 @@
   color: var(--champagne);
 }
 
+/* Bloques de consulta plegados (<details> nativo): el detalle y los avisos
+   extra no compiten con el precio de venta. */
+.plegable,
+.masAvisos {
+  min-width: 0;
+}
+
+.resumen {
+  padding: 0 4px;
+  font-size: var(--fs-callout);
+  font-weight: 600;
+  color: var(--champagne);
+  cursor: pointer;
+}
+
+.resumen:focus-visible {
+  outline: 2px solid var(--champagne);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.plegable[open] > .resumen,
+.masAvisos > details[open] > .resumen {
+  margin-bottom: 12px;
+}
+
+.masAvisos {
+  list-style: none;
+}
+
+.compararCanales {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
 .ranking {
   composes: inset from "../ui/glass.module.css";
   display: flex;

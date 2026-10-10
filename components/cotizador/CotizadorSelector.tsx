@@ -41,53 +41,45 @@ const OPCIONES_MODO: readonly { id: Modo; titulo: string; desc: string }[] = [
   { id: "maritimo", titulo: "Marítimo", desc: "Consolidado y contenedor completo · por TN/m³" },
 ];
 
-/**
- * `bloqueado` (VGRP-77): fondo inerte de la calculadora sin plan; ver CotizadorCourier.
- * `whatsappContacto` (VGRP-69): `links.whatsapp` de la config, para el pie del
- * PDF y de los mensajes de WhatsApp.
- */
-export function CotizadorSelector({
-  bloqueado = false,
-  whatsappContacto,
-}: {
-  bloqueado?: boolean;
-  whatsappContacto: string;
-}) {
+/** `bloqueado` (VGRP-77): fondo inerte de la calculadora sin plan; ver CotizadorCourier. */
+export function CotizadorSelector({ bloqueado = false }: { bloqueado?: boolean }) {
   const [modo, setModo] = useState<Modo>("courier");
   const id = useId();
 
   return (
     <div className={styles.cotizador}>
-      <fieldset className={styles.grupoOpciones}>
-        <legend className={styles.srOnly}>Tipo de cotización</legend>
-        {OPCIONES_MODO.map((op) => (
-          <label
-            key={op.id}
-            className={
-              modo === op.id ? `${styles.regimen} ${styles.regimenElegido}` : styles.regimen
-            }
-          >
-            <input
-              type="radio"
-              name={`${id}-modo`}
-              value={op.id}
-              checked={modo === op.id}
-              onChange={() => setModo(op.id)}
-              className={styles.radio}
-            />
-            <span className={styles.opcionTexto}>
-              <span className={styles.opcionTitulo}>{op.titulo}</span>
-              <span className={styles.opcionDesc}>{op.desc}</span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      <div className={styles.regimenes}>
+        <fieldset className={styles.grupoOpciones}>
+          <legend className={styles.srOnly}>Tipo de cotización</legend>
+          {OPCIONES_MODO.map((op) => (
+            <label
+              key={op.id}
+              className={
+                modo === op.id ? `${styles.regimen} ${styles.regimenElegido}` : styles.regimen
+              }
+            >
+              <input
+                type="radio"
+                name={`${id}-modo`}
+                value={op.id}
+                checked={modo === op.id}
+                onChange={() => setModo(op.id)}
+                className={styles.radio}
+              />
+              <span className={styles.opcionTexto}>
+                <span className={styles.opcionTitulo}>{op.titulo}</span>
+                {/* A la vista sólo la del elegido (debajo); acá, para lectores de pantalla. */}
+                <span className={styles.srOnly}>. {op.desc}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <p className={styles.regimenDesc} aria-hidden="true">
+          {OPCIONES_MODO.find((op) => op.id === modo)?.desc}
+        </p>
+      </div>
 
-      {modo === "courier" ? (
-        <CotizadorCourier bloqueado={bloqueado} whatsappContacto={whatsappContacto} />
-      ) : (
-        <CotizadorMaritimo whatsappContacto={whatsappContacto} />
-      )}
+      {modo === "courier" ? <CotizadorCourier bloqueado={bloqueado} /> : <CotizadorMaritimo />}
     </div>
   );
 }

@@ -11,8 +11,10 @@
 // (specs/bloque-12-calculadoras/design-vgrp57.md → "Impresión (PDF)").
 
 import { createPortal } from "react-dom";
-import { fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
+import { costoRealPorKg, fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
 import type { GastosDestino, PosicionElegida, Regimen, ResultadoRuta } from "@/lib/cotizador/types";
+import { SERVICIO_COURIER } from "@/lib/cotizador/whatsappCourier";
+import { WHATSAPP_VEGROUP_LEGIBLE } from "@/lib/cotizador/whatsappVegroup";
 import styles from "./QuoteDoc.module.css";
 
 const DESTINO_ORDER: (keyof GastosDestino)[] = [
@@ -53,9 +55,7 @@ export interface QuoteDocProps {
   /** Resultado de la ruta elegida. Sin él no se renderiza nada. */
   result: ResultadoRuta | null;
   form: FormularioQuoteDoc;
-  regimen: Regimen;
-  /** `links.whatsapp` de la config (VGRP-69): el contacto no se escribe a mano. */
-  whatsappContacto: string;
+  regimen: Exclude<Regimen, "integral">;
 }
 
 export function QuoteDoc({
@@ -66,7 +66,6 @@ export function QuoteDoc({
   result,
   form,
   regimen,
-  whatsappContacto,
 }: QuoteDocProps) {
   if (!result || !selected || typeof document === "undefined") return null;
 
@@ -86,6 +85,10 @@ export function QuoteDoc({
 
       <table className={styles.info}>
         <tbody>
+          <tr>
+            <th scope="row">Servicio</th>
+            <td>{SERVICIO_COURIER[regimen]}</td>
+          </tr>
           <tr>
             <th scope="row">Producto</th>
             <td>{producto}</td>
@@ -176,32 +179,37 @@ export function QuoteDoc({
         </tbody>
       </table>
 
+      {/* Mismo orden y mismas cifras que el resumen en pantalla y el mensaje de
+          WhatsApp: el costo real (sin IVA) es el número principal; el total a
+          pagar (con IVA) va aparte. */}
       <div className={styles.totales}>
         <div className={`${styles.total} ${styles.totalPrincipal}`}>
-          <div className={styles.k}>TOTAL A PAGAR (USD)</div>
-          <div className={styles.v}>{fmtUSD(result.totalUSD)}</div>
-        </div>
-        {result.totalPesos != null && (
-          <div className={styles.total}>
-            <div className={styles.k}>Total en pesos</div>
-            <div className={styles.v}>{fmtARS(result.totalPesos)}</div>
-            {result.proveedorPesos != null &&
-              result.destinoPesos != null &&
-              result.dolarCCL !== result.dolarBN && (
-                <div className={styles.sub}>
-                  Proveedor {fmtARS(result.proveedorPesos)} (CCL ${result.dolarCCL}) · Destino{" "}
-                  {fmtARS(result.destinoPesos + (result.ivaPesos || 0))} (BNA ${result.dolarBN})
-                </div>
-              )}
-          </div>
-        )}
-        <div className={styles.total}>
-          <div className={styles.k}>Costo por kg</div>
-          <div className={styles.v}>{fmtUSD(result.costoPorKg)}</div>
+          <div className={styles.k}>COSTO REAL PUESTO ACÁ (SIN IVA RECUPERABLE)</div>
+          <div className={styles.v}>{fmtUSD(result.costoRealEfectivo)}</div>
+          {result.proveedorPesos != null && result.destinoPesos != null && (
+            <div className={styles.sub}>{fmtARS(result.proveedorPesos + result.destinoPesos)}</div>
+          )}
         </div>
         <div className={styles.total}>
-          <div className={styles.k}>Costo por unidad</div>
+          <div className={styles.k}>Costo real por unidad</div>
           <div className={styles.v}>{fmtUSD(result.costoPorUnidad)}</div>
+        </div>
+        <div className={styles.total}>
+          <div className={styles.k}>Costo real por kg</div>
+          <div className={styles.v}>{fmtUSD(costoRealPorKg(result))}</div>
+        </div>
+        <div className={styles.total}>
+          <div className={styles.k}>Total a pagar (USD, con IVA)</div>
+          <div className={styles.v}>{fmtUSD(result.totalUSD)}</div>
+          {result.totalPesos != null && (
+            <div className={styles.sub}>
+              {fmtARS(result.totalPesos)}
+              {result.proveedorPesos != null &&
+                result.destinoPesos != null &&
+                result.dolarCCL !== result.dolarBN &&
+                ` · Proveedor ${fmtARS(result.proveedorPesos)} (CCL $${result.dolarCCL}) · Destino ${fmtARS(result.destinoPesos + (result.ivaPesos || 0))} (BNA $${result.dolarBN})`}
+            </div>
+          )}
         </div>
       </div>
 
@@ -210,7 +218,7 @@ export function QuoteDoc({
           <strong>OG Circle</strong> — Logística e importación internacional · Miami · Barcelona ·
           Guangzhou · Buenos Aires
         </div>
-        <div>WhatsApp {whatsappContacto}</div>
+        <div>WhatsApp {WHATSAPP_VEGROUP_LEGIBLE}</div>
         <div className={styles.disclaimer}>
           Cotización estimativa válida por 7 días, sujeta a confirmación operativa. El IVA es
           crédito fiscal recuperable para responsables inscriptos.

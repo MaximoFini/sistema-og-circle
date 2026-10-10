@@ -177,16 +177,6 @@
   min-width: 0;
 }
 
-.desgloseTitulo {
-  composes: headline from "../ui/type.module.css";
-}
-
-.desgloseTiempo {
-  font-size: var(--fs-footnote);
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
 .leyenda {
   display: flex;
   flex-wrap: wrap;
@@ -316,8 +306,9 @@
   padding: 22px 22px 20px;
 }
 
+/* Arriba: el costo real, protagonista, con por unidad y por kg al lado. */
+.principal,
 .totalesPago,
-.totalesResumen,
 .destinoPar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -325,7 +316,8 @@
   margin: 0;
 }
 
-.totalesResumen {
+/* Abajo: de dónde sale (proveedor, destino, total). */
+.totalesPago {
   padding-top: 20px;
   border-top: 1px solid var(--separator);
 }
@@ -336,14 +328,14 @@
 }
 
 @container (min-width: 520px) {
-  .totalesPago,
-  .totalesResumen {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .principal {
+    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+    align-items: end;
   }
 }
 
-@container (min-width: 760px) {
-  .totalesResumen {
+@container (min-width: 620px) {
+  .totalesPago {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -387,6 +379,66 @@
   composes: footnote from "../ui/type.module.css";
 }
 
-.otras {
+/* ------------------------------------------------------------------ */
+/* Costo en cada depósito (comparador)                                  */
+/* ------------------------------------------------------------------ */
+
+.comparador {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-callout);
+}
+
+.comparador tr + tr {
+  border-top: 1px solid var(--separator);
+}
+
+.comparador .concepto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+}
+
+.comparador .badge {
+  margin: 0;
+}
+
+.tiempo {
   composes: footnote from "../ui/type.module.css";
+  padding: 11px 0 11px 16px;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* El depósito elegido: el monto en acento, sin cambiar el orden de las filas. */
+.filaElegida .monto {
+  --t-color: var(--accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Desglose completo (<details> cerrado)                                */
+/* ------------------------------------------------------------------ */
+
+.desgloseDetalle {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.desgloseResumen {
+  composes: headline from "../ui/type.module.css";
+  --t-size: var(--fs-callout);
+  cursor: pointer;
+}
+
+.desgloseResumen:focus-visible {
+  outline: 2px solid var(--champagne);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.desgloseDetalle[open] > .desgloseResumen {
+  margin-bottom: 16px;
 }

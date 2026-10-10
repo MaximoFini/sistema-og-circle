@@ -60,6 +60,8 @@ import type {
   ResultadoRutas,
   RutaId,
 } from "@/lib/cotizador/types";
+import { textoCourier, textoIntegral } from "@/lib/cotizador/whatsappCourier";
+import { linkWhatsappVegroup } from "@/lib/cotizador/whatsappVegroup";
 import styles from "./cotizador.module.css";
 
 /** `getNcm` de lib/cotizador/ncm/base, que se importa en diferido (ver arriba). */
@@ -101,6 +103,11 @@ const MarketingAnalysis = dynamic(
 const ProformaUpload = dynamic(() => import("./ProformaUpload").then((m) => m.ProformaUpload), {
   ssr: false,
   loading: () => <PanelCargando />,
+});
+// "Identificar con una foto": no pesa hasta que se monta el paso 1.
+const FotoProducto = dynamic(() => import("./FotoProducto").then((m) => m.FotoProducto), {
+  ssr: false,
+  loading: () => null,
 });
 // Invisible en pantalla (sólo se ve al imprimir): sin placeholder.
 const QuoteDoc = dynamic(() => import("./QuoteDoc").then((m) => m.QuoteDoc), {
@@ -170,15 +177,9 @@ const OPCIONES_REGIMEN: readonly { id: Regimen; titulo: string; desc: string }[]
 // `lib/cotizador/api.ts` reacciona a eso mandando a `/comprar`, o sea que se
 // lo llevaba de la página a los pocos segundos.
 //
-// `whatsappContacto` (VGRP-69): `links.whatsapp` de la config, para el pie del
-// mensaje de WhatsApp y del PDF (antes, el teléfono de VEGROUP a mano).
-export function CotizadorCourier({
-  bloqueado = false,
-  whatsappContacto,
-}: {
-  bloqueado?: boolean;
-  whatsappContacto: string;
-}) {
+// "Enviar por WhatsApp" y el pie del PDF van al número de VEGROUP
+// (lib/cotizador/whatsappVegroup.ts): ya no dependen de `links.whatsapp`.
+export function CotizadorCourier({ bloqueado = false }: { bloqueado?: boolean }) {
   const [regimen, setRegimen] = useState<Regimen>("general");
   const [producto, setProducto] = useState("");
   const [form, setForm] = useState<CamposForm>({
@@ -196,6 +197,7 @@ export function CotizadorCourier({
   const [dolarInfo, setDolarInfo] = useState<RespuestaDolar | null>(null);
   const [dolarFallo, setDolarFallo] = useState(false);
   const [showProforma, setShowProforma] = useState(false);
+  const [editandoTC, setEditandoTC] = useState(false);
 
   // Detección automática de NCM.
   const [detStatus, setDetStatus] = useState<EstadoDeteccion>("idle");
@@ -434,46 +436,27 @@ export function CotizadorCourier({
       ? (results.data.results.find((x) => x.route === deposito) ?? null)
       : null;
 
-  // Resumen de texto para compartir por WhatsApp.
-  const pieWhatsapp = `OG Circle · ${whatsappContacto}`;
+  // Resumen de texto para mandarle a VEGROUP por WhatsApp (lib/cotizador/whatsappCourier.ts).
   function whatsappText(): string {
     if (regimen === "integral") {
-      const r = integralActual;
-      if (!r) return "";
-      return [
-        `*OG Circle — Cotización ${refNumber}*`,
-        "*Courier Integral Todo Incluido*",
-        producto ? `Producto: ${producto}` : null,
-        `Depósito: ${r.label} (${r.pais}) · ${r.tiempoEstimado}`,
-        `${r.pesoReal.toFixed(1)} kg · ${fmtUSD(r.rate)}/kg${r.excesoVol > 0 ? ` + ${r.excesoVol.toFixed(1)} kg vol. × ${fmtUSD(INTEGRAL_VOL_RATE)}/kg` : ""}`,
-        "",
-        `*TOTAL: ${fmtUSD(r.totalUSD)}*`,
-        r.totalPesos != null ? `Total en pesos: ${fmtARS(r.totalPesos)}` : null,
-        "",
-        pieWhatsapp,
-      ]
-        .filter(Boolean)
-        .join("\n");
+      if (!integralActual) return "";
+      return textoIntegral({
+        refNumber,
+        producto,
+        form: { ...form, cajas },
+        result: integralActual,
+        dolarBN: Number(form.dolarBN) > 0 ? Number(form.dolarBN) : null,
+      });
     }
-    const r = rutaActual;
-    if (!r || !selected) return "";
-    const lines = [
-      `*OG Circle — Cotización ${refNumber}*`,
-      `Producto: ${producto}`,
-      `Posición NCM: ${selected.sim}${regimen === "pequeños" ? " (Pequeños envíos · franquicia)" : ""}`,
-      `Depósito: ${r.label} (${r.pais}) · ${r.tiempoEstimado}`,
-      `FOB ${fmtUSD(Number(form.fob))} · ${form.pesoKg} kg · ${form.unidades} unidades`,
-      "",
-      `*TOTAL: ${fmtUSD(r.totalUSD)}*`,
-      r.totalPesos != null ? `Total en pesos: ${fmtARS(r.totalPesos)}` : null,
-      r.proveedorPesos != null && r.dolarCCL !== r.dolarBN
-        ? `  Proveedor: ${fmtARS(r.proveedorPesos)} (CCL $${r.dolarCCL}) · Destino: ${fmtARS((r.destinoPesos || 0) + (r.ivaPesos || 0))} (BNA $${r.dolarBN})`
-        : null,
-      `Costo por kg: ${fmtUSD(r.costoPorKg)} · por unidad: ${fmtUSD(r.costoPorUnidad)}`,
-      "",
-      pieWhatsapp,
-    ].filter((l) => l !== null);
-    return lines.join("\n");
+    if (!rutaActual || !selected) return "";
+    return textoCourier({
+      refNumber,
+      regimen,
+      producto,
+      selected,
+      form: { ...form, cajas },
+      result: rutaActual,
+    });
   }
 
   const resumenCostos = useMemo<ResumenCostos | null>(() => {
@@ -522,7 +505,7 @@ export function CotizadorCourier({
     }
   }
 
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(whatsappText())}`;
+  const whatsappHref = linkWhatsappVegroup(whatsappText());
   const fechaDolar = dolarInfo?.fecha
     ? ` · ${new Date(dolarInfo.fecha).toLocaleDateString("es-AR")}`
     : "";
@@ -533,30 +516,36 @@ export function CotizadorCourier({
   return (
     <div className={styles.cotizador}>
       {/* ── Selector de régimen ─────────────────────────────────────────── */}
-      <fieldset className={styles.grupoOpciones}>
-        <legend className={styles.srOnly}>Régimen de importación</legend>
-        {OPCIONES_REGIMEN.map((op) => (
-          <label
-            key={op.id}
-            className={
-              regimen === op.id ? `${styles.regimen} ${styles.regimenElegido}` : styles.regimen
-            }
-          >
-            <input
-              type="radio"
-              name="regimen"
-              value={op.id}
-              checked={regimen === op.id}
-              onChange={() => setRegimen(op.id)}
-              className={styles.radio}
-            />
-            <span className={styles.opcionTexto}>
-              <span className={styles.opcionTitulo}>{op.titulo}</span>
-              <span className={styles.opcionDesc}>{op.desc}</span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      <div className={styles.regimenes}>
+        <fieldset className={styles.grupoOpciones}>
+          <legend className={styles.srOnly}>Régimen de importación</legend>
+          {OPCIONES_REGIMEN.map((op) => (
+            <label
+              key={op.id}
+              className={
+                regimen === op.id ? `${styles.regimen} ${styles.regimenElegido}` : styles.regimen
+              }
+            >
+              <input
+                type="radio"
+                name="regimen"
+                value={op.id}
+                checked={regimen === op.id}
+                onChange={() => setRegimen(op.id)}
+                className={styles.radio}
+              />
+              <span className={styles.opcionTexto}>
+                <span className={styles.opcionTitulo}>{op.titulo}</span>
+                {/* A la vista sólo la del elegido (debajo); acá, para lectores de pantalla. */}
+                <span className={styles.srOnly}>. {op.desc}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <p className={styles.regimenDesc} aria-hidden="true">
+          {OPCIONES_REGIMEN.find((op) => op.id === regimen)?.desc}
+        </p>
+      </div>
 
       {/* ── 1. Producto → la IA detecta la NCM sola ─────────────────────── */}
       {regimen !== "integral" && (
@@ -570,8 +559,8 @@ export function CotizadorCourier({
             </h2>
             <p className={styles.cardSubtitulo}>
               {regimen === "pequeños"
-                ? "Escribí tu producto. La posición arancelaria se asigna automáticamente bajo el régimen de pequeños envíos."
-                : "Escribí tu producto. La IA detecta automáticamente la posición arancelaria correcta en la base oficial AFIP/Malvina (33.000 posiciones)."}
+                ? "La posición arancelaria se asigna sola (régimen de pequeños envíos)."
+                : "La IA detecta la posición arancelaria en la base oficial AFIP/Malvina."}
             </p>
           </div>
 
@@ -600,6 +589,7 @@ export function CotizadorCourier({
             autoComplete="off"
             hint="Qué es y para qué sirve, con tus palabras. Mientras más claro, mejor la posición que encuentra la IA."
           />
+          <FotoProducto descripcionActual={producto} onDescripcion={setProducto} />
 
           {/* ── Pequeños envíos: NCM fija ─────────────────────────────────── */}
           {regimen === "pequeños" && selected && (
@@ -714,14 +704,14 @@ export function CotizadorCourier({
           </h2>
           <p className={styles.cardSubtitulo}>
             {regimen === "integral"
-              ? "Tarifa neta por kg. Sin impuestos, sin handling, sin aranceles. Solo peso y volumen."
-              : "Cargá los datos de tu paquete y elegí a qué depósito lo enviás."}
+              ? "Tarifa neta por kg, sin impuestos ni aranceles. Solo peso y volumen."
+              : "Datos del paquete y depósito de envío."}
           </p>
         </div>
 
         <form className={styles.form} onSubmit={handleQuote}>
           {regimen !== "integral" && (
-            <div className={styles.grilla3}>
+            <div className={`${styles.grilla3} ${styles.ayudaFoco}`}>
               <TextField
                 label="Precio FOB (USD)"
                 type="number"
@@ -759,7 +749,7 @@ export function CotizadorCourier({
           )}
 
           {regimen === "integral" && (
-            <div className={styles.grilla2}>
+            <div className={`${styles.grilla2} ${styles.ayudaFoco}`}>
               <TextField
                 label="Peso del paquete (kg)"
                 type="number"
@@ -785,7 +775,7 @@ export function CotizadorCourier({
             </div>
           )}
 
-          <div className={styles.grilla2}>
+          <div className={`${styles.filaMedidas} ${styles.ayudaFoco}`}>
             <fieldset className={styles.grupoCampos} aria-describedby="cotizador-medidas-ayuda">
               <legend className={styles.leyenda}>Dimensiones por caja (cm)</legend>
               <div className={styles.medidas}>
@@ -838,34 +828,63 @@ export function CotizadorCourier({
             />
           </div>
 
-          <div className={styles.grilla2}>
-            <TextField
-              label={`TC BNA (destino)${fechaDolar}`}
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              value={form.dolarBN}
-              onChange={set("dolarBN")}
-              placeholder={
-                dolarInfo ? String(dolarInfo.venta) : dolarFallo ? "Cargalo a mano" : "Cargando…"
-              }
-              hint="Dólar oficial del Banco Nación: con este se pagan los impuestos y gastos acá."
-            />
-            {regimen !== "integral" && (
+          {/* El dólar viene solo del servidor: se muestra como dato y los campos
+              sólo aparecen para editarlo (o si la cotización automática falló). */}
+          {!editandoTC && !dolarFallo && (
+            <div className={styles.tipoCambio}>
+              <p className={styles.tipoCambioTexto}>
+                {dolarInfo ? (
+                  <>
+                    Dólar BNA <strong>${form.dolarBN || dolarInfo.venta}</strong>
+                    {regimen !== "integral" && form.dolarCCL !== "" && (
+                      <>
+                        {" "}
+                        · CCL <strong>${form.dolarCCL}</strong>
+                      </>
+                    )}
+                    {fechaDolar}
+                  </>
+                ) : (
+                  "Cargando el dólar del día…"
+                )}
+              </p>
+              {dolarInfo && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditandoTC(true)}>
+                  Editar
+                </Button>
+              )}
+            </div>
+          )}
+          {(editandoTC || dolarFallo) && (
+            <div className={`${styles.grilla2} ${styles.ayudaFoco}`}>
               <TextField
-                label={`TC CCL / Cripto (proveedor)${fechaCcl}`}
+                label={`TC BNA (destino)${fechaDolar}`}
                 type="number"
                 inputMode="decimal"
                 min="0"
                 step="0.01"
-                value={form.dolarCCL}
-                onChange={set("dolarCCL")}
-                placeholder={dolarInfo?.ccl ? String(dolarInfo.ccl.venta) : "Cargá manualmente"}
-                hint="Dólar con el que le pagás al proveedor afuera (CCL o cripto)."
+                value={form.dolarBN}
+                onChange={set("dolarBN")}
+                placeholder={
+                  dolarInfo ? String(dolarInfo.venta) : dolarFallo ? "Cargalo a mano" : "Cargando…"
+                }
+                hint="Dólar oficial del Banco Nación: con este se pagan los impuestos y gastos acá."
               />
-            )}
-          </div>
+              {regimen !== "integral" && (
+                <TextField
+                  label={`TC CCL / Cripto (proveedor)${fechaCcl}`}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={form.dolarCCL}
+                  onChange={set("dolarCCL")}
+                  placeholder={dolarInfo?.ccl ? String(dolarInfo.ccl.venta) : "Cargá manualmente"}
+                  hint="Dólar con el que le pagás al proveedor afuera (CCL o cripto)."
+                />
+              )}
+            </div>
+          )}
           {dolarFallo && (
             <div className={styles.aviso} role="status">
               <p className={styles.avisoTexto}>
@@ -1097,7 +1116,6 @@ export function CotizadorCourier({
           result={rutaActual}
           form={{ ...form, cajas }}
           regimen={regimen}
-          whatsappContacto={whatsappContacto}
         />
       )}
     </div>

@@ -91,8 +91,7 @@ interface ManualNcm {
   iva: string;
 }
 
-/** `whatsappContacto` (VGRP-69): `links.whatsapp` de la config, para "Enviar por WhatsApp". */
-export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: string }) {
+export function CotizadorMaritimo() {
   // Paso 1 — posición arancelaria
   const [producto, setProducto] = useState("");
   const [detStatus, setDetStatus] = useState<EstadoDeteccion>("idle");
@@ -346,8 +345,8 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
             Producto
           </h2>
           <p className={cotizadorStyles.cardSubtitulo}>
-            Escribí qué se importa, o identificalo con una foto. La IA busca la posición arancelaria
-            en la base oficial AFIP/Malvina y de ahí salen los derechos, la estadística y el IVA.
+            Escribí qué se importa o identificalo con una foto: la IA busca la posición arancelaria
+            en la base oficial AFIP/Malvina.
           </p>
         </div>
 
@@ -450,7 +449,7 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
         </Button>
         {mostrarManual && (
           <div id="maritimo-manual" className={styles.panelManual}>
-            <div className={cotizadorStyles.grilla3}>
+            <div className={`${cotizadorStyles.grilla3} ${cotizadorStyles.ayudaFoco}`}>
               <TextField
                 label="Posición SIM"
                 value={manual.sim}
@@ -497,8 +496,7 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
             Carga
           </h2>
           <p className={cotizadorStyles.cardSubtitulo}>
-            Subí el packing list y la proforma y se completa todo solo. Si no los tenés, cargalo a
-            mano.
+            Subí el packing list y la proforma para completar todo, o cargalo a mano.
           </p>
         </div>
 
@@ -509,7 +507,7 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
           </div>
         )}
 
-        <div className={cotizadorStyles.grilla3}>
+        <div className={`${cotizadorStyles.grilla3} ${cotizadorStyles.ayudaFoco}`}>
           <TextField
             label="Volumen (m³)"
             inputMode="decimal"
@@ -564,7 +562,7 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
             Origen
           </h2>
           <p className={cotizadorStyles.cardSubtitulo}>
-            Poné la dirección del fabricante y se elige el puerto de carga más cercano.
+            Con la dirección del fabricante se sugiere el puerto de carga más cercano.
           </p>
         </div>
 
@@ -625,7 +623,7 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
           ))}
         </fieldset>
 
-        <div className={cotizadorStyles.grilla2}>
+        <div className={`${cotizadorStyles.grilla2} ${cotizadorStyles.ayudaFoco}`}>
           <TextField
             label="Puerto de descarga"
             value={`${PUERTO_DESCARGA.label} (${PUERTO_DESCARGA.pais})`}
@@ -640,7 +638,7 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
           />
         </div>
 
-        <div className={cotizadorStyles.grilla2}>
+        <div className={`${cotizadorStyles.grilla2} ${cotizadorStyles.ayudaFoco}`}>
           <TextField
             label="Tipo de cambio aduana (CDA)"
             inputMode="decimal"
@@ -666,7 +664,6 @@ export function CotizadorMaritimo({ whatsappContacto }: { whatsappContacto: stri
               setFleteFull={setFleteFull}
               refNumber={refNumber}
               producto={producto}
-              whatsappContacto={whatsappContacto}
             />
             <MaritimoQuoteDoc
               refNumber={refNumber}

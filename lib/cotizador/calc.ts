@@ -230,6 +230,20 @@ export function calcAllRoutes(inp: EntradaCalculo, cfg: ConfigCalculo = CONFIG):
   return { results, mejorRuta: mejor.route };
 }
 
+/**
+ * Costo real (sin IVA) por kg. `costoPorKg` del motor es el TOTAL con IVA por
+ * kg (tal como la planilla madre) y `costoPorUnidad` es el costo real por
+ * unidad: bases distintas lado a lado. La pantalla, el PDF y el mensaje de
+ * WhatsApp muestran los dos sobre el costo real, y para eso se usa esto.
+ * El peso sale de `totalUSD / costoPorKg`, así no se toca la forma del resultado
+ * (que se compara contra los fixtures del original).
+ */
+export function costoRealPorKg(
+  r: Pick<ResultadoRuta, "totalUSD" | "costoPorKg" | "costoRealEfectivo">,
+): number {
+  return r.costoPorKg > 0 && r.totalUSD > 0 ? (r.costoRealEfectivo * r.costoPorKg) / r.totalUSD : 0;
+}
+
 // Etiquetas legibles para el desglose (mismos nombres que la planilla).
 export const LABELS: Record<ClaveEtiqueta, string> = {
   cif: "Valor CIF (referencia)",
