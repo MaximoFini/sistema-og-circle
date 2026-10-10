@@ -428,15 +428,7 @@
 }
 
 .desgloseResumen {
-  composes: headline from "../ui/type.module.css";
-  --t-size: var(--fs-callout);
-  cursor: pointer;
-}
-
-.desgloseResumen:focus-visible {
-  outline: 2px solid var(--champagne);
-  outline-offset: 4px;
-  border-radius: 4px;
+  composes: resumenPlegable from "./cotizador.module.css";
 }
 
 .desgloseDetalle[open] > .desgloseResumen {

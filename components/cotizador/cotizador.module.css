@@ -896,6 +896,23 @@
   --t-color: var(--text-secondary);
 }
 
+/* <summary> de un bloque de consulta plegado (<details> nativo): lo comparten el
+   desglose, el detalle de la estrategia y el del marítimo. Quien lo compone
+   sólo agrega el margen de cuando está abierto. */
+.resumenPlegable {
+  padding: 0 4px;
+  font-size: var(--fs-callout);
+  font-weight: 600;
+  color: var(--champagne);
+  cursor: pointer;
+}
+
+.resumenPlegable:focus-visible {
+  outline: 2px solid var(--champagne);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 /* (i) junto a un concepto: la definición aparece al pasar el mouse o con
    foco de teclado. Sólo CSS. */
 .tip {

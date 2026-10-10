@@ -25,6 +25,7 @@ import type {
   ConfigCalculo,
   EntradaCalculo,
   GastosDestino,
+  Regimen,
   RegistroPequenosEnvios,
   ResultadoIntegral,
   ResultadoIntegrales,
@@ -243,6 +244,22 @@ export function costoRealPorKg(
 ): number {
   return r.costoPorKg > 0 && r.totalUSD > 0 ? (r.costoRealEfectivo * r.costoPorKg) / r.totalUSD : 0;
 }
+
+/** Costo real (sin IVA) en pesos: FOB al CCL + destino al BNA. `null` si falta algún dólar. */
+export function costoRealPesos(
+  r: Pick<ResultadoRuta, "proveedorPesos" | "destinoPesos">,
+): number | null {
+  return r.proveedorPesos != null && r.destinoPesos != null
+    ? r.proveedorPesos + r.destinoPesos
+    : null;
+}
+
+/** Nombre del servicio courier tal como lo elige el usuario (pantalla, PDF y WhatsApp). */
+export const SERVICIO_COURIER: Record<Regimen, string> = {
+  general: "Courier comercial (régimen general, con aranceles)",
+  pequeños: "Courier — Pequeños envíos (régimen simplificado, franquicia)",
+  integral: "Courier integral (todo incluido, tarifa por kg, sin aranceles)",
+};
 
 // Etiquetas legibles para el desglose (mismos nombres que la planilla).
 export const LABELS: Record<ClaveEtiqueta, string> = {

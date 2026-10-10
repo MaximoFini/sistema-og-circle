@@ -167,17 +167,7 @@
 }
 
 .detalleResumen {
-  padding: 0 4px;
-  font-size: var(--fs-callout);
-  font-weight: 600;
-  color: var(--champagne);
-  cursor: pointer;
-}
-
-.detalleResumen:focus-visible {
-  outline: 2px solid var(--champagne);
-  outline-offset: 4px;
-  border-radius: 4px;
+  composes: resumenPlegable from "./cotizador.module.css";
 }
 
 .detalle[open] > .detalleResumen {

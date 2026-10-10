@@ -266,7 +266,6 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
   const canalesVisibles = verTodosCanales
     ? ranking
     : ranking.filter((f, i) => i < CANALES_VISIBLES || f.k === canalKey);
-  const canalesOcultos = ranking.length - canalesVisibles.length;
 
   // Un solo aviso de entrada (el más relevante); el resto, plegado.
   const avisosOrdenados = [...avisos].sort(
@@ -601,7 +600,7 @@ export function PriceStrategy({ costoInicial, unidadesInicial }: PriceStrategyPr
                 );
               })}
             </div>
-            {(canalesOcultos > 0 || verTodosCanales) && ranking.length > CANALES_VISIBLES && (
+            {ranking.length > CANALES_VISIBLES && (
               <Button
                 variant="ghost"
                 size="sm"

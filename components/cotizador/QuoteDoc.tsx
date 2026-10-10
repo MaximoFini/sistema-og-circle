@@ -11,9 +11,15 @@
 // (specs/bloque-12-calculadoras/design-vgrp57.md → "Impresión (PDF)").
 
 import { createPortal } from "react-dom";
-import { costoRealPorKg, fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
+import {
+  costoRealPesos,
+  costoRealPorKg,
+  fmtARS,
+  fmtUSD,
+  LABELS,
+  SERVICIO_COURIER,
+} from "@/lib/cotizador/calc";
 import type { GastosDestino, PosicionElegida, Regimen, ResultadoRuta } from "@/lib/cotizador/types";
-import { SERVICIO_COURIER } from "@/lib/cotizador/whatsappCourier";
 import { WHATSAPP_VEGROUP_LEGIBLE } from "@/lib/cotizador/whatsappVegroup";
 import styles from "./QuoteDoc.module.css";
 
@@ -68,6 +74,7 @@ export function QuoteDoc({
   regimen,
 }: QuoteDocProps) {
   if (!result || !selected || typeof document === "undefined") return null;
+  const pesosCostoReal = costoRealPesos(result);
 
   return createPortal(
     <div className={styles.hoja} data-quote-doc="">
@@ -186,9 +193,7 @@ export function QuoteDoc({
         <div className={`${styles.total} ${styles.totalPrincipal}`}>
           <div className={styles.k}>COSTO REAL PUESTO ACÁ (SIN IVA RECUPERABLE)</div>
           <div className={styles.v}>{fmtUSD(result.costoRealEfectivo)}</div>
-          {result.proveedorPesos != null && result.destinoPesos != null && (
-            <div className={styles.sub}>{fmtARS(result.proveedorPesos + result.destinoPesos)}</div>
-          )}
+          {pesosCostoReal != null && <div className={styles.sub}>{fmtARS(pesosCostoReal)}</div>}
         </div>
         <div className={styles.total}>
           <div className={styles.k}>Costo real por unidad</div>

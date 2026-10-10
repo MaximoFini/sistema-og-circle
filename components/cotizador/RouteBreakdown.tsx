@@ -18,7 +18,7 @@
 // - Sin `routeId`, las 3 rutas son un radio group (antes, divs clickeables).
 
 import { useId, useState } from "react";
-import { costoRealPorKg, fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
+import { costoRealPesos, costoRealPorKg, fmtARS, fmtUSD, LABELS } from "@/lib/cotizador/calc";
 import type { ClaveEtiqueta, GastosDestino, ResultadoRutas, RutaId } from "@/lib/cotizador/types";
 import { type Concepto, Conceptos, InfoTip } from "./Conceptos";
 import styles from "./RouteBreakdown.module.css";
@@ -92,6 +92,7 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
   const tituloId = `${id}-titulo`;
   const desgloseId = `${id}-desglose`;
   const destinoConIva = current.totalGastosDestino + current.recuperable.iva;
+  const pesosCostoReal = costoRealPesos(current);
 
   return (
     <section className={styles.card} aria-labelledby={tituloId}>
@@ -150,10 +151,8 @@ export function RouteBreakdown({ data, routeId }: RouteBreakdownProps) {
             <div className={styles.total}>
               <dt className={styles.totalClave}>Costo real puesto acá (sin IVA recuperable)</dt>
               <dd className={styles.totalDestacado}>{fmtUSD(current.costoRealEfectivo)}</dd>
-              {current.proveedorPesos != null && current.destinoPesos != null && (
-                <dd className={styles.totalNota}>
-                  {fmtARS(current.proveedorPesos + current.destinoPesos)} en pesos
-                </dd>
+              {pesosCostoReal != null && (
+                <dd className={styles.totalNota}>{fmtARS(pesosCostoReal)} en pesos</dd>
               )}
             </div>
             <div className={styles.total}>

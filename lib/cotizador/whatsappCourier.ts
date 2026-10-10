@@ -6,15 +6,16 @@
 //
 // Función pura, sin React: se testea sola (whatsappCourier.test.ts).
 
-import { costoRealPorKg, fmtARS, fmtUSD, INTEGRAL_THRESHOLD, INTEGRAL_VOL_RATE } from "./calc";
+import {
+  costoRealPesos,
+  costoRealPorKg,
+  fmtARS,
+  fmtUSD,
+  INTEGRAL_THRESHOLD,
+  INTEGRAL_VOL_RATE,
+  SERVICIO_COURIER,
+} from "./calc";
 import type { PosicionElegida, Regimen, ResultadoIntegral, ResultadoRuta } from "./types";
-
-/** Nombre del servicio tal como lo elige el usuario, con lo que cambia entre uno y otro. */
-export const SERVICIO_COURIER: Record<Regimen, string> = {
-  general: "Courier comercial (régimen general, con aranceles)",
-  pequeños: "Courier — Pequeños envíos (régimen simplificado, franquicia)",
-  integral: "Courier integral (todo incluido, tarifa por kg, sin aranceles)",
-};
 
 const SALUDO =
   "Hola! Les paso una cotización de importación que hice en la calculadora de OG Circle.";
@@ -51,6 +52,10 @@ export interface DatosWhatsappIntegral {
 
 const kg = (n: number) => `${n.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kg`;
 
+/** " ($ 1.234 al BNA $1535)" — el equivalente en pesos, o nada si falta el dólar. */
+const enPesos = (pesos: number | null, aclaracion = "") =>
+  pesos != null ? ` (${fmtARS(pesos)}${aclaracion})` : "";
+
 function medidas(f: Pick<FormularioWhatsapp, "cajas" | "largo" | "ancho" | "alto">): string {
   const caja = `${f.largo} × ${f.ancho} × ${f.alto} cm`;
   return f.cajas === 1 ? `1 caja de ${caja}` : `${f.cajas} cajas de ${caja} cada una`;
@@ -70,10 +75,6 @@ export function textoCourier({
   form,
   result: r,
 }: DatosWhatsappCourier): string {
-  const conPesos = r.proveedorPesos != null && r.destinoPesos != null;
-  const costoRealPesos = conPesos ? (r.proveedorPesos ?? 0) + (r.destinoPesos ?? 0) : null;
-  const ivaPesos = r.ivaPesos;
-
   return [
     SALUDO,
     `*Cotización N° ${refNumber}*`,
@@ -93,16 +94,12 @@ export function textoCourier({
       : null,
     "",
     "*RESULTADO*",
-    `• *Costo real puesto en Argentina (sin IVA recuperable): ${fmtUSD(r.costoRealEfectivo)}*${
-      costoRealPesos != null ? ` (${fmtARS(costoRealPesos)})` : ""
-    }`,
+    `• *Costo real puesto en Argentina (sin IVA recuperable): ${fmtUSD(r.costoRealEfectivo)}*${enPesos(costoRealPesos(r))}`,
     `   Por unidad: ${fmtUSD(r.costoPorUnidad)} · Por kg: ${fmtUSD(costoRealPorKg(r))}`,
-    `• Total a pagar (con IVA): ${fmtUSD(r.totalUSD)}${
-      r.totalPesos != null ? ` (${fmtARS(r.totalPesos)})` : ""
-    }`,
-    `   Proveedor: ${fmtUSD(r.fob)}${r.proveedorPesos != null ? ` (${fmtARS(r.proveedorPesos)} al CCL $${r.dolarCCL})` : ""}`,
-    `   Gastos en destino (sin IVA): ${fmtUSD(r.totalGastosDestino)}${r.destinoPesos != null ? ` (${fmtARS(r.destinoPesos)} al BNA $${r.dolarBN})` : ""}`,
-    `   IVA (crédito fiscal recuperable): ${fmtUSD(r.recuperable.iva)}${ivaPesos != null ? ` (${fmtARS(ivaPesos)})` : ""}`,
+    `• Total a pagar (con IVA): ${fmtUSD(r.totalUSD)}${enPesos(r.totalPesos)}`,
+    `   Proveedor: ${fmtUSD(r.fob)}${enPesos(r.proveedorPesos, ` al CCL $${r.dolarCCL}`)}`,
+    `   Gastos en destino (sin IVA): ${fmtUSD(r.totalGastosDestino)}${enPesos(r.destinoPesos, ` al BNA $${r.dolarBN}`)}`,
+    `   IVA (crédito fiscal recuperable): ${fmtUSD(r.recuperable.iva)}${enPesos(r.ivaPesos)}`,
     "",
     CIERRE,
   ]
@@ -136,7 +133,7 @@ export function textoIntegral({
     "",
     "*RESULTADO*",
     `• Tarifa: ${tarifa}`,
-    `• *Total a pagar: ${fmtUSD(r.totalUSD)}*${r.totalPesos != null ? ` (${fmtARS(r.totalPesos)}${dolarBN ? ` al BNA $${dolarBN}` : ""})` : ""}`,
+    `• *Total a pagar: ${fmtUSD(r.totalUSD)}*${enPesos(r.totalPesos, dolarBN ? ` al BNA $${dolarBN}` : "")}`,
     `   Por kg: ${fmtUSD(r.costoPorKg)}${Number(form.unidades) > 0 ? ` · Por unidad: ${fmtUSD(r.costoPorUnidad)}` : ""}`,
     "",
     CIERRE,
