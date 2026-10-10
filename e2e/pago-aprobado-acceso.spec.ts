@@ -157,7 +157,7 @@ test.describe("pago aprobado → acceso activado", () => {
     // VGRP-27 reemplazó el placeholder "Tenés acceso {nivel}" (VGRP-18) por
     // el shell real (variante prerenderizada por nivel, vía rewrite de
     // middleware.ts) — el heading que confirma el nivel activo ahora es este.
-    await expect(page.getByRole("heading", { name: "Nivel completo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "OG Circle", exact: true })).toBeVisible();
   });
 
   test("pago rejected: la pantalla de pendiente no desbloquea nada (no hay loop infinito ni acceso falso)", async ({

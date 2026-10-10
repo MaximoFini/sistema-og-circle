@@ -44,7 +44,7 @@ test.describe("shell del dashboard con el plan completo (VGRP-27/59)", () => {
       // La URL visible sigue siendo /dashboard (rewrite, no redirect) —
       // confirmado también contra el output de red durante el desarrollo.
       expect(page.url()).toContain("/dashboard");
-      await expect(page.getByRole("heading", { name: "Nivel completo" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "OG Circle", exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Desbloqueá OG Circle" })).toHaveCount(0);
     } finally {
       await cleanupUser(created.userId);

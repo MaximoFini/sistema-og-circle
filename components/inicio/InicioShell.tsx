@@ -66,15 +66,7 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
         <header className={styles.saludo}>
           <div className={styles.heroTexto}>
             <p className={styles.eyebrowNivel}>Tu cuenta</p>
-            <h1 className={styles.tituloPrincipal}>
-              {bloqueado ? (
-                "OG Circle"
-              ) : (
-                <>
-                  Nivel <span className={styles.nivelPalabra}>completo</span>
-                </>
-              )}
-            </h1>
+            <h1 className={styles.tituloPrincipal}>OG Circle</h1>
             <p className={styles.lede}>
               Tu camino para importar: formación paso a paso, herramientas y la red de contactos del
               círculo.

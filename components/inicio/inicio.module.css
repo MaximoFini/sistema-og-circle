@@ -36,10 +36,6 @@
   composes: largeTitle from "../ui/type.module.css";
 }
 
-.nivelPalabra {
-  text-transform: capitalize;
-}
-
 .lede {
   composes: lede from "../ui/type.module.css";
 }
