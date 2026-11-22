@@ -28,6 +28,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "mercadopago": "^3.6.0",
     "next": "15.5.23",
+    "posthog-node": "^6.0.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-easy-crop": "^6.2.4",

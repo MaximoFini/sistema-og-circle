@@ -697,11 +697,23 @@ describe("middleware", () => {
       "/sitemap.xml",
       "/logo-og-circle.png",
       "/hero-poster.jpg",
+      // VGRP-95 — proxy de PostHog: lo usan visitantes sin sesión.
+      "/ingest",
+      "/ingest/e",
+      "/ingest/static/array.js",
     ])("%s queda EXCLUIDO del matcher (el middleware no corre ahí)", (path) => {
       expect(regex.test(path)).toBe(false);
     });
 
-    it.each(["/dashboard", "/api/agentes", "/admin", "/_nextcosa", "/robots.txt.algo"])(
+    it.each([
+      "/dashboard",
+      "/api/agentes",
+      "/admin",
+      "/_nextcosa",
+      "/robots.txt.algo",
+      "/ingestx",
+      "/ingest-algo",
+    ])(
       "%s SÍ entra al matcher (el middleware corre — fail-closed, ver el comentario de middleware.ts)",
       (path) => {
         expect(regex.test(path)).toBe(true);

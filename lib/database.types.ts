@@ -312,6 +312,7 @@ export type Database = {
           email: string;
           es_prueba: boolean;
           id: string;
+          meta_contexto: Json | null;
           nivel: Database["public"]["Enums"]["nivel_acceso"];
           nombre: string | null;
           origen_registro: string | null;
@@ -328,6 +329,7 @@ export type Database = {
           email: string;
           es_prueba?: boolean;
           id: string;
+          meta_contexto?: Json | null;
           nivel?: Database["public"]["Enums"]["nivel_acceso"];
           nombre?: string | null;
           origen_registro?: string | null;
@@ -344,6 +346,7 @@ export type Database = {
           email?: string;
           es_prueba?: boolean;
           id?: string;
+          meta_contexto?: Json | null;
           nivel?: Database["public"]["Enums"]["nivel_acceso"];
           nombre?: string | null;
           origen_registro?: string | null;

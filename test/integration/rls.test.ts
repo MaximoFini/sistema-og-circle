@@ -65,7 +65,9 @@ describe("profiles_select_own: un usuario no lee la fila de profiles de otro (VG
     // RLS no devuelve un error de permisos: la fila simplemente no aparece
     // en el resultado, como si no existiera. Por eso la aserción correcta acá
     // es "0 filas", no "hay un error".
-    const { data, error } = await userB.client.from("profiles").select().eq("id", userAId);
+    // `select("id")` y no `select()`: `authenticated` lee `profiles` por columna
+    // (meta_contexto es sólo de service_role, VGRP-95) y `select()` pide todas.
+    const { data, error } = await userB.client.from("profiles").select("id").eq("id", userAId);
 
     expect(error).toBeNull();
     expect(data).toHaveLength(0);
@@ -75,7 +77,7 @@ describe("profiles_select_own: un usuario no lee la fila de profiles de otro (VG
     const userA = await crearUsuarioLogueado();
     userAId = userA.userId;
 
-    const { data, error } = await userA.client.from("profiles").select().eq("id", userAId);
+    const { data, error } = await userA.client.from("profiles").select("id").eq("id", userAId);
 
     expect(error).toBeNull();
     expect(data).toHaveLength(1);
@@ -99,7 +101,10 @@ describe("profiles_select_own: un usuario no lee la fila de profiles de otro (VG
     userAId = userA.userId;
 
     await withPolicyDisabled(admin, "public", "profiles", "profiles_select_own", async () => {
-      const { data, error } = await userA.client.from("profiles").select().eq("id", userA.userId);
+      const { data, error } = await userA.client
+        .from("profiles")
+        .select("id")
+        .eq("id", userA.userId);
       expect(error).toBeNull();
       expect(data).toHaveLength(0); // con la policy activa, el test hermano de arriba espera 1
     });

@@ -263,6 +263,27 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
   la ruta queda en **193 kB** (page 3,73 kB). El presupuesto no se tocó.
 - Verificado: `e2e/admin-edita-video-revalida.spec.ts` pasa con el wrapper.
 
+## Proxy `/ingest` de PostHog en `vercel.json`, no en `next.config.ts` (VGRP-95, 22/11/2026)
+
+- Un `rewrites()` en `next.config.ts` hace que Next incluya en el bundle de
+  TODAS las rutas el código que resuelve esas reglas en el navegador. Medido
+  con `next build` sobre `main` limpio, cambiando una sola cosa por vez:
+
+| Variante | First Load JS shared | Presupuesto de CI |
+|---|---|---|
+| `main` | 187 kB | pasa |
+| `main` + `posthog-node` (package.json y lockfile) | 187 kB | pasa |
+| `main` + `rewrites()` de `/ingest` + `skipTrailingSlashRedirect` + matcher | **190 kB** | **7 rutas fuera** (`/dashboard` 204 > 200, `/calculadora/[variante]`, `/admin/config`, `/admin/contenido/*`) |
+| lo anterior sin `rewrites()` | 187 kB | pasa |
+
+- Por eso los rewrites van en `vercel.json` (los resuelve el edge de Vercel,
+  0 kB de JS) y en `next.config.ts` queda solo `skipTrailingSlashRedirect`
+  (global: `/dashboard/` deja de redirigir; el middleware lo gatea igual).
+- Contrapartida: el proxy solo existe en un deploy de Vercel. En local no hay
+  `/ingest`, y el tracking tampoco corre ahí (solo producción).
+- El middleware sigue excluyendo `ingest` del matcher: en Vercel corre antes
+  que los rewrites de `vercel.json`.
+
 ## Migraciones de este bloque, estado contra el proyecto real
 
 - `20260918210000_pagos_aprobados_indice_parcial.sql` — aplicada por Ramiro

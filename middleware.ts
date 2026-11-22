@@ -424,9 +424,17 @@ export async function middleware(request: NextRequest) {
 // afuera `/_nextcosa`, y `robots.txt` dejaría afuera `/robots.txt.algo` —
 // rutas inventables desde afuera que quedarían sin gating de sesión.
 //
+// - `ingest` (VGRP-95): el proxy first-party de PostHog (rewrites en
+//   vercel.json). Lo usan visitantes sin sesión y pasa por nuestro dominio
+//   justamente para esquivar los bloqueadores de anuncios; es sólo un reenvío a
+//   PostHog, no toca datos de la app. Con sesión obligatoria devolvería un
+//   redirect a `/login` y el tracking nunca llegaría. Igual que `_next`, la
+//   exclusión es por SEGMENTO: `/ingest` y `/ingest/e` quedan afuera, pero
+//   `/ingestx` e `/ingest-algo` siguen entrando y protegidos.
+//
 // Todo lo demás entra al middleware, y ahí manda `PUBLIC_ROUTES`.
 export const config = {
   matcher: [
-    "/((?!(?:_next|favicon\\.ico|robots\\.txt|sitemap\\.xml)(?:/|$)|[^/]*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    "/((?!(?:_next|ingest|favicon\\.ico|robots\\.txt|sitemap\\.xml)(?:/|$)|[^/]*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 };
