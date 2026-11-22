@@ -57,7 +57,7 @@ async function getPolicyDefinition(
  *   await withPolicyDisabled(admin, "public", "profiles", "profiles_select_own", async () => {
  *     const anon = createTestAnonClient();
  *     await anon.auth.signInWithPassword({ email: userB.email, password: userB.password });
- *     const { data } = await anon.from("profiles").select().eq("id", userA.userId);
+ *     const { data } = await anon.from("profiles").select("id").eq("id", userA.userId);
  *     expect(data).toHaveLength(1); // con la policy activa este mismo assert da 0 filas
  *   });
  * });

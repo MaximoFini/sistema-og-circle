@@ -25,6 +25,17 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_APP_ENV: process.env.VERCEL_ENV ?? "local",
   },
 
+  // VGRP-95 (T14) — proxy first-party de PostHog (`/ingest`). Los rewrites
+  // viven en vercel.json y NO acá: un `rewrites()` en este archivo hace que Next
+  // meta en el bundle de TODAS las rutas el código que resuelve esas reglas en
+  // el navegador (medido: shared 187 → 190 kB, 7 rutas fuera de presupuesto);
+  // en vercel.json los resuelve el edge sin tocar el JS del cliente.
+  // `skipTrailingSlashRedirect` evita que Next redirija `/ingest/e/` a
+  // `/ingest/e`, cosa que PostHog no acepta. OJO: es GLOBAL (no se puede acotar
+  // a una ruta), así que `/dashboard/` también deja de redirigir a
+  // `/dashboard`; el middleware lo gatea igual.
+  skipTrailingSlashRedirect: true,
+
   // VGRP-56 punto 7 — avif primero (más chico que webp a igual calidad en la
   // mayoría de fotos/thumbnails), webp como fallback para navegadores sin
   // soporte avif. Afecta al pipeline de optimización de next/image, no a los
