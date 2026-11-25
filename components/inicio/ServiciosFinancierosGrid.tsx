@@ -7,12 +7,15 @@
 
 import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
+import { Avatar } from "@/components/ui/Avatar";
+import { ContactoDirectorio } from "./ContactoDirectorio";
 import styles from "./inicio.module.css";
 
 interface ServicioRespuesta {
   id: string;
-  publicMeta: { titulo: string };
+  publicMeta: { titulo: string; fotoUrl: string | null };
   descripcion: string | null;
+  contacto: string | null;
 }
 
 export function ServiciosFinancierosGrid() {
@@ -48,12 +51,23 @@ export function ServiciosFinancierosGrid() {
     <div className={styles.agentesGrid}>
       {servicios.map((servicio) => (
         <div key={servicio.id} className={styles.agenteCard}>
-          {/* Hijo directo de la tarjeta: e2e/inicio-canario-swift.spec.ts busca el
-              bloqueo en el padre del título. */}
-          <strong className={styles.servicioTitulo}>{servicio.publicMeta.titulo}</strong>
+          {/* Con foto: avatar + título en la cabecera (<span>, igual que los
+              profesionales). Sin foto: el título solo, como antes — no se inventan
+              iniciales para un servicio que no cargó logo. */}
+          {servicio.publicMeta.fotoUrl ? (
+            <span className={styles.agenteCabecera}>
+              <Avatar nombre={servicio.publicMeta.titulo} fotoUrl={servicio.publicMeta.fotoUrl} />
+              <strong className={styles.servicioTitulo}>{servicio.publicMeta.titulo}</strong>
+            </span>
+          ) : (
+            <strong className={styles.servicioTitulo}>{servicio.publicMeta.titulo}</strong>
+          )}
           <ContenidoBloqueado bloqueado={servicio.descripcion === null}>
             <p className={styles.textoTarjeta}>{servicio.descripcion}</p>
           </ContenidoBloqueado>
+          {servicio.contacto ? (
+            <ContactoDirectorio contacto={servicio.contacto} nombre={servicio.publicMeta.titulo} />
+          ) : null}
         </div>
       ))}
     </div>

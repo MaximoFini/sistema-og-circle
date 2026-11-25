@@ -148,7 +148,7 @@ describe("PUT|DELETE /api/admin/contenido/[entidad]/[id]/foto", () => {
       expect(mockQuitarFoto).not.toHaveBeenCalled();
     });
 
-    it.each(["videos", "servicios_financieros", "profiles"])(
+    it.each(["videos", "materiales", "profiles"])(
       "entidad sin foto (%s) → 400 sin tocar la base",
       async (entidad) => {
         const res = await callPut(entidad, UUID, await imagen());

@@ -16,6 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import type { AppMetadataClaims } from "../auth/claims";
 import type { Database } from "../database.types";
+import { urlPublicaFoto } from "../fotos/storage";
 import { createServiceRoleClient } from "../supabase/service-role";
 import { REVALIDATE_CONTENIDO_SEGUNDOS, TAG_POR_ENTIDAD } from "./admin/contenido";
 import { leerConFallback } from "./cache-fallback";
@@ -27,23 +28,30 @@ export interface ServicioFinancieroPublico {
   id: string;
   publicMeta: {
     titulo: string;
+    /** Foto/logo (pública, no gateada). null = sin foto → iniciales. */
+    fotoUrl: string | null;
   };
   /** null = bloqueado (sin plan) — nunca se envía la descripción real. */
   descripcion: string | null;
+  /** Persona a la que hay que hablar. null = bloqueado (sin plan) o sin cargar. */
+  contacto: string | null;
 }
 
 interface ServicioFila {
   id: string;
   titulo: string;
+  foto_path: string | null;
   /** CRUDA (puede traer datos SWIFT) — sólo se cachea esto, nunca el resultado
    *  ya filtrado por `resolverSecreto()`. */
   descripcion: string | null;
+  /** CRUDO — sensible, sólo se cachea esto; `resolverSecreto()` lo filtra por request. */
+  contacto: string | null;
 }
 
 async function obtenerFilasServicios(admin: AdminClient): Promise<ServicioFila[]> {
   const { data, error } = await admin
     .from("servicios_financieros")
-    .select("id, titulo, descripcion")
+    .select("id, titulo, foto_path, descripcion, contacto")
     .eq("activo", true)
     .order("orden", { ascending: true });
   if (error) throw error;
@@ -64,8 +72,10 @@ function resolverServicios(
     id: fila.id,
     publicMeta: {
       titulo: fila.titulo,
+      fotoUrl: urlPublicaFoto(fila.foto_path),
     },
     descripcion: resolverSecreto(claims, fila.descripcion),
+    contacto: resolverSecreto(claims, fila.contacto),
   }));
 }
 

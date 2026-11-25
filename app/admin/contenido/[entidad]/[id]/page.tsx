@@ -33,7 +33,7 @@ export default async function ContenidoEditarPage({
   if (!item) notFound();
 
   const fila = item as Record<string, unknown> & { id: string };
-  // Sólo agentes/profesionales tienen `foto_path`; para el resto queda en null.
+  // Sólo agentes/profesionales/servicios financieros tienen `foto_path`; el resto queda en null.
   const fotoActualUrl = urlPublicaFoto(typeof fila.foto_path === "string" ? fila.foto_path : null);
 
   return (

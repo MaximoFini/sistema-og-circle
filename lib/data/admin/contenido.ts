@@ -157,6 +157,7 @@ const profesionalSchema = z.object({
 const servicioFinancieroSchema = z.object({
   titulo: z.string().trim().min(1),
   descripcion: z.string().trim().nullable().optional(),
+  contacto: z.string().trim().nullable().optional(),
   orden: z.number().int(),
   activo: z.boolean(),
 });

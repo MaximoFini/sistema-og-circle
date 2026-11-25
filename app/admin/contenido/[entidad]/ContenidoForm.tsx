@@ -61,6 +61,12 @@ const CAMPOS: Record<string, CampoConfig[]> = {
   servicios_financieros: [
     { name: "titulo", label: "Título", tipo: "text", requerido: true },
     { name: "descripcion", label: "Descripción", tipo: "textarea" },
+    {
+      name: "contacto",
+      label: "Contacto (sensible — nunca sale sin el plan)",
+      ayuda: "Teléfono o WhatsApp de la persona a la que tienen que hablar.",
+      tipo: "text",
+    },
     { name: "orden", label: "Orden", tipo: "number" },
     { name: "activo", label: "Activo", tipo: "checkbox" },
   ],
@@ -77,7 +83,7 @@ export interface ContenidoFormProps {
   entidad: string;
   /** Presente = editar; ausente = crear. */
   item?: Record<string, unknown> & { id: string };
-  /** Agentes / profesionales: URL de la foto guardada hoy (null = sin foto). */
+  /** Agentes / profesionales / servicios financieros: URL de la foto guardada hoy (null = sin foto). */
   fotoActualUrl?: string | null;
 }
 
@@ -218,7 +224,7 @@ export function ContenidoForm({ entidad, item, fotoActualUrl = null }: Contenido
     <form className={styles.formCambiarNivel} onSubmit={onSubmit}>
       {conFoto ? (
         <CampoFoto
-          nombre={String(valores.nombre ?? "")}
+          nombre={String(valores.nombre ?? valores.titulo ?? "")}
           fotoActualUrl={fotoActualUrl}
           cambio={cambioFoto}
           onCambio={setCambioFoto}

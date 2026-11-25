@@ -359,8 +359,10 @@ export type Database = {
       servicios_financieros: {
         Row: {
           activo: boolean;
+          contacto: string | null;
           created_at: string;
           descripcion: string | null;
+          foto_path: string | null;
           id: string;
           orden: number;
           titulo: string;
@@ -368,8 +370,10 @@ export type Database = {
         };
         Insert: {
           activo?: boolean;
+          contacto?: string | null;
           created_at?: string;
           descripcion?: string | null;
+          foto_path?: string | null;
           id?: string;
           orden?: number;
           titulo: string;
@@ -377,8 +381,10 @@ export type Database = {
         };
         Update: {
           activo?: boolean;
+          contacto?: string | null;
           created_at?: string;
           descripcion?: string | null;
+          foto_path?: string | null;
           id?: string;
           orden?: number;
           titulo?: string;

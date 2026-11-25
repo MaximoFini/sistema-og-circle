@@ -6,8 +6,13 @@
 // como `lib/fotos/procesar.ts` (sharp, sólo servidor).
 
 /** Las únicas entidades con foto. Subconjunto de `ENTIDADES` de contenido. */
-export const ENTIDADES_CON_FOTO = ["agentes", "profesionales"] as const;
+export const ENTIDADES_CON_FOTO = ["agentes", "profesionales", "servicios_financieros"] as const;
 export type EntidadConFoto = (typeof ENTIDADES_CON_FOTO)[number];
+
+/** Columna con el nombre visible del ítem (los servicios tienen `titulo`, el resto `nombre`). */
+export function columnaNombre(entidad: EntidadConFoto): "nombre" | "titulo" {
+  return entidad === "servicios_financieros" ? "titulo" : "nombre";
+}
 
 export function tieneFoto(entidad: string): entidad is EntidadConFoto {
   return (ENTIDADES_CON_FOTO as readonly string[]).includes(entidad);

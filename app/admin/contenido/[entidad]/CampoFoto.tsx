@@ -1,6 +1,6 @@
 "use client";
 
-// Campo "Foto de perfil" del form de agentes / profesionales.
+// Campo "Foto de perfil" del form de agentes / profesionales / servicios financieros.
 // Spec: specs/foto-perfil-agentes-profesionales (US-1, US-2, US-3).
 //
 // No sube nada: devuelve un `CambioFoto` al form, que lo aplica DESPUÉS de
