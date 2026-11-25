@@ -12,6 +12,7 @@
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { precargarInicio } from "@/components/inicio/datos-inicio";
 import { Icon } from "@/components/ui/Icon";
 import { DESTINOS_NAV } from "./destinos";
 import styles from "./nav.module.css";
@@ -78,8 +79,14 @@ export function RapidaNav() {
             className={externo ? `${styles.rapidaLink} ${styles.rapidaExterno}` : styles.rapidaLink}
             aria-current={actual ? "page" : undefined}
             {...(externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            onMouseEnter={(e) => moverIndicadorA(e.currentTarget)}
-            onFocus={(e) => moverIndicadorA(e.currentTarget)}
+            onMouseEnter={(e) => {
+              moverIndicadorA(e.currentTarget);
+              if (destino.href === "/dashboard") precargarInicio();
+            }}
+            onFocus={(e) => {
+              moverIndicadorA(e.currentTarget);
+              if (destino.href === "/dashboard") precargarInicio();
+            }}
             onBlur={volverAlActivo}
           >
             {destino.label}

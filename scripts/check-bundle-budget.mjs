@@ -40,6 +40,12 @@ const BUDGET_OVERRIDES_KB = {
   // aparte que solo baja con la entidad `materiales`). 201 kB medido.
   "/admin/contenido/[entidad]/nuevo": 202,
   "/admin/contenido/[entidad]/[id]": 202,
+  // Inicio: `main` ya medía 201 kB (Avatar + contacto en las 3 grillas del directorio) y la
+  // caché de cliente entre navegaciones (lib/cliente/cache-datos.ts) suma 1 kB: 202 kB
+  // medido. A cambio, volver a Inicio no repite los 4 pedidos (agentes, profesionales,
+  // servicios, progreso). docs/RENDIMIENTO.md, "Caché de cliente entre navegaciones".
+  "/dashboard": 203,
+  "/dashboard/[variante]": 203,
 };
 
 const ROUTE_LINE = /^[┌├└│]\s*(?:[○●ƒ]\s+)?(\S+)\s+([\d.]+\s?(?:B|kB|MB))\s+([\d.]+\s?(?:B|kB|MB))/;

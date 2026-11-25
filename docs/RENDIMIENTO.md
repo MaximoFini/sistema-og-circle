@@ -303,6 +303,75 @@ decisión consciente que se explica en el PR — no un arreglo de CI en rojo.
 - Todas las rutas dentro del presupuesto de `scripts/check-bundle-budget.mjs` (200 kB default, 195 kB shared). Verificado con `pnpm check:bundle` en el worktree: 52/52 rutas ✅.
 - `react-easy-crop` (editor de recorte) se carga con `next/dynamic({ ssr: false })` desde `CampoFoto`, así que no aparece en el First Load — sólo descarga cuando el admin abre el campo de foto en un formulario.
 
+## Caché de cliente entre navegaciones y miniaturas (auditoría del 25/11/2026)
+
+Auditoría con los contenidos definitivos cargados (21 videos de formación, directorio
+completo). Dos síntomas reportados: la miniatura del "Próximo video" de Inicio a veces
+tardaba en aparecer, y volver de Formación a Inicio mostraba "Cargando…" otra vez.
+
+**Causa 1 — cada visita a Inicio repetía 4 pedidos.** Inicio y Formación son estáticas
+y lo dinámico se pide desde Client Components al montar (`AgentesGrid`,
+`ProfesionalesGrid`, `ServiciosFinancierosGrid` y el progreso de
+`ProgresoVideosProvider`). Navegar desmonta y vuelve a montar: el HTML/RSC sí salía de
+la caché del router de Next, pero los 4 pedidos y sus esqueletos se repetían en cada
+vuelta.
+
+- `lib/cliente/cache-datos.ts`: caché en memoria de la pestaña
+  (`useSyncExternalStore`). Primera visita: pide y guarda. Siguientes: pinta al instante
+  desde memoria. Pasados 5 min (`FRESCURA_MS`, igual que `staleTimes.static` de Next)
+  revalida en silencio, sin volver a "Cargando…". Pedidos simultáneos de la misma clave
+  comparten el viaje. Nunca en `localStorage`: guarda contactos gateados por plan.
+- **Se vacía al cambiar de cuenta o de plan:** "Cerrar sesión" (`CerrarSesionBoton`),
+  cualquier llegada a `/login` o `/registro` (`app/(auth)/LimpiarCacheDatos.tsx`, por la
+  sesión vencida) y la activación del plan (`PendienteClient`). Una respuesta que vuelve
+  después de vaciar se descarta. El gating sigue igual: cada endpoint resuelve los
+  secretos con los claims de quien pide; la caché sólo guarda lo que ya llegó al
+  navegador de esa sesión.
+- **Progreso compartido:** Inicio y Formación leen la misma clave, y "Marcar como visto"
+  escribe ahí: volver a Inicio muestra el avance nuevo sin pedirlo.
+- **Precarga:** pasar el puntero o el foco por "Inicio" en el header (`RapidaNav`) o abrir
+  el menú (`MenuToggle`) llama a `precargarInicio()` (`components/inicio/datos-inicio.ts`).
+  No hace nada si los datos ya están frescos.
+- Medido con `e2e/inicio-cache-navegacion.spec.ts` (Inicio → Formación → Inicio por
+  links del header): antes 6 pedidos a las grillas, después **3** (sólo la primera
+  visita), sin "Cargando…" al volver. Los canarios de fuga
+  (`canario-agentes-nivel`, `inicio-canario-swift`) siguen en verde.
+
+**Causa 2 — la miniatura llegaba después de tres esperas encadenadas.** La tarjeta de
+Stage sólo sabe cuál es el "próximo video" cuando vuelve el progreso; recién ahí pinta un
+`<img loading="lazy">` de un tercero (`i.ytimg.com`), con DNS + TLS en frío.
+
+- `preconnect(videoProvider.origenThumbnails)` (de `react-dom`) en `InicioShell` y
+  `FormacionShell`: la conexión a `i.ytimg.com` se abre desde el `<head>` del HTML
+  estático, en paralelo con la hidratación. El origen vive en `lib/video/provider.ts`,
+  el único archivo que conoce al proveedor.
+- La miniatura de `TarjetaStage` ya no es `lazy`. Es una **excepción escrita a la regla 5**:
+  son 2 imágenes en la parte visible, y `lazy` sumaba otra espera. Las 21 de
+  `/formacion` (`VideoCard`) siguen `lazy`.
+- Con la causa 1 resuelta, desde la segunda visita el progreso ya está en memoria y la
+  miniatura sale de la caché HTTP del navegador.
+
+**Bundle** (`next build`, mismo método antes/después):
+
+| Ruta | `main` | Con el cambio |
+|---|---|---|
+| shared by all | 187 kB | 187 kB |
+| `/dashboard`, `/dashboard/[variante]` | 201 kB | **202 kB** (+1 kB) |
+| `/formacion`, `/formacion/[variante]` | 196 kB | 197 kB (+1 kB) |
+| `/perfil` | 196 kB | 197 kB |
+| `/comprar/pendiente` | 257 kB | 258 kB |
+| `/login` | 195 kB | 195 kB |
+
+`main` ya tenía `/dashboard` en 201 kB, 1 kB por encima de su presupuesto de 200 (las 3
+grillas del directorio con `Avatar` y contacto). El presupuesto de `/dashboard` y
+`/dashboard/[variante]` sube a **203 kB** en `scripts/check-bundle-budget.mjs`. Es una
+decisión consciente: +1 kB a cambio de no repetir 4 pedidos por navegación.
+
+**Revisado sin cambios:** el `fetch("/api/perfil")` de `MenuToggle` vive en el layout de
+`(app)`, que no se desmonta al navegar, así que no se repite. `/perfil` resuelve sus datos
+en el servidor. Las fotos del directorio (`Avatar`) ya pasan por `/_next/image` (AVIF/WebP,
+`srcset` 1x/2x).
+
 ## `/formacion`, materiales y editor de videos sin tope (VGRP-88)
 
 - **Presupuesto de First Load JS:** `/admin/contenido/[entidad]/nuevo` y `/admin/contenido/[entidad]/[id]` pasan de 200 a **201 kB** (+1 kB: el wrapper `dynamic()` de `MaterialFormLazy`). El form de materiales y el subidor (`SubidorArchivo`, XHR con progreso) viajan en un chunk aparte que solo baja con la entidad `materiales`. Como el feature de foto de perfil ya las había dejado en 200 kB exactos, se subió el tope de esas dos rutas a 202 kB en `scripts/check-bundle-budget.mjs`: decisión consciente, no un arreglo de CI.

@@ -12,6 +12,9 @@ export interface VideoProvider {
   nombre: string;
   urlEmbed(providerRef: string): string;
   urlThumbnail(providerRef: string): string;
+  /** Origen de las miniaturas, para un `preconnect` temprano (las miniaturas son de un
+   *  tercero: sin esto, DNS + TLS recién arrancan cuando el componente pinta la imagen). */
+  origenThumbnails: string;
   /** Normaliza lo que pega el admin (link completo o id suelto) al `provider_ref`
    *  que se guarda en la base. `null` = no se reconoce como un video válido. */
   parsearRef(entrada: string): string | null;
@@ -67,6 +70,7 @@ export const youtubeVideoProvider: VideoProvider = {
   // ACÁ (el único lugar permitido para una URL de YouTube, VGRP-50/VGRP-29)
   // y no en el componente.
   urlThumbnail: (ref) => `https://i.ytimg.com/vi/${ref}/mqdefault.jpg`,
+  origenThumbnails: "https://i.ytimg.com",
 };
 
 export const videoProvider: VideoProvider = youtubeVideoProvider;

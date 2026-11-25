@@ -12,6 +12,7 @@
 // antes de renderizar: los `embedUrl` quedan en `null` (títulos y miniaturas sí viajan) y
 // la lista de materiales va sin acción de descarga (US-6).
 
+import { preconnect } from "react-dom";
 import inicio from "@/components/inicio/inicio.module.css";
 import { SeccionSlot } from "@/components/inicio/SeccionSlot";
 import { ProgresoVideosProvider } from "@/components/video/ProgresoVideosProvider";
@@ -25,6 +26,7 @@ import {
   sinEmbed,
   type VideoGridItem,
 } from "@/lib/data/videos";
+import { videoProvider } from "@/lib/video/provider";
 import styles from "./formacion.module.css";
 import { MaterialesCard } from "./MaterialesCard";
 
@@ -55,6 +57,9 @@ function Stage({
 }
 
 export async function FormacionShell({ bloqueado = false }: { bloqueado?: boolean }) {
+  // Miniaturas de un tercero: misma razón que en InicioShell.
+  preconnect(videoProvider.origenThumbnails);
+
   const [stage1Crudo, stage2Crudo, materiales] = await Promise.all([
     obtenerVideosStage1(),
     obtenerVideosStage2(),

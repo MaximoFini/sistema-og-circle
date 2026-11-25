@@ -22,6 +22,7 @@
 // componente leía de ahí, ya no llama a `getLinks()`.
 
 import NextLink from "next/link";
+import { preconnect } from "react-dom";
 import { ProgresoVideosProvider } from "@/components/video/ProgresoVideosProvider";
 import { StatsVideos } from "@/components/video/StatsVideos";
 import { VideoGrid } from "@/components/video/VideoGrid";
@@ -32,6 +33,7 @@ import {
   obtenerVideosStage3,
   sinEmbed,
 } from "@/lib/data/videos";
+import { videoProvider } from "@/lib/video/provider";
 import { AgentesGrid } from "./AgentesGrid";
 import styles from "./inicio.module.css";
 import { ProfesionalesGrid } from "./ProfesionalesGrid";
@@ -47,6 +49,10 @@ import { TarjetaStage } from "./TarjetaStage";
 // sus secretos ya los resuelve cada Route Handler según los claims de quien pide.
 
 export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }) {
+  // Las miniaturas son de un tercero: abrir la conexión desde el <head> y no recién
+  // cuando las tarjetas pintan la imagen (docs/RENDIMIENTO.md, miniaturas).
+  preconnect(videoProvider.origenThumbnails);
+
   const grillas = await Promise.all([
     obtenerVideosStage1(),
     obtenerVideosStage2(),
