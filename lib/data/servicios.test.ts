@@ -70,6 +70,22 @@ describe("obtenerServiciosFinancieros", () => {
     expect(JSON.stringify(item)).not.toContain("IBAN-secreto-no-debe-salir");
   });
 
+  it("fotoUrl: null sin foto, URL pública con foto — aun sin plan", async () => {
+    const sinFoto = await crearServicioTest({ titulo: "Test sin foto" });
+    const conFoto = await crearServicioTest({ titulo: "Test con foto" });
+    const path = `servicios_financieros/${conFoto.id}/foto.webp`;
+    await admin.from("servicios_financieros").update({ foto_path: path }).eq("id", conFoto.id);
+
+    const items = await obtenerServiciosFinancieros(admin, claimsConNivel("ninguno"));
+
+    expect(items.find((i) => i.id === sinFoto.id)?.publicMeta.fotoUrl).toBeNull();
+    const item = items.find((i) => i.id === conFoto.id);
+    expect(item?.publicMeta.fotoUrl).toMatch(
+      new RegExp(`/storage/v1/object/public/fotos-directorio/${path}$`),
+    );
+    expect(item?.descripcion).toBeNull();
+  });
+
   it("sin sesión (claims null) nunca expone la descripción", async () => {
     const servicio = await crearServicioTest({ titulo: "Test sin sesión" });
 

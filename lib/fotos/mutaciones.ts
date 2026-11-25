@@ -18,7 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ResultadoMutacion } from "../data/admin/audit-log";
 import { ItemNoEncontrado, tabla } from "../data/admin/contenido";
 import type { Database } from "../database.types";
-import type { EntidadConFoto } from "./constantes";
+import { columnaNombre, type EntidadConFoto } from "./constantes";
 import { borrarFoto, subirFoto, urlPublicaFoto } from "./storage";
 
 type AdminClient = SupabaseClient<Database>;
@@ -35,13 +35,16 @@ export async function leerFoto(
   entidad: EntidadConFoto,
   id: string,
 ): Promise<FotoActual> {
+  const columna = columnaNombre(entidad);
   const { data, error } = await tabla(admin, entidad)
-    .select("nombre, foto_path")
+    .select(`${columna}, foto_path`)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new ItemNoEncontrado(entidad, id);
-  return data as FotoActual;
+  const fila = data as unknown as Record<string, string | null>;
+  // Siempre `nombre`: así el audit log describe cualquier entidad igual.
+  return { nombre: fila[columna] ?? "", foto_path: fila.foto_path };
 }
 
 /** Sube `webp` (ya procesado con `procesarFoto`) y lo deja como foto de la fila. */
