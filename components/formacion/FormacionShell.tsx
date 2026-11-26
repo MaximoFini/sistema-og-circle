@@ -14,6 +14,7 @@
 
 import { preconnect } from "react-dom";
 import inicio from "@/components/inicio/inicio.module.css";
+import { ModuloMaritimoProximamente } from "@/components/inicio/ModuloMaritimoProximamente";
 import { SeccionSlot } from "@/components/inicio/SeccionSlot";
 import { ProgresoVideosProvider } from "@/components/video/ProgresoVideosProvider";
 import { StatsVideos } from "@/components/video/StatsVideos";
@@ -104,6 +105,7 @@ export async function FormacionShell({ bloqueado = false }: { bloqueado?: boolea
             videos={stage2}
             reordenable={!bloqueado}
           />
+          <ModuloMaritimoProximamente />
           <MaterialesCard materiales={materiales} bloqueado={bloqueado} />
         </div>
       </div>

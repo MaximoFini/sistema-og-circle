@@ -178,6 +178,7 @@ test.describe("Inicio (VGRP-88)", () => {
         "Formación: armá tu tienda",
         "Todos los videos y materiales",
         "Calculadora de costos",
+        "Formación: importación marítima",
         "Agentes verificados de compra en China",
         "Hablá con otros importadores",
         "Profesionales al servicio",
@@ -265,6 +266,26 @@ test.describe("Inicio (VGRP-88)", () => {
 });
 
 test.describe("/formacion — camino de aprendizaje (VideoCard/VideoGrid)", () => {
+  test("el card 'Próximamente' de importación marítima va debajo del Stage 2 y antes de los materiales", async ({
+    page,
+  }) => {
+    const created = await createAuthenticatedUser("completo");
+    try {
+      await loginComo(page, created.email);
+      await page.goto("/formacion");
+
+      const titulos = await page.getByRole("heading", { level: 2 }).allTextContents();
+      const stage2 = titulos.indexOf("Formación: armá tu tienda");
+      expect(stage2).toBeGreaterThanOrEqual(0);
+      expect(titulos[stage2 + 1]).toBe("Formación: importación marítima");
+
+      const maritimo = page.getByRole("region", { name: "Formación: importación marítima" });
+      await expect(maritimo.getByText("Próximamente")).toBeVisible();
+    } finally {
+      await cleanupUser(created.userId);
+    }
+  });
+
   test("US-2 — sin tope: 15 videos publicados de Stage 2 se ven los 15, en orden", async ({
     page,
     browser,

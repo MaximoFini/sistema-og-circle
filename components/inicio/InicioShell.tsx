@@ -36,6 +36,7 @@ import {
 import { videoProvider } from "@/lib/video/provider";
 import { AgentesGrid } from "./AgentesGrid";
 import styles from "./inicio.module.css";
+import { ModuloMaritimoProximamente } from "./ModuloMaritimoProximamente";
 import { ProfesionalesGrid } from "./ProfesionalesGrid";
 import { aResumenes } from "./resumenStage";
 import { SeccionSlot } from "./SeccionSlot";
@@ -139,6 +140,10 @@ export async function InicioShell({ bloqueado = false }: { bloqueado?: boolean }
               </SeccionSlot>
             </div>
           </div>
+
+          {/* Stage 3 (próximamente): a todo el ancho, en la grilla principal y no dentro
+              de una columna del bento — misma forma horizontal que el card de Comunidad. */}
+          <ModuloMaritimoProximamente />
 
           <SeccionSlot
             eyebrow="Infraestructura"
