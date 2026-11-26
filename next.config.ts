@@ -53,6 +53,22 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Auditoría de seguridad (nov 2026): cabeceras base para todas las rutas.
+        // `frame-ancestors 'self'` evita clickjacking (/comprar, /admin en un iframe ajeno).
+        // No hay CSP completa a propósito todavía: hay que mapear Sentry, YouTube,
+        // Mercado Pago y Vercel Analytics sin romper nada (ver página de Plane
+        // "Vulnerabilidades de seguridad").
+        source: "/:path*",
+        headers: [
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+      {
         // Los assets de public/ se sirven en la RAÍZ de la URL (no bajo
         // /public) — matchea por extensión, no por carpeta, para cubrir
         // cualquier archivo nuevo sin volver a tocar esto.

@@ -45,7 +45,10 @@ const TIPOS = [...TIPOS_IMAGEN, "application/pdf"] as const;
 const FALTAN_DATOS = 'Enviá "fileBase64" y "mediaType".';
 
 const bodySchema = z.object({
-  fileBase64: z.string({ error: FALTAN_DATOS }).min(1, FALTAN_DATOS),
+  fileBase64: z
+    .string({ error: FALTAN_DATOS })
+    .min(1, FALTAN_DATOS)
+    .max(14_000_000, "El archivo es demasiado grande (máx. ~10 MB)."),
   mediaType: z
     .string({ error: FALTAN_DATOS })
     .min(1, FALTAN_DATOS)
@@ -55,11 +58,11 @@ const bodySchema = z.object({
       }),
     ),
   // El front lo manda (lo usa para el mensaje de éxito); el original lo ignora.
-  filename: z.string().nullish(),
+  filename: z.string().max(255).nullish(),
 });
 
 export async function POST(req: Request): Promise<Response> {
-  const bloqueo = await requierePlan();
+  const bloqueo = await requierePlan({ ia: true });
   if (bloqueo) return bloqueo;
 
   const body = await leerCuerpo(req, bodySchema);

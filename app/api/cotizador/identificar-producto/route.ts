@@ -37,7 +37,10 @@ const TIPOS = ["image/jpeg", "image/png", "image/webp"] as const;
 const FALTAN_DATOS = 'Enviá "fileBase64" y "mediaType".';
 
 const bodySchema = z.object({
-  fileBase64: z.string({ error: FALTAN_DATOS }).min(1, FALTAN_DATOS),
+  fileBase64: z
+    .string({ error: FALTAN_DATOS })
+    .min(1, FALTAN_DATOS)
+    .max(14_000_000, "La imagen es demasiado grande."),
   mediaType: z
     .string({ error: FALTAN_DATOS })
     .min(1, FALTAN_DATOS)
@@ -95,7 +98,7 @@ function normalizar(r: Record<string, unknown>): ProductoIdentificado {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const bloqueo = await requierePlan();
+  const bloqueo = await requierePlan({ ia: true });
   if (bloqueo) return bloqueo;
 
   const body = await leerCuerpo(req, bodySchema);

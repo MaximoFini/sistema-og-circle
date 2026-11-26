@@ -181,15 +181,14 @@ describe("nivel='ninguno': cero filas de agentes/videos/servicios_financieros, S
     expect(data).toHaveLength(0);
   });
 
-  it("profesionales: nivel='ninguno' SÍ ve una fila activa (decisión confirmada 2026-09-09, sin nivel_requerido)", async () => {
+  it("profesionales: nivel='ninguno' NO ve ninguna fila (auditoría nov 2026: antes filtraba `contacto` por PostgREST)", async () => {
     const profesional = await crearProfesional({ activo: true });
     const { accessToken } = await getTokenWithClaim("ninguno");
     const cliente = clienteConToken(accessToken);
 
     const { data, error } = await cliente.from("profesionales").select().eq("id", profesional.id);
     expect(error).toBeNull();
-    expect(data).toHaveLength(1);
-    expect(data?.[0]?.id).toBe(profesional.id);
+    expect(data).toHaveLength(0);
   });
 });
 

@@ -18,6 +18,7 @@ import { getFlags } from "@/lib/config";
 import { dispararBienvenida } from "@/lib/email/bienvenida";
 import type { ActionState } from "@/lib/forms/action-state";
 import { terminosAceptadosFields } from "@/lib/legal/aceptacion";
+import { esProduccion, getSiteUrlProduccion } from "@/lib/site-url";
 import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
 
 // `ActionState`/`INITIAL_ACTION_STATE` viven en `lib/forms/action-state.ts`,
@@ -172,6 +173,11 @@ export async function registrarse(
  * de configuración que cualquier otro fallo de red.
  */
 async function getOrigin(): Promise<string> {
+  // Seguridad: en producción el origen sale de `NEXT_PUBLIC_SITE_URL` y NO de los headers
+  // del request (un `Host` manipulado podría apuntar el link de reset a otro dominio).
+  // En previews/local se sigue leyendo del request, porque ahí la URL cambia por deploy.
+  if (esProduccion()) return getSiteUrlProduccion();
+
   const headersList = await headers();
   const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
   if (!host) {

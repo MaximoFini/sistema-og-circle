@@ -40,14 +40,15 @@ const MODEL = process.env.ANTHROPIC_MODEL_ANALYZE || "claude-opus-4-8";
 const bodySchema = z.object({
   producto: z
     .string({ error: "Falta el nombre del producto." })
-    .min(1, "Falta el nombre del producto."),
-  ncm: z.string().nullish(),
+    .min(1, "Falta el nombre del producto.")
+    .max(300, "El nombre del producto es demasiado largo."),
+  ncm: z.string().max(40).nullish(),
   costos: z.unknown().optional(),
-  mercado: z.string().nullish(),
+  mercado: z.string().max(2000, "El contexto es demasiado largo.").nullish(),
 });
 
 export async function POST(req: Request): Promise<Response> {
-  const bloqueo = await requierePlan();
+  const bloqueo = await requierePlan({ ia: true });
   if (bloqueo) return bloqueo;
 
   const body = await leerCuerpo(req, bodySchema);
@@ -64,7 +65,7 @@ export async function POST(req: Request): Promise<Response> {
     "",
     `Producto: ${producto}`,
     ncm ? `Posición NCM: ${ncm}` : "",
-    costos ? `Resumen de costos (USD): ${JSON.stringify(costos)}` : "",
+    costos ? `Resumen de costos (USD): ${JSON.stringify(costos).slice(0, 4000)}` : "",
     mercado ? `Contexto adicional: ${mercado}` : "",
     "",
     "Devolvé UNICAMENTE un JSON con esta forma exacta:",

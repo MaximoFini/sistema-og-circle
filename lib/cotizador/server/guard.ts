@@ -19,7 +19,7 @@ import { getVerifiedClaims } from "@/lib/auth/server";
  * no, la respuesta que el handler tiene que devolver tal cual: 401 sin
  * sesión, 403 con nivel `ninguno`.
  */
-export async function requierePlan(): Promise<NextResponse | null> {
+export async function requierePlan(opciones: { ia?: boolean } = {}): Promise<NextResponse | null> {
   const claims = await getVerifiedClaims();
   if (!claims) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
@@ -30,5 +30,33 @@ export async function requierePlan(): Promise<NextResponse | null> {
       { status: 403 },
     );
   }
+  if (opciones.ia && excedeLimiteIA(typeof claims.sub === "string" ? claims.sub : "anon")) {
+    return NextResponse.json(
+      { error: "Hiciste muchas consultas seguidas. Probá de nuevo en unos minutos." },
+      { status: 429, headers: { "Retry-After": "60" } },
+    );
+  }
   return null;
+}
+
+// Tope por usuario para los endpoints que gastan tokens de Anthropic. En memoria por
+// instancia serverless: no es un límite global exacto, pero frena un script en loop
+// (cada instancia cuenta por separado). Un límite distribuido (Upstash) queda pendiente.
+const VENTANA_MS = 10 * 60 * 1000;
+const MAX_LLAMADAS_IA = 40;
+const llamadasIA = new Map<string, number[]>();
+
+function excedeLimiteIA(userId: string, ahora = Date.now()): boolean {
+  const recientes = (llamadasIA.get(userId) ?? []).filter((t) => ahora - t < VENTANA_MS);
+  if (recientes.length >= MAX_LLAMADAS_IA) {
+    llamadasIA.set(userId, recientes);
+    return true;
+  }
+  recientes.push(ahora);
+  llamadasIA.set(userId, recientes);
+  if (llamadasIA.size > 5000) {
+    for (const [k, v] of llamadasIA)
+      if (v.every((t) => ahora - t >= VENTANA_MS)) llamadasIA.delete(k);
+  }
+  return false;
 }

@@ -6,7 +6,7 @@
 
 import "server-only";
 
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 import { FOTO_MIN_PX, FOTO_SALIDA_PX, FOTO_SUBIDA_MAX_BYTES } from "./constantes";
 
 /** Error de validación con un mensaje apto para mostrarle al admin. */
@@ -28,7 +28,7 @@ export async function procesarFoto(entrada: Buffer): Promise<Buffer> {
     throw new FotoInvalida("La foto es demasiado pesada. Probá con otra imagen.");
   }
 
-  let metadata: sharp.Metadata;
+  let metadata: Metadata;
   try {
     metadata = await sharp(entrada).metadata();
   } catch {
