@@ -13,6 +13,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { tieneAcceso } from "@/lib/auth/claims";
 import { getVerifiedClaims } from "@/lib/auth/server";
+import { excedeLimite } from "@/lib/rate-limit";
 
 /**
  * `null` si el usuario tiene el plan completo (VGRP-59/60: un solo plan); si
@@ -30,7 +31,10 @@ export async function requierePlan(opciones: { ia?: boolean } = {}): Promise<Nex
       { status: 403 },
     );
   }
-  if (opciones.ia && excedeLimiteIA(typeof claims.sub === "string" ? claims.sub : "anon")) {
+  if (
+    opciones.ia &&
+    excedeLimite(`ia:${typeof claims.sub === "string" ? claims.sub : "anon"}`, LIMITE_IA)
+  ) {
     return NextResponse.json(
       { error: "Hiciste muchas consultas seguidas. Probá de nuevo en unos minutos." },
       { status: 429, headers: { "Retry-After": "60" } },
@@ -39,24 +43,6 @@ export async function requierePlan(opciones: { ia?: boolean } = {}): Promise<Nex
   return null;
 }
 
-// Tope por usuario para los endpoints que gastan tokens de Anthropic. En memoria por
-// instancia serverless: no es un límite global exacto, pero frena un script en loop
-// (cada instancia cuenta por separado). Un límite distribuido (Upstash) queda pendiente.
-const VENTANA_MS = 10 * 60 * 1000;
-const MAX_LLAMADAS_IA = 40;
-const llamadasIA = new Map<string, number[]>();
-
-function excedeLimiteIA(userId: string, ahora = Date.now()): boolean {
-  const recientes = (llamadasIA.get(userId) ?? []).filter((t) => ahora - t < VENTANA_MS);
-  if (recientes.length >= MAX_LLAMADAS_IA) {
-    llamadasIA.set(userId, recientes);
-    return true;
-  }
-  recientes.push(ahora);
-  llamadasIA.set(userId, recientes);
-  if (llamadasIA.size > 5000) {
-    for (const [k, v] of llamadasIA)
-      if (v.every((t) => ahora - t >= VENTANA_MS)) llamadasIA.delete(k);
-  }
-  return false;
-}
+// Tope por usuario para los endpoints que gastan tokens de Anthropic (ver lib/rate-limit.ts
+// para el alcance: en memoria por instancia).
+const LIMITE_IA = { max: 40, ventanaMs: 10 * 60 * 1000 };

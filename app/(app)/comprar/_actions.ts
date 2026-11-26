@@ -15,6 +15,7 @@ import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server
 import type { NivelAcceso } from "@/lib/database.types";
 import { getPreferenceClient } from "@/lib/mercadopago/client";
 import { armarPreferencia, type NivelComprable } from "@/lib/mercadopago/preferencia";
+import { excedeLimite } from "@/lib/rate-limit";
 import { esProduccion } from "@/lib/site-url";
 import { perfilSchema } from "../perfil/_schemas";
 
@@ -57,6 +58,10 @@ export async function crearCheckout(
 
   if (!esNivelComprable(nivel)) {
     return { ok: false, error: "Ese nivel no está disponible para compra." };
+  }
+
+  if (excedeLimite(`checkout:${String(claims.sub)}`, { max: 10, ventanaMs: 10 * 60 * 1000 })) {
+    return { ok: false, error: "Demasiados intentos. Probá de nuevo en unos minutos." };
   }
 
   // Auditoría de Mercado Pago (decisión del equipo): no dejar comprar el

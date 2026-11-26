@@ -18,6 +18,7 @@ import { getFlags } from "@/lib/config";
 import { dispararBienvenida } from "@/lib/email/bienvenida";
 import type { ActionState } from "@/lib/forms/action-state";
 import { terminosAceptadosFields } from "@/lib/legal/aceptacion";
+import { excedeLimite, ipDelCliente } from "@/lib/rate-limit";
 import { esProduccion, getSiteUrlProduccion } from "@/lib/site-url";
 import { loginSchema, nuevaPasswordSchema, registroSchema, solicitarResetSchema } from "./_schemas";
 
@@ -45,6 +46,10 @@ export async function iniciarSesion(
 
   if (!parsed.success) {
     return { fieldErrors: flattenError(parsed.error).fieldErrors };
+  }
+
+  if (excedeLimite(`login:${await ipDelCliente()}`, { max: 20, ventanaMs: 10 * 60 * 1000 })) {
+    return { error: "Demasiados intentos. Probá de nuevo en unos minutos." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -84,6 +89,10 @@ export async function registrarse(
 
   if (!parsed.success) {
     return { fieldErrors: flattenError(parsed.error).fieldErrors };
+  }
+
+  if (excedeLimite(`registro:${await ipDelCliente()}`, { max: 10, ventanaMs: 60 * 60 * 1000 })) {
+    return { error: "Demasiados intentos. Probá de nuevo más tarde." };
   }
 
   const { nombre, email, telefono, password } = parsed.data;
@@ -245,7 +254,15 @@ export async function solicitarReset(
   }
   const [supabase, origin] = config;
 
+  // Superado el límite se responde IGUAL que en el caso normal (sin enumeración ni canal
+  // de timing) y simplemente no se manda el mail.
+  const limitado = excedeLimite(`reset:${await ipDelCliente()}`, {
+    max: 10,
+    ventanaMs: 60 * 60 * 1000,
+  });
+
   after(async () => {
+    if (limitado) return;
     try {
       await supabase.auth.resetPasswordForEmail(parsed.data.email, {
         redirectTo: `${origin}/auth/callback`,

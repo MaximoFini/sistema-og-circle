@@ -9,6 +9,10 @@ const mockGetVerifiedClaims = vi.fn();
 const mockCreate = vi.fn();
 const mockCaptureException = vi.fn();
 
+// Los bytes de estos tests son de relleno: la verificación de magic bytes tiene su propio
+// test unitario (lib/cotizador/server/firma-archivo.test.ts).
+vi.mock("@/lib/cotizador/server/firma-archivo", () => ({ coincideConMediaType: () => true }));
+
 vi.mock("@/lib/auth/server", () => ({
   getVerifiedClaims: () => mockGetVerifiedClaims(),
 }));

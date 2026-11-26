@@ -26,6 +26,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { extraerJSON, llamarTexto } from "@/lib/cotizador/server/anthropic";
+import { coincideConMediaType } from "@/lib/cotizador/server/firma-archivo";
 import { requierePlan } from "@/lib/cotizador/server/guard";
 import { leerCuerpo, responderError } from "@/lib/cotizador/server/respuestas";
 
@@ -73,6 +74,13 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json(
       { error: "El archivo supera el máximo de 3 MB. Subí uno más liviano." },
       { status: 413 },
+    );
+  }
+
+  if (!coincideConMediaType(fileBase64, mediaType)) {
+    return Response.json(
+      { error: "El archivo no coincide con el formato indicado. Subí un PDF o una imagen válida." },
+      { status: 400 },
     );
   }
 

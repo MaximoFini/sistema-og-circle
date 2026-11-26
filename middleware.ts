@@ -252,6 +252,14 @@ function requestHeadersConClaims(source: NextRequest, claims: AppMetadataClaims 
   return headers;
 }
 
+function mismoHost(origen: string, host: string): boolean {
+  try {
+    return new URL(origen).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   // Respuesta "pass-through" por default. Si `setAll` de abajo se dispara
   // (Supabase necesita refrescar el access token con el refresh token), se
@@ -360,6 +368,19 @@ export async function middleware(request: NextRequest) {
         );
       }
       return withRefreshedCookies(new NextResponse("Not Found", { status: 404 }), response);
+    }
+
+    // Defensa en profundidad contra CSRF (hoy ya cubierta por SameSite=Lax): una mutación
+    // de /api/admin cuyo `Origin` no es este mismo host se rechaza. Sin `Origin`
+    // (herramientas que no son un navegador) se deja pasar: la auth ya la exige.
+    if (pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      const origen = request.headers.get("origin");
+      if (origen && !mismoHost(origen, request.nextUrl.host)) {
+        return withRefreshedCookies(
+          NextResponse.json({ error: "Origen no permitido." }, { status: 403 }),
+          response,
+        );
+      }
     }
   }
 
