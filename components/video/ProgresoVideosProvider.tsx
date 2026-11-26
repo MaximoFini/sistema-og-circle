@@ -10,8 +10,10 @@
 // están publicados hoy (`idsFormacion`, Stage 1 + Stage 2). También lee el `?video=` del
 // "Continuar" de Inicio (`videoInicial`).
 
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
-import { marcarVideoVisto, obtenerProgresoVideos } from "./_actions";
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { CLAVE_PROGRESO, cargarProgreso } from "@/components/inicio/datos-inicio";
+import { escribirDatos, useDatosCacheados } from "@/lib/cliente/cache-datos";
+import { marcarVideoVisto } from "./_actions";
 import { contarVistosFormacion, leerVideoInicial } from "./progreso";
 
 interface ProgresoContexto {
@@ -38,6 +40,8 @@ interface ProgresoContexto {
 
 const Contexto = createContext<ProgresoContexto | null>(null);
 
+type ProgresoVideos = Awaited<ReturnType<typeof cargarProgreso>>;
+
 export function ProgresoVideosProvider({
   idsFormacion,
   children,
@@ -45,9 +49,13 @@ export function ProgresoVideosProvider({
   idsFormacion: string[];
   children: ReactNode;
 }) {
-  const [vistos, setVistos] = useState<Set<string>>(new Set());
-  const [cargando, setCargando] = useState(true);
-  const [esAdmin, setEsAdmin] = useState(false);
+  // Caché de cliente (lib/cliente/cache-datos.ts): volver a Inicio desde Formación (o al
+  // revés) ya tiene el progreso, sin esqueleto ni otro viaje al servidor.
+  const { datos, listo } = useDatosCacheados(CLAVE_PROGRESO, cargarProgreso);
+  const vistosLista = datos?.videosVistos;
+  const vistos = useMemo(() => new Set(vistosLista), [vistosLista]);
+  const cargando = !listo;
+  const esAdmin = datos?.esAdmin ?? false;
   const [videoInicial, setVideoInicial] = useState<string | null>(null);
 
   // `?video=` se lee con `window.location` y NO con `useSearchParams`: en una ruta
@@ -68,31 +76,23 @@ export function ProgresoVideosProvider({
     );
   }, []);
 
-  useEffect(() => {
-    let cancelado = false;
-    obtenerProgresoVideos()
-      .then(({ videosVistos, esAdmin }) => {
-        if (cancelado) return;
-        setVistos(new Set(videosVistos));
-        setEsAdmin(esAdmin);
-      })
-      .catch(() => {
-        // Fallo silencioso: el contador queda en 0 hasta el próximo mount — no es
-        // contenido crítico del render inicial (mismo criterio que AgentesGrid).
-      })
-      .finally(() => {
-        if (!cancelado) setCargando(false);
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, []);
+  // Si la lectura falla, el contador queda en 0 (fallo silencioso, no es contenido
+  // crítico) y se reintenta cuando la caché venza.
+
+  // Las escrituras van a la caché compartida, así que Inicio ve el progreso que se marcó
+  // en Formación sin volver a pedirlo.
+  function escribirVistos(videosVistos: string[]) {
+    escribirDatos<ProgresoVideos>(CLAVE_PROGRESO, (previo) => ({
+      esAdmin: previo?.esAdmin ?? false,
+      videosVistos,
+    }));
+  }
 
   function marcarVisto(videoId: string) {
-    setVistos((prev) => new Set(prev).add(videoId)); // optimista
+    if (!vistos.has(videoId)) escribirVistos([...vistos, videoId]); // optimista
     marcarVideoVisto(videoId)
       .then((res) => {
-        if (res.ok) setVistos(new Set(res.videosVistos)); // converge al estado real
+        if (res.ok) escribirVistos(res.videosVistos); // converge al estado real
       })
       .catch(() => {
         // Sin rollback del optimista a propósito: es un contador informativo, no un

@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useBodyScrollLock } from "@/components/ui/useBodyScrollLock";
 import { cerrarSesion } from "@/lib/auth/actions";
+import { limpiarCacheDatos } from "@/lib/cliente/cache-datos";
 import styles from "./CerrarSesionBoton.module.css";
 
 const SELECTOR_FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -107,7 +108,10 @@ export function CerrarSesionBoton({
                 </p>
 
                 <div className={styles.botones}>
-                  <form action={cerrarSesion}>
+                  {/* La caché de datos vive en memoria de la pestaña y el logout es una
+                      navegación de cliente: se vacía antes, para que la próxima cuenta
+                      no vea lo de esta (lib/cliente/cache-datos.ts). */}
+                  <form action={cerrarSesion} onSubmit={limpiarCacheDatos}>
                     <button type="submit" className={styles.confirmar}>
                       Cerrar sesión
                     </button>

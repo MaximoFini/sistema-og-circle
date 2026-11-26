@@ -5,10 +5,11 @@
 // lib/data/servicios.ts). <ContenidoBloqueado> envuelve la descripción, no la card
 // entera: el título nunca desaparece sin explicación (regla dura del PRD §6).
 
-import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
+import { pedirJson, useDatosCacheados } from "@/lib/cliente/cache-datos";
 import { ContactoDirectorio } from "./ContactoDirectorio";
+import { DATOS_INICIO } from "./datos-inicio";
 import styles from "./inicio.module.css";
 
 interface ServicioRespuesta {
@@ -19,25 +20,10 @@ interface ServicioRespuesta {
 }
 
 export function ServiciosFinancierosGrid() {
-  const [servicios, setServicios] = useState<ServicioRespuesta[] | null>(null);
-
-  useEffect(() => {
-    let cancelado = false;
-
-    fetch("/api/servicios-financieros")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { servicios: ServicioRespuesta[] } | null) => {
-        if (cancelado || !data) return;
-        setServicios(data.servicios);
-      })
-      .catch(() => {
-        // Fallo silencioso: mismo criterio que AgentesGrid.
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
+  // Caché de cliente: mismo criterio que AgentesGrid (fallo silencioso incluido).
+  const servicios = useDatosCacheados(DATOS_INICIO.servicios, () =>
+    pedirJson<{ servicios: ServicioRespuesta[] }>(DATOS_INICIO.servicios),
+  ).datos?.servicios;
 
   if (!servicios) {
     return <p className={styles.estado}>Cargando servicios…</p>;

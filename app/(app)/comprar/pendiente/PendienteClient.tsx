@@ -37,6 +37,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/auth/browser";
+import { limpiarCacheDatos } from "@/lib/cliente/cache-datos";
 import type { NivelAcceso } from "@/lib/database.types";
 import { compraFueConfirmada } from "@/lib/mercadopago/confirmacion";
 import { consultarNivelActual } from "../_actions";
@@ -101,6 +102,8 @@ export function PendienteClient({ nivelEsperado, whatsappUrl }: PendienteClientP
       if (compraFueConfirmada(nivel, nivelEsperado)) {
         clearInterval(intervalId);
         setEstado("confirmado");
+        // Cambió el plan: lo que quedó en memoria (contactos bloqueados) ya no vale.
+        limpiarCacheDatos();
         router.push("/dashboard");
         router.refresh();
       }

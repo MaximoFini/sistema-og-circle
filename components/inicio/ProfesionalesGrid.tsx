@@ -5,9 +5,10 @@
 // — no hay nada que envolver en <ContenidoBloqueado>, el contacto se muestra directo
 // una vez resuelto.
 
-import { useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
+import { pedirJson, useDatosCacheados } from "@/lib/cliente/cache-datos";
 import { ContactoDirectorio } from "./ContactoDirectorio";
+import { DATOS_INICIO } from "./datos-inicio";
 import styles from "./inicio.module.css";
 
 interface ProfesionalRespuesta {
@@ -22,25 +23,10 @@ interface ProfesionalRespuesta {
 }
 
 export function ProfesionalesGrid() {
-  const [profesionales, setProfesionales] = useState<ProfesionalRespuesta[] | null>(null);
-
-  useEffect(() => {
-    let cancelado = false;
-
-    fetch("/api/profesionales")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { profesionales: ProfesionalRespuesta[] } | null) => {
-        if (cancelado || !data) return;
-        setProfesionales(data.profesionales);
-      })
-      .catch(() => {
-        // Fallo silencioso: mismo criterio que AgentesGrid.
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
+  // Caché de cliente: mismo criterio que AgentesGrid (fallo silencioso incluido).
+  const profesionales = useDatosCacheados(DATOS_INICIO.profesionales, () =>
+    pedirJson<{ profesionales: ProfesionalRespuesta[] }>(DATOS_INICIO.profesionales),
+  ).datos?.profesionales;
 
   if (!profesionales) {
     return <p className={styles.estado}>Cargando profesionales…</p>;

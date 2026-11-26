@@ -8,6 +8,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { precargarInicio } from "@/components/inicio/datos-inicio";
 import { DESTINOS_NAV } from "./destinos";
 import { NavDrawer } from "./NavDrawer";
 import styles from "./nav.module.css";
@@ -41,6 +42,8 @@ export function MenuToggle() {
   const yaPrefetcheado = useRef(false);
 
   function prefetchDestinos() {
+    // Los datos de Inicio (grillas y progreso) también: sin efecto si ya están frescos.
+    precargarInicio();
     if (yaPrefetcheado.current) return;
     yaPrefetcheado.current = true;
     for (const href of DESTINOS_PREFETCHEABLES) router.prefetch(href);

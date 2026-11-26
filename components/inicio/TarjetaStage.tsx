@@ -66,14 +66,15 @@ export function TarjetaStage({ videos }: { videos: VideoResumen[] }) {
               {estado.proximo.thumbnailUrl ? (
                 // <img> nativo a propósito (mismo criterio que VideoCard): miniatura externa
                 // de YouTube, no un asset local que next/image pueda optimizar. Con tamaño
-                // declarado y carga diferida (docs/RENDIMIENTO.md, regla 5).
+                // declarado. SIN `loading="lazy"` (excepción a la regla 5 de
+                // docs/RENDIMIENTO.md): son 2 imágenes en la parte visible de Inicio, que
+                // recién se pintan cuando llega el progreso; lazy sumaba otra espera.
                 <img
                   className={styles.miniaturaImg}
                   src={estado.proximo.thumbnailUrl}
                   alt=""
                   width={112}
                   height={63}
-                  loading="lazy"
                   decoding="async"
                 />
               ) : null}

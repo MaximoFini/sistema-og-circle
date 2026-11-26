@@ -10,10 +10,11 @@
 // resolverSecreto()) es exactamente el mismo, sólo cambió la fuente de datos
 // (lib/data/agentes.ts en vez de content/agentes-demo.ts).
 
-import { useEffect, useState } from "react";
 import { ContenidoBloqueado } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
+import { pedirJson, useDatosCacheados } from "@/lib/cliente/cache-datos";
 import { ContactoDirectorio } from "./ContactoDirectorio";
+import { DATOS_INICIO } from "./datos-inicio";
 import styles from "./inicio.module.css";
 
 interface AgenteRespuesta {
@@ -23,27 +24,12 @@ interface AgenteRespuesta {
 }
 
 export function AgentesGrid() {
-  const [agentes, setAgentes] = useState<AgenteRespuesta[] | null>(null);
-
-  useEffect(() => {
-    let cancelado = false;
-
-    fetch("/api/agentes")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { agentes: AgenteRespuesta[] } | null) => {
-        if (cancelado || !data) return;
-        setAgentes(data.agentes);
-      })
-      .catch(() => {
-        // Fallo silencioso: la sección queda en su estado de carga vacío —
-        // no es contenido crítico del render inicial (ver InicioShell, que
-        // sigue estático sin esto).
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, []);
+  // Caché de cliente (lib/cliente/cache-datos.ts): volver a Inicio no repite el pedido.
+  // Si falla, la sección queda en su estado de carga — no es contenido crítico del
+  // render inicial (ver InicioShell, que sigue estático sin esto).
+  const agentes = useDatosCacheados(DATOS_INICIO.agentes, () =>
+    pedirJson<{ agentes: AgenteRespuesta[] }>(DATOS_INICIO.agentes),
+  ).datos?.agentes;
 
   if (!agentes) {
     return <p className={styles.estado}>Cargando agentes…</p>;

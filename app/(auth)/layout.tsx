@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { LimpiarCacheDatos } from "./LimpiarCacheDatos";
 import styles from "./layout.module.css";
 
 // =============================================================================
@@ -19,6 +20,7 @@ import styles from "./layout.module.css";
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className={styles.shell}>
+      <LimpiarCacheDatos />
       {/* Tres piezas en una grilla: bloque de marca (lockup + frase, juntos
           como una firma), formulario y pie. Mobile: apiladas y centradas.
           Desde 1024px: la marca a la izquierda, centrada verticalmente contra
