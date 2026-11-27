@@ -30,8 +30,8 @@ const MODEL = process.env.ANTHROPIC_MODEL_IDENTIFY || "claude-sonnet-5";
 // el tope de 200 es sólo contra payloads absurdos — el recorte real a 80 es
 // el del original, más abajo.
 const candidatoSchema = z.looseObject({
-  ncm: z.string(),
-  descripcion: z.string(),
+  ncm: z.string().max(40),
+  descripcion: z.string().max(2000),
 });
 
 const bodySchema = z.object({
@@ -43,7 +43,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request): Promise<Response> {
-  const bloqueo = await requierePlan();
+  const bloqueo = await requierePlan({ ia: true });
   if (bloqueo) return bloqueo;
 
   const body = await leerCuerpo(req, bodySchema);

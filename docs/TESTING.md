@@ -160,6 +160,15 @@ Además de las que ya usa la app (`NEXT_PUBLIC_SUPABASE_URL`,
   **Nunca** debe llegar al bundle de cliente ni commitearse — solo en
   `.env.local` (gitignored) y como secret de GitHub Actions.
 
+- `SEED_USERS_PASSWORD` — contraseña de los 4 usuarios seed (incluido el admin
+  `admin@test.og-circle.invalid`). **No está en el repo** (es público y esos
+  usuarios existen en la base real: una contraseña conocida sería acceso total al
+  panel). Sale de `.env.local` o del secret `SEED_USERS_PASSWORD` de GitHub Actions;
+  pedirla a quien administra la base. Para cambiarla: actualizar la contraseña de
+  esos 4 usuarios en Supabase (Auth → Users) y el secret/`.env.local` a la vez.
+  Sin ella, `SEED_USERS`/`SEED_ADMIN_USER` fallan al leer `.password` con un error
+  claro (importar el módulo sí funciona).
+
 Ver `.env.example` para la plantilla completa. `vitest`/`playwright`/`tsx` NO
 cargan `.env.local` solos (eso es algo que hace Next.js solo para sí mismo) —
 `test/helpers/load-env.ts` lo hace por ellos, sin depender de la librería

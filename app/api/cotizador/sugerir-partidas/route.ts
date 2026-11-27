@@ -23,11 +23,14 @@ export const maxDuration = 60;
 const MODEL = process.env.ANTHROPIC_MODEL_IDENTIFY || "claude-sonnet-5";
 
 const bodySchema = z.object({
-  query: z.string({ error: 'Falta el parámetro "query".' }).min(1, 'Falta el parámetro "query".'),
+  query: z
+    .string({ error: 'Falta el parámetro "query".' })
+    .min(1, 'Falta el parámetro "query".')
+    .max(500, "La consulta es demasiado larga."),
 });
 
 export async function POST(req: Request): Promise<Response> {
-  const bloqueo = await requierePlan();
+  const bloqueo = await requierePlan({ ia: true });
   if (bloqueo) return bloqueo;
 
   const body = await leerCuerpo(req, bodySchema);

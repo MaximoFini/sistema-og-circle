@@ -216,7 +216,7 @@ describe("marcarVideoVisto — con sesión real (VGRP-50)", () => {
       .from("profiles")
       .update({ progreso: { videosVistos: ["intento-ajeno"] } })
       .eq("id", userB.userId)
-      .select();
+      .select("id");
 
     // RLS (`profiles_update_own`) filtra la fila antes de que el UPDATE la alcance: no
     // hay error, pero tampoco ninguna fila afectada.

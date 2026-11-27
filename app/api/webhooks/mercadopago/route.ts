@@ -225,6 +225,16 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({}, { status: 200 });
     }
 
+    // Auditoría de seguridad: el monto se guarda como ARS, así que un pago en otra moneda
+    // no se registra (se ackea igual para que MP no reintente). Si MP no informa la
+    // moneda no se bloquea nada: sólo se rechaza una moneda explícitamente distinta.
+    if (pago.currency_id && pago.currency_id !== "ARS") {
+      reportarPagoSinCorrelacion(
+        `paymentId=${paymentId} moneda inesperada currency_id=${pago.currency_id}`,
+      );
+      return Response.json({}, { status: 200 });
+    }
+
     const admin = createServiceRoleClient();
     const montoArs = pago.transaction_amount ?? 0;
 

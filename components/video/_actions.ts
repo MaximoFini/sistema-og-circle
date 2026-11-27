@@ -13,6 +13,9 @@
 import { getRol } from "@/lib/auth/claims";
 import { createSupabaseServerClient, getVerifiedClaims } from "@/lib/auth/server";
 
+const ID_VIDEO_VALIDO = /^[A-Za-z0-9_-]{1,64}$/;
+const MAX_VIDEOS_VISTOS = 500;
+
 interface ProgresoForma {
   videosVistos: string[];
 }
@@ -70,6 +73,11 @@ export async function marcarVideoVisto(videoId: string): Promise<MarcarVideoVist
   const id = userId(claims);
   if (!id) return { ok: false, error: "Tenés que iniciar sesión." };
 
+  // El id llega del cliente: acotarlo evita inflar `profiles.progreso` con basura.
+  if (typeof videoId !== "string" || !ID_VIDEO_VALIDO.test(videoId)) {
+    return { ok: false, error: "Video inválido." };
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data: perfil, error: errorLectura } = await supabase
     .from("profiles")
@@ -80,6 +88,7 @@ export async function marcarVideoVisto(videoId: string): Promise<MarcarVideoVist
 
   const actuales = leerVideosVistos(perfil?.progreso);
   if (actuales.includes(videoId)) return { ok: true, videosVistos: actuales };
+  if (actuales.length >= MAX_VIDEOS_VISTOS) return { ok: false, error: "Progreso lleno." };
 
   const nuevo = [...actuales, videoId];
   const progresoExistente =

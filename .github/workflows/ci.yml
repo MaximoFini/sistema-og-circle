@@ -30,6 +30,10 @@ jobs:
       # qué correr. Cuenta de prueba de Mercado Pago dedicada a este proyecto.
       MERCADOPAGO_ACCESS_TOKEN: ${{ secrets.MERCADOPAGO_ACCESS_TOKEN }}
       MERCADOPAGO_WEBHOOK_SECRET: ${{ secrets.MERCADOPAGO_WEBHOOK_SECRET }}
+      # Contraseña de los usuarios seed de test (incluido un admin). Ya no está en el
+      # repo: es público. Si falta, los e2e y los tests con login seed fallan con un
+      # mensaje claro. Ver docs/TESTING.md.
+      SEED_USERS_PASSWORD: ${{ secrets.SEED_USERS_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
