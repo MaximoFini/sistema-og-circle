@@ -20,9 +20,25 @@ export function isTestEmail(email: string | null | undefined): boolean {
   return typeof email === "string" && email.toLowerCase().endsWith(TEST_EMAIL_SUFFIX);
 }
 
+// Contraseña de los usuarios seed. Sale de la variable de entorno
+// `SEED_USERS_PASSWORD` y NO está en el repo: el repo es público y estos usuarios
+// existen en la base real (una cuenta admin con contraseña conocida = acceso total
+// al panel). Es un getter perezoso para que importar este módulo (p. ej. para
+// `TEST_EMAIL_SUFFIX`) no exija la variable; sólo falla quien realmente la usa.
+// Ver docs/TESTING.md ("Contraseña de los usuarios seed").
+function seedPassword(): string {
+  const valor = process.env.SEED_USERS_PASSWORD;
+  if (!valor) {
+    throw new Error(
+      "Falta SEED_USERS_PASSWORD (la contraseña de los usuarios seed). Ver docs/TESTING.md.",
+    );
+  }
+  return valor;
+}
+
 // Un usuario fijo por cada nivel de acceso más un admin, tal como pide
-// VGRP-43. Contraseña fija: son usuarios de test reconocibles por
-// TEST_EMAIL_SUFFIX, nunca se crean con este patrón fuera de tests.
+// VGRP-43. Son usuarios de test reconocibles por TEST_EMAIL_SUFFIX, nunca se
+// crean con este patrón fuera de tests.
 //
 // VGRP-59/60 (Bloque 13 — plan único): el enum pasó de tres valores
 // (ninguno/principiante/avanzado) a dos (ninguno/completo). Se mantienen los
@@ -32,25 +48,33 @@ export function isTestEmail(email: string | null | undefined): boolean {
 export const SEED_USERS: readonly SeedUserDefinition[] = [
   {
     email: `ninguno${TEST_EMAIL_SUFFIX}`,
-    password: "test-seed-password-1!",
+    get password() {
+      return seedPassword();
+    },
     nivel: "ninguno",
     rol: "user",
   },
   {
     email: `principiante${TEST_EMAIL_SUFFIX}`,
-    password: "test-seed-password-2!",
+    get password() {
+      return seedPassword();
+    },
     nivel: "completo",
     rol: "user",
   },
   {
     email: `avanzado${TEST_EMAIL_SUFFIX}`,
-    password: "test-seed-password-3!",
+    get password() {
+      return seedPassword();
+    },
     nivel: "completo",
     rol: "user",
   },
   {
     email: `admin${TEST_EMAIL_SUFFIX}`,
-    password: "test-seed-password-4!",
+    get password() {
+      return seedPassword();
+    },
     nivel: "completo",
     rol: "admin",
   },
