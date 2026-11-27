@@ -16,6 +16,14 @@ export interface OpcionesLimite {
   ventanaMs: number;
 }
 
+// Los E2E hacen decenas de logins desde una sola IP (la del runner) y chocarían con el
+// tope. playwright.config.ts lo apaga SOLO en el servidor de test; nunca en producción
+// (en cualquier entorno de Vercel —production o preview— se ignora aunque alguien lo
+// setee por error).
+function limiteDesactivado(): boolean {
+  return process.env.RATE_LIMIT_DESACTIVADO === "1" && !process.env.VERCEL;
+}
+
 /**
  * Registra un uso de `clave` y devuelve `true` si ya superó `max` dentro de la ventana
  * (en ese caso NO suma el intento, así el bloqueo termina solo al vencer la ventana).
@@ -25,6 +33,7 @@ export function excedeLimite(
   { max, ventanaMs }: OpcionesLimite,
   ahora = Date.now(),
 ): boolean {
+  if (limiteDesactivado()) return false;
   const recientes = (usos.get(clave) ?? []).filter((t) => ahora - t < ventanaMs);
   if (recientes.length >= max) {
     usos.set(clave, recientes);

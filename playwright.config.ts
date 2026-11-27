@@ -46,6 +46,8 @@ export default defineConfig({
     // de cada máquina), y la app SÍ necesita `.env.local` para arrancar.
     env: {
       NODE_ENV: "production",
+      // Los E2E loguean muchas veces desde la misma IP: sin esto chocan con el rate limit.
+      RATE_LIMIT_DESACTIVADO: "1",
       ...(process.env.PLAYWRIGHT_PORT ? { PORT: process.env.PLAYWRIGHT_PORT } : {}),
     },
   },
